@@ -1,0 +1,807 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>晶片大戰 CHIP WARS</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(1200px 600px at 50% -10%,#122040 0%,#070c16 60%,#04070d 100%);
+ color:#dbe4f5;font-family:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;padding:14px;min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+ background-image:linear-gradient(#4de2c008 1px,transparent 1px),linear-gradient(90deg,#4de2c008 1px,transparent 1px);
+ background-size:44px 44px}
+.wrap{max-width:1240px;margin:0 auto;position:relative;z-index:1}
+h1{font-size:24px;letter-spacing:6px;background:linear-gradient(90deg,#4de2c0,#7ab8ff 60%,#b48cff);
+ -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+.sub{font-size:11px;letter-spacing:3px;color:#5d7396;margin-top:2px}
+.bar{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #1e3050;
+ padding-bottom:10px;margin-bottom:12px;flex-wrap:wrap;gap:10px}
+.hud{font-size:13px;color:#9fb2d0;display:flex;align-items:center;gap:10px}
+.hud b{color:#4de2c0}
+.pill{background:#0e1626;border:1px solid #2b4269;border-radius:99px;padding:4px 12px;font-size:12px}
+.mapbox{position:relative;border:1px solid #1e3050;border-radius:14px;overflow:hidden;margin-bottom:12px;
+ background:linear-gradient(180deg,#08101f,#050a12)}
+#map{display:block;width:100%;height:auto}
+.grid{display:grid;grid-template-columns:255px 1fr 268px;gap:12px}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.panel{background:linear-gradient(180deg,#0e1626,#0a1120);border:1px solid #1e3050;border-radius:12px;padding:12px}
+.panel h3{font-size:12px;color:#4de2c0;letter-spacing:3px;margin-bottom:9px;border-bottom:1px solid #1e3050;padding-bottom:6px}
+.pcard{border:1px solid #1e3050;border-radius:9px;padding:8px 9px;margin-bottom:7px;font-size:12px;
+ background:#0b1220;transition:.25s;position:relative;overflow:hidden}
+.pcard::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,#2b4269)}
+.pcard:hover{transform:translateX(2px)}
+.pcard.active{border-color:var(--c);box-shadow:0 0 14px -4px var(--c)}
+.pcard .nm{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.pcard .st{color:#7f93b5;margin-top:4px;line-height:1.65}
+.pcard .st b{color:#dbe4f5;font-weight:600}
+.money{color:#ffd166;font-variant-numeric:tabular-nums}
+button{background:linear-gradient(180deg,#1a2a45,#142034);color:#dbe4f5;border:1px solid #2b4269;
+ border-radius:8px;padding:8px 13px;font-size:13px;cursor:pointer;font-family:inherit;transition:.18s}
+button:hover:not(:disabled){border-color:#4de2c0;box-shadow:0 0 12px -3px #4de2c0;transform:translateY(-1px)}
+button:disabled{opacity:.32;cursor:not-allowed}
+button.pri{background:linear-gradient(180deg,#1f7a68,#146050);border-color:#4de2c0;font-weight:700}
+button.gho{background:transparent}
+.acts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.log{height:180px;overflow-y:auto;font-size:12px;line-height:1.7;color:#9fb2d0;padding-right:4px}
+.log div{border-bottom:1px solid #131f33;padding:4px 0;animation:sl .3s ease}
+@keyframes sl{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.log .hi{color:#4de2c0}
+.log .bad{color:#ff8b8b}
+.log .ev{color:#ffd166;font-weight:600}
+.modal{position:fixed;inset:0;background:rgba(3,7,14,.9);backdrop-filter:blur(3px);display:none;
+ align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal.on{display:flex;animation:fi .22s ease}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.box{background:linear-gradient(180deg,#101b2e,#0a1120);border:1px solid #2b4269;border-radius:16px;
+ max-width:700px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;animation:up .28s cubic-bezier(.2,.9,.3,1)}
+.box.wide{max-width:920px}
+@keyframes up{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+.box h2{font-size:17px;color:#4de2c0;margin-bottom:10px;letter-spacing:2px}
+.item{border:1px solid #1e3050;border-radius:10px;padding:10px;margin-bottom:8px;font-size:12px;
+ display:flex;justify-content:space-between;gap:10px;align-items:center;transition:.18s;background:#0b1220}
+.item:hover{border-color:#4de2c0;background:#0e1a2c}
+.item .d{color:#7f93b5;line-height:1.6;margin-top:4px}
+.tag{display:inline-block;background:#16233a;border:1px solid #2b4269;border-radius:5px;
+ padding:1px 7px;font-size:11px;margin:2px 3px 0 0;color:#8fa6c8}
+.tag.go{border-color:#4de2c0;color:#4de2c0}
+.qa{display:block;width:100%;text-align:left;margin-bottom:7px}
+canvas.demo{background:#050a12;border:1px solid #1e3050;border-radius:10px;display:block;margin:0 auto 10px;max-width:100%}
+.mid{font-size:12.5px;color:#9fb2d0;line-height:1.85}
+.node{display:flex;gap:5px;margin:8px 0}
+.node span{flex:1;text-align:center;padding:5px 2px;border:1px solid #1e3050;border-radius:7px;font-size:11px;color:#5d7396;transition:.3s}
+.node span.on{border-color:#4de2c0;color:#4de2c0;background:#4de2c012;box-shadow:0 0 10px -4px #4de2c0}
+hr{border:none;border-top:1px solid #1e3050;margin:9px 0}
+/* 結算畫面 */
+.rank{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #1e3050;border-radius:10px;
+ margin-bottom:8px;background:#0b1220;animation:up .4s backwards}
+.rank .no{font-size:20px;font-weight:800;width:34px;text-align:center;color:#5d7396}
+.rank.g1{border-color:#ffd166;background:linear-gradient(90deg,#ffd16618,transparent)}
+.rank.g1 .no{color:#ffd166}
+.rank.g2 .no{color:#c9d4e4}.rank.g3 .no{color:#d09b6a}
+.rank .bd{flex:1}
+.rank .bn{font-weight:700;font-size:14px}
+.rank .bs{font-size:11px;color:#7f93b5;margin-top:2px;line-height:1.6}
+.bar2{height:7px;background:#16233a;border-radius:9px;overflow:hidden;margin-top:5px}
+.bar2 i{display:block;height:100%;background:linear-gradient(90deg,#4de2c0,#7ab8ff);width:0;transition:width 1.1s cubic-bezier(.2,.9,.3,1)}
+.big{font-size:26px;font-weight:800;color:#ffd166;letter-spacing:2px;text-align:center;margin:6px 0 2px}
+.mvp{text-align:center;color:#7f93b5;font-size:12px;margin-bottom:14px}
+.sel{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.sel button.on{border-color:#4de2c0;background:linear-gradient(180deg,#1f7a68,#146050);color:#fff}
+</style>
+<div class="wrap">
+ <div class="bar">
+  <div><h1>晶片大戰 CHIP WARS</h1><div class="sub">GLOBAL SEMICONDUCTOR SUPREMACY</div></div>
+  <div class="hud"><span class="pill" id="hud"></span>
+   <button class="gho" onclick="rules()">規則</button>
+   <button class="gho" onclick="setup()">重新開始</button></div>
+ </div>
+ <div class="mapbox"><canvas id="map" width="1200" height="500"></canvas></div>
+ <div class="grid">
+  <div class="panel"><h3>各國情勢</h3><div id="players"></div></div>
+  <div class="panel">
+   <h3>行動面板</h3><div class="mid" id="turnInfo"></div>
+   <div class="acts" id="acts"></div>
+   <h3>戰情日誌</h3><div class="log" id="log"></div>
+  </div>
+  <div class="panel"><h3>我的產線</h3><div class="mid" id="detail"></div></div>
+ </div>
+</div>
+<div class="modal" id="modal"><div class="box" id="box"></div></div>
+<script>
+// ================= 資料 =================
+const NODES=[
+ {n:"28nm",price:9, rd:0,   yield:74,req:0},
+ {n:"14nm",price:14,rd:900, yield:62,req:3},
+ {n:"7nm", price:20,rd:1800,yield:50,req:5},
+ {n:"3nm", price:30,rd:3200,yield:38,req:7,needEUV:true}
+];
+const COUNTRIES=[
+ {id:"US",name:"美國",en:"USA",     flag:"設備與 IP 霸主",money:1400,color:"#5b9dff",lon:-98,lat:39,
+  perk:"研發費用 -25%",desc:"掌握晶片設計工具與核心專利，研發推進最快"},
+ {id:"TW",name:"台灣",en:"TAIWAN",  flag:"晶圓代工之王",money:1000,color:"#4de2c0",lon:121,lat:23.5,
+  perk:"良率 +8%、出貨收入 +15%",desc:"全球最強的先進製程製造能力，良率天下第一"},
+ {id:"KR",name:"南韓",en:"KOREA",   flag:"記憶體強權",  money:1150,color:"#ff8bb0",lon:127.5,lat:37,
+  perk:"每回合記憶體收入 +180",desc:"DRAM 與 NAND 世界龍頭，現金流穩定"},
+ {id:"CN",name:"中國",en:"CHINA",   flag:"產能擴張者",  money:1700,color:"#ff9d5c",lon:104,lat:35,
+  perk:"設備採購 -20%，研發成功率 -12%",desc:"資本雄厚、擴廠飛快，但受先進設備管制"},
+ {id:"NL",name:"荷蘭",en:"NETHERLANDS",flag:"EUV 壟斷者",money:900,color:"#b48cff",lon:5.3,lat:52.1,
+  perk:"他國每買一台曝光機，你收 120 授權費",desc:"全世界只有這裡造得出 EUV 曝光機"}
+];
+const EQUIP=[
+ {id:"cz",  n:"單晶爐 (長晶爐)",   cost:280, cap:3, yld:0, node:0, d:"把高純度矽熔融後緩慢拉出單晶棒，是所有晶片的起點。"},
+ {id:"litho",n:"曝光機 (微影)",     cost:520, cap:5, yld:2, node:0, lic:1, d:"用光把電路圖案投影到光阻上，決定線寬極限，是最貴也最關鍵的設備。"},
+ {id:"etch", n:"蝕刻機",           cost:420, cap:4, yld:3, node:0, d:"用電漿把沒被光阻保護的區域轟掉，把圖案真正刻進晶圓。"},
+ {id:"cvd",  n:"薄膜沉積機 (CVD)", cost:380, cap:3, yld:3, node:0, d:"讓氣體在晶圓表面反應，長出奈米等級的絕緣層或金屬層。"},
+ {id:"imp",  n:"離子植入機",       cost:450, cap:3, yld:4, node:1, d:"把摻雜離子加速打進矽晶格，改變導電性以形成電晶體。"},
+ {id:"cmp",  n:"化學機械研磨 CMP", cost:400, cap:2, yld:6, node:1, d:"邊化學腐蝕邊機械拋光，把表面磨到原子級平坦，先進製程必備。"},
+ {id:"metro",n:"量測檢測機",       cost:340, cap:0, yld:9, node:1, d:"用電子束掃描找缺陷，不生產晶片，但大幅拉高良率。"},
+ {id:"pack", n:"先進封裝機",       cost:460, cap:6, yld:0, node:2, d:"把多顆裸晶堆疊互連（CoWoS/HBM），是 AI 晶片的產能瓶頸。"},
+ {id:"euv",  n:"EUV 曝光機",       cost:1400,cap:8, yld:7, node:2, lic:1, d:"13.5nm 極紫外光，真空中打錫滴產生電漿發光，全球唯一供應商。"}
+];
+const QUIZ=[
+ {q:"晶圓的主要材料是什麼？",o:["矽 (Si)","銅 (Cu)","碳 (C)","鋁 (Al)"]},
+ {q:"「7nm 製程」的 nm 主要代表什麼？",o:["電晶體的技術世代命名","晶圓的厚度","晶片的邊長","封裝的高度"]},
+ {q:"EUV 曝光機使用的光波長約為？",o:["13.5 nm","193 nm","500 nm","1 μm"]},
+ {q:"良率 (Yield) 指的是？",o:["合格晶片佔總數的比例","每小時產出片數","晶片的運算速度","設備稼動率"]},
+ {q:"下列何者是「無廠半導體」(Fabless) 的模式？",o:["只設計、不自建晶圓廠","只做封裝測試","只賣設備","只生產矽晶圓"]},
+ {q:"摩爾定律大致的內容是？",o:["晶片上電晶體數約每兩年翻倍","晶片價格每年減半","晶圓尺寸每年變大","良率每年提升10%"]},
+ {q:"CMP 製程的目的是？",o:["把晶圓表面磨到平坦","切割晶圓","清洗光阻","加熱擴散"]},
+ {q:"光阻 (Photoresist) 的作用是？",o:["感光後形成圖案遮罩","導電","散熱","黏合晶片"]},
+ {q:"CoWoS 屬於哪一類技術？",o:["先進封裝","微影","蝕刻","長晶"]},
+ {q:"晶圓廠無塵室等級主要控制什麼？",o:["空氣中的微粒數量","溫度","濕度","噪音"]},
+ {q:"「IDM」廠商的特徵是？",o:["設計、製造、封測一手包辦","只做設計","只做代工","只賣IP"]},
+ {q:"離子植入的目的是？",o:["摻雜以改變半導體導電性","增加晶圓厚度","降低溫度","去除雜質"]},
+ {q:"目前主流晶圓的直徑是？",o:["12 吋 (300mm)","4 吋","20 吋","30 吋"]},
+ {q:"AI 加速器對哪種記憶體需求最大？",o:["HBM 高頻寬記憶體","軟碟","光碟","磁帶"]},
+ {q:"「黃光區」為什麼是黃色的？",o:["濾掉會讓光阻感光的短波長光","為了美觀","方便辨識","黃光可殺菌"]},
+ {q:"光罩 (Mask) 的功能是？",o:["承載電路圖案供曝光轉印","保護作業員","過濾空氣","冷卻晶圓"]},
+ {q:"下列何者不是半導體設備大廠？",o:["星巴克","ASML","應用材料 AMAT","東京威力科創 TEL"]},
+ {q:"晶片「封裝」的目的不包含？",o:["提高運算時脈上限","保護晶片","散熱","對外電性連接"]},
+ {q:"晶圓廠為何需要大量超純水？",o:["每道製程後都要沖洗微粒與化學殘留","用來發電","用來冷卻員工","用來稀釋矽"]},
+ {q:"為什麼晶片越小效能通常越好？",o:["電子跑的距離變短、耗電更低","體積小比較好看","材料比較便宜","比較好封裝"]}
+];
+const EVENTS=[
+ {t:"出口管制升級",d:"某大國禁止先進設備出口，中國本回合無法採購設備。",
+  f:g=>{const p=g.players.find(x=>x.id==="CN");if(p){p.banUntil=g.round;log(p.name+" 被列入管制名單，本回合無法採購設備","bad");}}},
+ {t:"AI 需求爆發",d:"全球資料中心搶單，本回合出貨收入 +40%。",f:g=>{g.boom=1.4;log("AI 浪潮來襲！本回合出貨收入 +40%","hi");}},
+ {t:"強震侵襲",d:"晶圓廠停機檢修，本回合全體良率 -10%。",f:g=>{g.quake=10;log("強震襲擊產業聚落，本回合全體良率 -10%","bad");}},
+ {t:"人才大戰",d:"設備最多的玩家被挖角，損失 200。",
+  f:g=>{let p=[...g.players].sort((a,b)=>b.equip.length-a.equip.length)[0];p.money=Math.max(0,p.money-200);log(p.name+" 的資深工程師被高薪挖角，損失 200","bad");}},
+ {t:"政府補貼",d:"分數最低的玩家獲得 500 補助款。",
+  f:g=>{let p=[...g.players].sort((a,b)=>a.score()-b.score())[0];p.money+=500;log(p.name+" 取得國家級補貼 +500","hi");}},
+ {t:"矽晶圓漲價",d:"全體支付 120 原料成本。",f:g=>{g.players.forEach(p=>p.money=Math.max(0,p.money-120));log("上游矽晶圓喊漲，全體支出 120","bad");}},
+ {t:"專利訴訟",d:"製程最先進的玩家被告，賠償 300。",
+  f:g=>{let p=[...g.players].sort((a,b)=>b.node-a.node)[0];p.money=Math.max(0,p.money-300);log(p.name+" 遭專利侵權訴訟，賠償 300","bad");}},
+ {t:"消費電子寒冬",d:"手機需求萎縮，本回合出貨收入 -30%。",f:g=>{g.boom=0.7;log("消費性電子庫存去化，本回合收入 -30%","bad");}},
+ {t:"實驗室突破",d:"隨機一國獲得 300 研究經費。",
+  f:g=>{let p=g.players[Math.floor(Math.random()*g.players.length)];p.money+=300;log(p.name+" 實驗室傳出突破，獲得 300 研究經費","hi");}},
+ {t:"缺水危機",d:"產能最高的玩家本回合產能 -25%。",
+  f:g=>{let p=[...g.players].sort((a,b)=>b.cap()-a.cap())[0];p.drought=true;log(p.name+" 面臨限水，本回合產能 -25%","bad");}},
+ {t:"設備交期延長",d:"全體本回合設備採購價 +25%。",f:g=>{g.inflate=1.25;log("設備大廠訂單滿載，本回合採購成本 +25%","bad");}},
+ {t:"車用晶片荒",d:"成熟製程吃香，28nm / 14nm 玩家收入 +50%。",f:g=>{g.mature=1.5;log("車用晶片大缺貨，成熟製程收入 +50%","hi");}}
+];
+
+// ================= 引擎 =================
+const ACTS=3;
+let G=null;
+const EQ=id=>EQUIP.find(e=>e.id===id);
+const cur=()=>G.players[G.turn];
+const isBanned=p=>p.banUntil>=G.round;
+const $=id=>document.getElementById(id);
+
+function mkPlayer(c,human){
+ return {...c,human,money:c.money,node:0,equip:[],chips:0,deals:0,talent:0,banUntil:0,drought:false,revenue:0,
+  uniq(){return [...new Set(this.equip)];},
+  cap(){let b=2+this.equip.reduce((s,e)=>s+EQ(e).cap,0);if(this.drought)b*=0.75;return Math.round(b);},
+  yieldRate(){
+   let y=NODES[this.node].yield+this.uniq().reduce((s,e)=>s+EQ(e).yld,0)+this.talent*2+this.deals*2;
+   if(this.id==="TW")y+=8;
+   if(G&&G.quake)y-=G.quake;
+   return Math.max(15,Math.min(92,y));
+  },
+  out(){return Math.round(this.cap()*this.yieldRate()/100*4);},
+  parts(){return {
+   資金:Math.round(this.money),
+   出貨:this.chips*2,
+   製程:this.node*800,
+   設備:this.equip.length*60,
+   外交:this.deals*200,
+   人才:this.talent*150};},
+  score(){return Object.values(this.parts()).reduce((a,b)=>a+b,0);}
+ };
+}
+function log(t,c){
+ const d=document.createElement("div");
+ if(c)d.className=c;
+ d.textContent=t;
+ const L=$("log");L.insertBefore(d,L.firstChild);
+}
+function equipCost(p,e){
+ const owned=p.equip.filter(x=>x===e.id).length;
+ let c=e.cost*(1+0.45*owned)*(G.inflate||1);
+ if(p.id==="CN")c*=0.8;
+ return Math.round(c);
+}
+function rdCost(p){
+ if(p.node>=NODES.length-1)return null;
+ let c=NODES[p.node+1].rd;
+ if(p.id==="US")c*=0.75;
+ return Math.round(c);
+}
+function rdBlock(p){
+ if(p.node>=NODES.length-1)return "已是最先進製程";
+ const t=NODES[p.node+1];
+ if(p.uniq().length<t.req)return `需先擁有 ${t.req} 種不同設備（目前 ${p.uniq().length} 種）`;
+ if(t.needEUV&&!p.equip.includes("euv"))return "3nm 量產必須先擁有 EUV 曝光機";
+ return null;
+}
+const dealCost=p=>250+p.deals*250;
+const hireCost=p=>300+p.talent*150;
+
+function buyEquip(p,e,disc){
+ const c=Math.round(equipCost(p,e)*(disc?0.75:1));
+ if(p.money<c){log("資金不足，採購失敗","bad");return false;}
+ p.money-=c;p.equip.push(e.id);
+ log(`${p.name} 採購 ${e.n}（-${c}）`,"hi");
+ if(e.lic){const nl=G.players.find(x=>x.id==="NL");
+  if(nl&&nl!==p){nl.money+=120;log("荷蘭收取曝光機授權費 +120");}}
+ return true;
+}
+function doResearch(p){
+ const b=rdBlock(p);if(b){log(b,"bad");return false;}
+ const c=rdCost(p);
+ if(p.money<c){log("研發經費不足","bad");return false;}
+ p.money-=c;
+ let prob=Math.min(.95,.75+p.equip.length*.02-(p.id==="CN"?.12:0));
+ if(Math.random()<prob){p.node++;log(`${p.name} 製程升級成功 → ${NODES[p.node].n}！`,"hi");}
+ else log(`${p.name} 製程試產失敗，經費付諸東流（-${c}）`,"bad");
+ return true;
+}
+function makeDeal(p,q){
+ const c=Math.max(dealCost(p),dealCost(q));
+ if(p.money<c||q.money<c){log("雙方資金不足以簽約","bad");return false;}
+ p.money-=c;q.money-=c;p.deals++;q.deals++;
+ G.links.push([p.id,q.id]);
+ log(`${p.name} 與 ${q.name} 簽訂長期供應協議（各 -${c}），雙方良率 +2%`,"hi");
+ return true;
+}
+function hire(p){
+ if(p.talent>=5){log("人才已達上限");return false;}
+ const c=hireCost(p);
+ if(p.money<c){log("資金不足","bad");return false;}
+ p.money-=c;p.talent++;
+ log(`${p.name} 挖角資深製程工程師（-${c}），良率 +2%`,"hi");
+ return true;
+}
+const demand=()=>Math.round(150+G.round*18);
+function settle(){
+ const dem=demand();
+ const list=G.players.map(p=>({p,y:p.yieldRate(),chips:p.out()}));
+ const total=list.reduce((s,o)=>s+o.chips,0);
+ const f=total>dem?dem/total:1;
+ G.lastSupply=total;G.lastFactor=f;
+ log(`── 第 ${G.round} 回合市況：全球需求 ${dem} 片，總供給 ${total} 片`+
+     (f<1?`，供過於求！售價僅剩 ${Math.round(f*100)}%`:`，供不應求，售價滿載`),f<1?"bad":"hi");
+ list.forEach(o=>{
+  const p=o.p;
+  let rev=o.chips*NODES[p.node].price*f*(G.boom||1);
+  if(G.mature&&p.node<=1)rev*=G.mature;
+  if(p.id==="TW")rev*=1.15;
+  if(p.id==="KR")rev+=180;
+  const up=Math.round(p.equip.reduce((s,e)=>s+EQ(e).cost,0)*0.06);
+  rev=Math.round(rev);
+  p.chips+=o.chips;p.money=Math.max(0,p.money+rev-up);p.revenue=rev-up;p.drought=false;
+  log(`${p.name} 出貨 ${o.chips} 片（良率 ${o.y}%）收入 +${rev}，設備維護 -${up}`);
+ });
+ G.boom=0;G.quake=0;G.inflate=0;G.mature=0;
+}
+function drawEvent(){
+ const e=EVENTS[Math.floor(Math.random()*EVENTS.length)];
+ log(`【產業新聞】${e.t}：${e.d}`,"ev");
+ e.f(G);
+ return e;
+}
+
+// ================= 世界地圖 =================
+const LAND=[
+ [[-168,65],[-140,70],[-95,72],[-60,70],[-52,47],[-70,42],[-80,25],[-97,16],[-105,20],[-125,35],[-125,50],[-140,60]],
+ [[-92,17],[-83,8],[-78,10],[-60,10],[-50,0],[-35,-5],[-38,-22],[-58,-35],[-73,-52],[-75,-20],[-81,-4]],
+ [[-10,44],[-9,37],[3,37],[18,40],[28,41],[30,45],[40,48],[42,60],[30,70],[22,70],[10,58],[3,53],[-5,50]],
+ [[-17,15],[-5,5],[10,4],[12,-6],[13,-17],[18,-35],[28,-33],[33,-25],[40,-15],[43,-2],[51,12],[43,12],[35,22],[32,31],[10,33],[-6,36],[-17,21]],
+ [[30,45],[45,40],[52,28],[60,25],[68,25],[73,8],[80,10],[90,22],[98,13],[105,10],[110,20],[122,32],[127,40],[135,45],[142,45],[140,55],[160,60],[178,64],[178,71],[140,75],[100,78],[60,72],[40,68],[35,55]],
+ [[113,-22],[129,-11],[142,-11],[153,-25],[150,-38],[135,-35],[115,-34]],
+ [[130,32],[140,36],[145,44],[141,45],[133,34]],
+ [[-45,60],[-20,70],[-20,82],[-50,83],[-58,70]],
+ [[166,-46],[174,-34],[178,-38],[170,-47]]
+];
+const MW=1200,MH=500,LAT0=78,LAT1=-58;
+const px=lon=>(lon+180)/360*MW, py=lat=>(LAT0-lat)/(LAT0-LAT1)*MH;
+function inPoly(x,y,poly){
+ let c=false;
+ for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+  const a=poly[i],b=poly[j];
+  if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;
+ }
+ return c;
+}
+let DOTS=[];
+function buildDots(){
+ DOTS=[];
+ for(let lat=LAT0;lat>LAT1;lat-=2.9)
+  for(let lon=-180;lon<180;lon+=2.3)
+   if(LAND.some(p=>inPoly(lon,lat,p)))DOTS.push([px(lon),py(lat),lon,lat]);
+}
+buildDots();
+if(typeof CanvasRenderingContext2D!=="undefined"&&!CanvasRenderingContext2D.prototype.roundRect){
+ CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+  this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+  this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+let mapT=0,mapRAF=null;
+function drawMap(){
+ const cv=$("map");if(!cv)return;
+ const x=cv.getContext("2d");
+ mapT+=0.016;
+ x.clearRect(0,0,MW,MH);
+ // 星空底
+ x.fillStyle="#060c16";x.fillRect(0,0,MW,MH);
+ for(let i=0;i<60;i++){
+  const sx=(i*137)%MW,sy=(i*71)%MH,a=.12+.12*Math.sin(mapT*1.4+i);
+  x.fillStyle=`rgba(120,170,255,${a})`;x.fillRect(sx,sy,1.6,1.6);
+ }
+ const P=G?G.players:[];
+ // 陸地點陣
+ DOTS.forEach((d,i)=>{
+  let col="#1e3a5f",r=1.7;
+  let best=null,bd=1e9;
+  P.forEach(p=>{const dx=d[0]-px(p.lon),dy=d[1]-py(p.lat),dist=Math.hypot(dx,dy);
+   if(dist<bd){bd=dist;best=p;}});
+  if(best&&bd<58+best.equip.length*3.2){
+   col=best.color;
+   r=1.9+0.7*Math.sin(mapT*2.2-bd*0.05);
+   x.globalAlpha=.35+.45*(1-bd/(58+best.equip.length*3.2));
+  }else x.globalAlpha=.55;
+  x.fillStyle=col;
+  x.beginPath();x.arc(d[0],d[1],r,0,7);x.fill();
+  x.globalAlpha=1;
+ });
+ if(!G)return;
+ // 貿易連線
+ G.links.forEach((L,i)=>{
+  const a=G.players.find(p=>p.id===L[0]),b=G.players.find(p=>p.id===L[1]);
+  if(!a||!b)return;
+  const x1=px(a.lon),y1=py(a.lat),x2=px(b.lon),y2=py(b.lat);
+  const mx=(x1+x2)/2,my=(y1+y2)/2-Math.abs(x2-x1)*0.22;
+  x.strokeStyle="#4de2c055";x.lineWidth=1.4;
+  x.beginPath();x.moveTo(x1,y1);x.quadraticCurveTo(mx,my,x2,y2);x.stroke();
+  const t=(mapT*0.28+i*0.33)%1, u=1-t;
+  const cx=u*u*x1+2*u*t*mx+t*t*x2, cy=u*u*y1+2*u*t*my+t*t*y2;
+  x.fillStyle="#4de2c0";x.beginPath();x.arc(cx,cy,3,0,7);x.fill();
+ });
+ // 國家節點
+ const OFF={US:[0,-52],TW:[92,46],KR:[86,-14],CN:[-56,-30],NL:[-40,-52]};
+ G.players.forEach((p,i)=>{
+  const cx=px(p.lon),cy=py(p.lat),act=(i===G.turn&&!G.over);
+  const pulse=1+0.18*Math.sin(mapT*3+i);
+  x.save();
+  // 光暈
+  const gr=x.createRadialGradient(cx,cy,0,cx,cy,42*pulse);
+  gr.addColorStop(0,p.color+"66");gr.addColorStop(1,p.color+"00");
+  x.fillStyle=gr;x.beginPath();x.arc(cx,cy,42*pulse,0,7);x.fill();
+  // 擴散環
+  const rr=((mapT*38+i*22)%60);
+  x.strokeStyle=p.color+Math.max(0,Math.round((1-rr/60)*180)).toString(16).padStart(2,"0");
+  x.lineWidth=1.5;x.beginPath();x.arc(cx,cy,10+rr*.6,0,7);x.stroke();
+  // 主體
+  x.fillStyle=p.color;x.beginPath();x.arc(cx,cy,act?9:6.5,0,7);x.fill();
+  x.strokeStyle="#04070d";x.lineWidth=2;x.stroke();
+  if(act){x.strokeStyle=p.color;x.lineWidth=2;
+   x.beginPath();x.arc(cx,cy,15,mapT*2.2,mapT*2.2+2.1);x.stroke();
+   x.beginPath();x.arc(cx,cy,15,mapT*2.2+3.14,mapT*2.2+5.24);x.stroke();}
+  // 標籤
+  const o=OFF[p.id]||[0,-46], lx=cx+o[0], ly=cy+o[1];
+  x.strokeStyle=p.color+"77";x.lineWidth=1;
+  x.beginPath();x.moveTo(cx,cy);x.lineTo(lx,ly+14);x.stroke();
+  const w=138,h=44;
+  x.fillStyle="rgba(8,16,30,.9)";x.strokeStyle=act?p.color:p.color+"55";x.lineWidth=act?2:1;
+  x.beginPath();x.roundRect(lx-w/2,ly-h/2,w,h,8);x.fill();x.stroke();
+  x.textAlign="left";
+  x.fillStyle=p.color;x.font="bold 14px sans-serif";
+  x.fillText(p.name,lx-w/2+9,ly-8);
+  x.fillStyle="#7f93b5";x.font="9px sans-serif";
+  x.fillText(p.human?"PLAYER":"AI",lx+w/2-38,ly-9);
+  x.fillStyle="#ffd166";x.font="bold 12px sans-serif";
+  x.fillText("$"+p.money,lx-w/2+9,ly+9);
+  x.fillStyle="#9fb2d0";x.font="11px sans-serif";
+  x.fillText(NODES[p.node].n+" · "+p.equip.length+"台",lx-w/2+62,ly+9);
+  // 產能長條
+  x.fillStyle="#16233a";x.fillRect(lx-w/2+9,ly+13,w-18,3);
+  x.fillStyle=p.color;x.fillRect(lx-w/2+9,ly+13,(w-18)*Math.min(1,p.cap()/45),3);
+  x.restore();
+ });
+ // 標題浮水印
+ x.fillStyle="#4de2c022";x.font="bold 40px sans-serif";x.textAlign="left";
+ x.fillText("SEMICONDUCTOR WORLD MAP",24,MH-24);
+}
+function mapLoop(){drawMap();mapRAF=requestAnimationFrame(mapLoop);}
+
+// ================= 介面 =================
+const modal=()=>$("modal"), box=()=>$("box");
+function openM(html,wide){box().className="box"+(wide?" wide":"");box().innerHTML=html;modal().classList.add("on");}
+function closeM(){modal().classList.remove("on");box().innerHTML="";stopDemo();}
+
+function render(){
+ if(!G)return;
+ const p=cur();
+ $("hud").innerHTML=`第 <b>${G.round}</b> / ${G.maxR} 回合　│　輪到 <b>${p.name}</b>　│　行動 <b>${G.acts}</b>`;
+ $("players").innerHTML=G.players.map((x,i)=>`
+  <div class="pcard ${i===G.turn?'active':''}" style="--c:${x.color}">
+   <div class="nm"><span>${x.name} ${x.human?'':'<span class="tag">AI</span>'}</span><span class="money">$${x.money}</span></div>
+   <div class="st">${x.flag}<br>製程 <b>${NODES[x.node].n}</b>　設備 <b>${x.equip.length}</b>　良率 <b>${x.yieldRate()}%</b><br>
+   出貨 <b>${x.chips}</b> 片　協議 <b>${x.deals}</b>　<span style="color:${x.color}">分數 ${x.score()}</span></div>
+  </div>`).join("");
+ $("turnInfo").innerHTML=`<b style="color:${p.color}">${p.name}</b>　${p.flag}<br>
+  <span style="color:#7f93b5">國家特性：</span>${p.perk}
+  ${isBanned(p)?'<br><span style="color:#ff8b8b">⚠ 遭出口管制，本回合無法採購設備</span>':''}`;
+ $("detail").innerHTML=`
+  <div class="node">${NODES.map((n,i)=>`<span class="${i<=p.node?'on':''}">${n.n}</span>`).join("")}</div>
+  產能 <b>${p.cap()}</b>　良率 <b>${p.yieldRate()}%</b><br>
+  本回合預估出貨 <b style="color:#4de2c0">${p.out()}</b> 片　單價 <b>$${NODES[p.node].price}</b><br>
+  設備維護費 <b style="color:#ff8b8b">-${Math.round(p.equip.reduce((s,e)=>s+EQ(e).cost,0)*0.06)}</b>／回合<br>
+  人才 <b>${p.talent}</b>/5　協議 <b>${p.deals}</b><hr>
+  <b>市況</b>　全球需求 <b>${demand()}</b> 片／回合<br>
+  ${G.lastSupply?`上回合總供給 <b>${G.lastSupply}</b> 片　售價 <b style="color:${G.lastFactor<1?'#ff8b8b':'#4de2c0'}">${Math.round(G.lastFactor*100)}%</b>`:'<span style="color:#5d7396">尚未開始出貨</span>'}
+  <br><span style="color:#5d7396">全球供給超過需求時，所有人的售價一起崩跌。</span><hr>
+  <b>已購設備</b><span style="color:#5d7396">（良率加成不重複計算）</span><br>
+  ${p.equip.length?p.uniq().map(e=>{const n=p.equip.filter(z=>z===e).length;
+    return `<span class="tag go">${EQ(e).n}${n>1?" ×"+n:""}</span>`;}).join(""):'<span style="color:#5d7396">（尚無）</span>'}
+  <hr><b>分數組成</b><br>${Object.entries(p.parts()).map(([k,v])=>`${k} <b>${v}</b>`).join("　")}
+  <hr><span style="color:#5d7396">${G.maxR} 回合結束時，總分最高者獲勝。</span>`;
+ const dis=!p.human||G.over;
+ $("acts").innerHTML=`
+  <button onclick="uiBuy()" ${dis||isBanned(p)?'disabled':''}>採購設備</button>
+  <button onclick="uiRD()" ${dis?'disabled':''}>製程研發${rdCost(p)?' $'+rdCost(p):''}</button>
+  <button onclick="uiDeal()" ${dis?'disabled':''}>外交簽約</button>
+  <button onclick="uiHire()" ${dis||p.talent>=5?'disabled':''}>挖角人才${p.talent<5?' $'+hireCost(p):''}</button>
+  <button class="gho" onclick="endTurn()" ${dis?'disabled':''}>結束回合</button>`;
+}
+
+// ---------- 採購（含取消） ----------
+function uiBuy(){
+ const p=cur();
+ openM(`<h2>設備採購中心</h2>
+  <div class="mid">點選設備可先看<b style="color:#4de2c0">原理動畫</b>再決定買不買，隨時可以取消，不會消耗行動。</div><br>`+
+  EQUIP.map(e=>{
+   const owned=p.equip.filter(x=>x===e.id).length,lock=p.node<e.node,c=equipCost(p,e);
+   return `<div class="item"><div><b>${e.n}</b> ${owned?`<span class="tag go">已有 ${owned} 台</span>`:''}
+     ${lock?`<span class="tag">需 ${NODES[e.node].n} 以上</span>`:''}
+     <div class="d">產能 +${e.cap}　良率 +${e.yld}%${owned?`　<span style="color:#ff9d5c">重複擴建，價格已上調</span>`:''}</div></div>
+    <button ${lock?'disabled':''} onclick="uiEquip('${e.id}')">$${c}　查看</button></div>`;
+  }).join("")+`<div style="text-align:right"><button class="gho" onclick="closeM()">取消，返回</button></div>`);
+}
+function uiEquip(id){
+ const p=cur(),e=EQ(id),c=equipCost(p,e),afford=p.money>=Math.round(c*0.75);
+ openM(`<h2>${e.n}</h2>
+  <canvas class="demo" id="cv" width="480" height="220"></canvas>
+  <div class="mid">${e.d}<br><br>
+   價格 <b class="money">$${c}</b>　產能 <b>+${e.cap}</b>　良率 <b>+${e.yld}%</b>　你的資金 <b class="money">$${p.money}</b>
+   ${afford?'':'<br><span style="color:#ff8b8b">資金不足</span>'}</div><br>
+  <button class="pri" onclick="confirmBuy('${id}')" ${afford?'':'disabled'}>確認採購（先答題可打 75 折）</button>
+  <button class="gho" onclick="uiBuy()">← 返回列表</button>
+  <button class="gho" onclick="closeM()">取消</button>`);
+ startDemo(id);
+}
+function confirmBuy(id){
+ const e=EQ(id);
+ askQuiz(res=>{
+  if(res==="cancel"){uiEquip(id);return;}
+  if(buyEquip(cur(),e,res===true))spend();
+  closeM();render();
+ });
+}
+// ---------- 知識問答 ----------
+function askQuiz(cb){
+ stopDemo();
+ const q=QUIZ[Math.floor(Math.random()*QUIZ.length)];
+ const opts=q.o.map((t,i)=>({t,ok:i===0})).sort(()=>Math.random()-0.5);
+ openM(`<h2>技術審查題</h2>
+  <div class="mid">答對這題，這台設備 <b style="color:#4de2c0">75 折</b>；答錯照原價。</div>
+  <div class="mid" style="font-size:15px;color:#dbe4f5;margin:12px 0"><b>${q.q}</b></div>`+
+  opts.map((o,i)=>`<button class="qa" onclick="ansQuiz(${o.ok})">${"ABCD"[i]}. ${o.t}</button>`).join("")+
+  `<div style="text-align:right;margin-top:6px">
+    <button class="gho" onclick="ansQuiz('skip')">不作答，原價購買</button>
+    <button class="gho" onclick="ansQuiz('cancel')">取消採購</button></div>`);
+ window._qcb=cb;
+}
+function ansQuiz(r){
+ const cb=window._qcb;
+ if(r===true)log(`${cur().name} 答對技術審查題，設備 75 折！`,"hi");
+ else if(r===false)log(`${cur().name} 答錯了，只能原價採購。`,"bad");
+ closeM();cb(r);
+}
+// ---------- 研發 / 外交 / 人才 ----------
+function uiRD(){
+ const p=cur();
+ if(p.node>=NODES.length-1){openM(`<h2>製程研發</h2><div class="mid">已達最先進的 3nm 製程。</div><br><button class="gho" onclick="closeM()">關閉</button>`);return;}
+ const c=rdCost(p),b=rdBlock(p),nx=NODES[p.node+1];
+ const prob=Math.round(Math.min(.95,.75+p.equip.length*.02-(p.id==="CN"?.12:0))*100);
+ openM(`<h2>製程研發</h2>
+  <div class="node">${NODES.map((n,i)=>`<span class="${i<=p.node?'on':''}">${n.n}</span>`).join("")}</div>
+  <div class="mid">
+   由 <b>${NODES[p.node].n}</b> 推進到 <b style="color:#4de2c0">${nx.n}</b><br>
+   費用 <b class="money">$${c}</b>　成功率 <b>${prob}%</b>（每台設備 +2%）<br><br>
+   單價 $${NODES[p.node].price} → <b style="color:#4de2c0">$${nx.price}</b>，
+   但基礎良率 ${NODES[p.node].yield}% → <b style="color:#ff8b8b">${nx.yield}%</b>。<br>
+   <span style="color:#5d7396">先進製程不是花錢就會贏——單價漲、良率崩，必須靠量測機、CMP 等整條設備鏈把良率救回來。</span>
+   ${b?`<br><br><span style="color:#ff8b8b">⚠ ${b}</span>`:""}
+  </div><br>
+  <button class="pri" onclick="doRD()" ${b||p.money<c?'disabled':''}>投入研發</button>
+  <button class="gho" onclick="closeM()">取消</button>`);
+}
+function doRD(){if(doResearch(cur()))spend();closeM();render();}
+function uiDeal(){
+ const p=cur();
+ openM(`<h2>外交簽約</h2>
+  <div class="mid">雙方各付費用，永久 +2% 良率並累積協議分數。協議越多，下一份越貴。</div><br>`+
+  G.players.filter(x=>x!==p).map(x=>{const c=Math.max(dealCost(p),dealCost(x));
+   return `<div class="item" style="border-left:3px solid ${x.color}"><div><b>${x.name}</b>
+    <div class="d">${x.flag}　資金 $${x.money}　已簽 ${x.deals} 份</div></div>
+    <button onclick="doDeal('${x.id}')" ${x.money<c||p.money<c?'disabled':''}>簽約 $${c}</button></div>`;}).join("")+
+  `<div style="text-align:right"><button class="gho" onclick="closeM()">取消</button></div>`);
+}
+function doDeal(id){
+ const q=G.players.find(x=>x.id===id);
+ if(!q.human||confirm(`${q.name}：是否接受 ${cur().name} 提出的長期供應協議？`)){
+  if(makeDeal(cur(),q))spend();
+ }else log(`${q.name} 拒絕了 ${cur().name} 的協議`,"bad");
+ closeM();render();
+}
+function uiHire(){
+ const p=cur();
+ openM(`<h2>挖角人才</h2><div class="mid">
+  資深製程工程師能靠經驗把良率一點一點調上來。<br>
+  費用 <b class="money">$${hireCost(p)}</b>　效果 <b>良率 +2%</b>　目前 <b>${p.talent}</b>/5
+  </div><br><button class="pri" onclick="doHire()" ${p.money<hireCost(p)?'disabled':''}>確認挖角</button>
+  <button class="gho" onclick="closeM()">取消</button>`);
+}
+function doHire(){if(hire(cur()))spend();closeM();render();}
+
+// ================= 設備原理動畫 =================
+let demoRAF=null,demoT=0;
+function stopDemo(){if(demoRAF)cancelAnimationFrame(demoRAF);demoRAF=null;}
+function startDemo(id){
+ stopDemo();demoT=0;
+ const cv=$("cv");if(!cv)return;
+ const x=cv.getContext("2d");
+ (function loop(){demoT+=0.011;if(demoT>1)demoT=0;paint(x,id,demoT);demoRAF=requestAnimationFrame(loop);})();
+}
+function paint(x,id,t){
+ x.clearRect(0,0,480,220);x.fillStyle="#050a12";x.fillRect(0,0,480,220);
+ x.lineWidth=2;x.textAlign="center";
+ const W=(f,tx,cx,cy,s)=>{x.fillStyle=f;x.font=(s||11)+"px sans-serif";x.fillText(tx,cx,cy);};
+ if(id==="cz"){
+  x.strokeStyle="#8fa6c8";x.strokeRect(180,140,120,55);
+  const g=x.createLinearGradient(0,150,0,193);g.addColorStop(0,"#ffca6b");g.addColorStop(1,"#ff6b2c");
+  x.fillStyle=g;x.fillRect(182,150,116,43);
+  for(let i=0;i<9;i++){x.fillStyle="rgba(255,200,120,.5)";
+   x.beginPath();x.arc(190+i*13,188-((t*40+i*9)%36),2,0,7);x.fill();}
+  const h=105*t;
+  x.fillStyle="#e3e9f5";x.beginPath();x.moveTo(230,150-h);x.lineTo(250,150-h);x.lineTo(248,150);x.lineTo(232,150);x.fill();
+  x.strokeStyle="#4de2c0";x.beginPath();x.moveTo(240,150-h);x.lineTo(240,18);x.stroke();
+  W("#7f93b5","矽熔液 1420°C",240,210);W("#4de2c0","單晶棒一邊旋轉一邊緩慢上拉",240,32);
+ }else if(id==="litho"||id==="euv"){
+  const gl=id==="euv",col=gl?"#b48cff":"#f7e26b";
+  x.fillStyle=col;x.globalAlpha=.18+.08*Math.sin(t*20);
+  x.beginPath();x.moveTo(206,18);x.lineTo(274,18);x.lineTo(304,120);x.lineTo(176,120);x.closePath();x.fill();x.globalAlpha=1;
+  x.fillStyle="#8fa6c8";x.fillRect(188,58,104,9);
+  for(let i=0;i<5;i++){x.fillStyle="#050a12";x.fillRect(194+i*20,58,9,9);}
+  W("#7f93b5","光罩 Mask",240,50);
+  x.fillStyle="#16233a";x.fillRect(158,125,164,18);
+  const n=Math.floor(t*5)+1;
+  for(let i=0;i<n;i++){x.fillStyle=col;x.fillRect(174+i*28,127,13,14);}
+  W("#7f93b5","晶圓上顯影出的光阻圖案",240,162);
+  W(col,gl?"EUV 13.5nm 極紫外光（必須在真空中傳播）":"深紫外光 193nm 穿過光罩投影曝光",240,192);
+ }else if(id==="etch"){
+  x.fillStyle="#16233a";x.fillRect(120,110,240,52);
+  x.fillStyle="#2b4269";x.fillRect(120,90,240,20);
+  for(let i=0;i<6;i++)if(i%2===0){x.fillStyle="#4de2c0";x.fillRect(126+i*40,78,28,11);}
+  const d=20*t;
+  for(let i=0;i<6;i++)if(i%2===1){x.fillStyle="#050a12";x.fillRect(126+i*40,90,28,Math.min(20,d));}
+  for(let i=0;i<16;i++){const pxx=126+((i*37+t*320)%228),pyy=18+((i*23+t*260)%58);
+   x.fillStyle="#b48cff";x.fillRect(pxx,pyy,2,7);}
+  W("#b48cff","電漿離子高速轟擊",240,16);W("#7f93b5","沒被光阻保護的區域被一層層轟掉",240,190);
+ }else if(id==="cvd"){
+  x.fillStyle="#16233a";x.fillRect(120,140,240,32);
+  const g=x.createLinearGradient(0,110,0,140);g.addColorStop(0,"#4de2c0");g.addColorStop(1,"#1f7a68");
+  x.fillStyle=g;x.fillRect(120,140-30*t,240,30*t);
+  for(let i=0;i<20;i++){const pxx=124+((i*61)%232),pyy=(((i*41)+t*280)%112);
+   x.fillStyle="rgba(143,166,200,.85)";x.beginPath();x.arc(pxx,18+pyy,3,0,7);x.fill();}
+  W("#8fa6c8","前驅氣體分子注入",240,15);W("#7f93b5","在晶圓表面反應，長出奈米等級薄膜",240,196);
+ }else if(id==="imp"){
+  x.fillStyle="#16233a";x.fillRect(120,118,240,62);
+  for(let r=0;r<3;r++)for(let c=0;c<12;c++){x.fillStyle="#2b4269";x.beginPath();x.arc(132+c*20,132+r*18,4,0,7);x.fill();}
+  for(let i=0;i<6;i++){const pyy=18+((t*170+i*30)%98);
+   x.strokeStyle="#ffd166";x.beginPath();x.moveTo(140+i*40,pyy);x.lineTo(140+i*40,pyy+15);x.stroke();}
+  const k=Math.floor(t*10);
+  for(let i=0;i<k;i++){x.fillStyle="#ffd166";x.beginPath();x.arc(140+(i%6)*40,132+Math.floor(i/6)*18,4.5,0,7);x.fill();}
+  W("#ffd166","高速摻雜離子（磷／硼）",240,14);W("#7f93b5","打進矽晶格，形成 N 型／P 型區域",240,202);
+ }else if(id==="cmp"){
+  const bump=(1-t)*9;
+  x.fillStyle="#16233a";x.beginPath();x.moveTo(100,175);
+  for(let i=0;i<=28;i++)x.lineTo(100+i*10,132-Math.sin(i*1.1)*bump);
+  x.lineTo(380,175);x.closePath();x.fill();
+  x.fillStyle="rgba(77,226,192,.45)";x.fillRect(100+Math.sin(t*9)*26,92,180,30);
+  for(let i=0;i<12;i++){x.fillStyle="rgba(255,255,255,.35)";
+   x.beginPath();x.arc(110+((i*47+t*260)%260),124,2,0,7);x.fill();}
+  W("#4de2c0","研磨墊 + 研磨液來回運動",240,80);W("#7f93b5","把高低起伏磨到原子級平坦，先進製程才疊得上去",240,202);
+ }else if(id==="metro"){
+  x.strokeStyle="#2b4269";x.fillStyle="#0b1220";
+  x.beginPath();x.arc(240,110,76,0,7);x.fill();x.stroke();
+  const sy=36+150*t;
+  const g=x.createLinearGradient(0,sy-14,0,sy);g.addColorStop(0,"#4de2c000");g.addColorStop(1,"#4de2c066");
+  x.fillStyle=g;x.fillRect(160,sy-14,160,14);
+  x.strokeStyle="#4de2c0";x.beginPath();x.moveTo(162,sy);x.lineTo(318,sy);x.stroke();
+  [[210,78],[276,124],[228,152]].forEach(d=>{if(sy>d[1]){
+   x.fillStyle="#ff7a7a";x.beginPath();x.arc(d[0],d[1],5,0,7);x.fill();
+   x.strokeStyle="#ff7a7a55";x.beginPath();x.arc(d[0],d[1],10,0,7);x.stroke();}});
+  W("#4de2c0","電子束掃描中…",240,22);W("#7f93b5","找出缺陷並回饋製程 → 良率大幅提升",240,208);
+ }else if(id==="pack"){
+  const n=Math.min(3,Math.floor(t*4)+1);
+  x.fillStyle="#16233a";x.fillRect(130,162,220,18);
+  W("#7f93b5","基板 Substrate",240,196);
+  for(let i=0;i<n;i++){
+   const col=["#4de2c0","#ffd166","#b48cff"][i];
+   x.fillStyle=col;x.fillRect(146+i*70,122,62,38);
+   W("#050a12",["邏輯裸晶","HBM","HBM"][i],177+i*70,145,10);
+   x.strokeStyle="#8fa6c8";
+   for(let j=0;j<3;j++){x.beginPath();x.moveTo(160+i*70+j*15,160);x.lineTo(160+i*70+j*15,162);x.stroke();}
+  }
+  x.strokeStyle="#4de2c0"+(Math.sin(t*14)>0?"cc":"44");
+  x.beginPath();x.moveTo(208,140);x.lineTo(216,140);x.moveTo(278,140);x.lineTo(286,140);x.stroke();
+  W("#4de2c0","多顆裸晶並排堆疊、以矽中介層互連（CoWoS）",240,38);
+ }
+}
+
+// ================= 流程 =================
+function spend(){G.acts--;if(G.acts<=0)setTimeout(endTurn,300);}
+function endTurn(){
+ if(G.over)return;
+ closeM();
+ G.turn++;
+ if(G.turn>=G.players.length){
+  G.turn=0;
+  settle();
+  if(G.round>=G.maxR){finish();return;}
+  G.round++;
+  const ev=drawEvent();
+  const rank=[...G.players].sort((a,b)=>b.score()-a.score());
+  openM(`<h2>第 ${G.round-1} 回合結算</h2>
+   <div class="item" style="display:block;border-color:#ffd166">
+    <b style="color:#ffd166">產業新聞：${ev.t}</b><div class="d">${ev.d}</div></div>
+   <div class="mid">${rank.map((p,i)=>
+    `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #131f33;padding:4px 0">
+      <span><b style="color:${p.color}">${i+1}. ${p.name}</b>　${NODES[p.node].n}</span>
+      <span>出貨 ${p.chips} 片　收入 <span class="money">+${p.revenue}</span>　分 <b>${p.score()}</b></span></div>`).join("")}</div>
+   <br><button class="pri" onclick="closeM();afterEvt()">進入第 ${G.round} 回合 →</button>`);
+  render();return;
+ }
+ afterEvt();
+}
+function afterEvt(){G.acts=ACTS;render();if(!cur().human)setTimeout(aiPlay,650);}
+
+// ================= 結算畫面 =================
+function finish(){
+ G.over=true;
+ const rank=[...G.players].sort((a,b)=>b.score()-a.score());
+ const top=rank[0],max=top.score();
+ const keys=["資金","出貨","製程","設備","外交","人才"];
+ const mvp=[
+  ["最會賺錢",[...G.players].sort((a,b)=>b.money-a.money)[0],p=>"$"+p.money],
+  ["出貨之王",[...G.players].sort((a,b)=>b.chips-a.chips)[0],p=>p.chips+" 片"],
+  ["技術先鋒",[...G.players].sort((a,b)=>b.node-a.node)[0],p=>NODES[p.node].n],
+  ["良率之神",[...G.players].sort((a,b)=>b.yieldRate()-a.yieldRate())[0],p=>p.yieldRate()+"%"],
+  ["設備狂人",[...G.players].sort((a,b)=>b.equip.length-a.equip.length)[0],p=>p.equip.length+" 台"],
+  ["外交高手",[...G.players].sort((a,b)=>b.deals-a.deals)[0],p=>p.deals+" 份"]
+ ];
+ openM(`<h2>FINAL RESULT　最終戰報</h2>
+  <div class="big" style="color:${top.color}">🏆 ${top.name} 勝出</div>
+  <div class="mvp">${top.flag}　│　總分 ${max}　│　歷經 ${G.maxR} 回合</div>
+  ${rank.map((p,i)=>`
+   <div class="rank g${i+1}" style="animation-delay:${i*.12}s">
+    <div class="no">${i+1}</div>
+    <div class="bd">
+     <div class="bn" style="color:${p.color}">${p.name} <span style="color:#5d7396;font-size:11px">${p.human?'PLAYER':'AI'}　${p.flag}</span>
+      <span style="float:right;color:#ffd166">${p.score()} 分</span></div>
+     <div class="bs">${NODES[p.node].n}　設備 ${p.equip.length} 台　良率 ${p.yieldRate()}%　累計出貨 ${p.chips} 片　協議 ${p.deals} 份　資金 $${p.money}</div>
+     <div class="bar2"><i data-w="${Math.round(p.score()/max*100)}"></i></div>
+     <div class="bs" style="color:#5d7396">${keys.map(k=>k+" "+p.parts()[k]).join("　")}</div>
+    </div></div>`).join("")}
+  <hr><b style="color:#4de2c0;font-size:12px;letter-spacing:2px">單項榮譽</b><br>
+  <div class="mid">${mvp.map(m=>`<span class="tag go">${m[0]}：${m[1].name}（${m[2](m[1])}）</span>`).join("")}</div>
+  <hr>
+  <div class="mid" style="color:#7f93b5">分數 = 資金 + 累計出貨×2 + 製程等級×800 + 設備×60 + 協議×200 + 人才×150<br>
+  想贏，就得在「衝製程、擴產能、結盟、拚良率」之間找到自己的平衡點。</div><br>
+  <button class="pri" onclick="setup()">再玩一次</button>`,true);
+ setTimeout(()=>document.querySelectorAll(".bar2 i").forEach(b=>b.style.width=b.dataset.w+"%"),120);
+ render();
+}
+
+// ================= AI =================
+function aiPlay(){
+ if(!G||G.over)return;
+ const p=cur();
+ if(p.human){render();return;}
+ let acted=false;
+ const c=rdCost(p), saving=(c!==null&&!rdBlock(p));
+ if(saving&&p.money>=c)acted=doResearch(p);
+ if(!acted&&!isBanned(p)){
+  const reserve=saving?c*0.6:0;
+  const opts=EQUIP.filter(e=>p.node>=e.node&&p.money-equipCost(p,e)>=reserve)
+   .sort((a,b)=>(b.cap*8+b.yld*12)/equipCost(p,b)-(a.cap*8+a.yld*12)/equipCost(p,a));
+  if(opts.length){
+   const ok=Math.random()<0.6;
+   log(`${p.name} 技術團隊${ok?"答對":"答錯"}審查題`);
+   acted=buyEquip(p,opts[0],ok);
+  }
+ }
+ if(!acted&&p.money>hireCost(p)+500&&p.talent<5)acted=hire(p);
+ if(!acted&&p.deals<2){
+  const c2=dealCost(p);
+  const q=G.players.filter(x=>x!==p&&!x.human&&Math.max(c2,dealCost(x))<=x.money)[0];
+  if(q&&p.money>=Math.max(c2,dealCost(q)))acted=makeDeal(p,q);
+ }
+ G.acts--;render();
+ if(G.acts>0)setTimeout(aiPlay,550);else setTimeout(endTurn,550);
+}
+
+// ================= 規則 / 開場 =================
+function rules(){
+ openM(`<h2>遊戲規則</h2><div class="mid">
+ <b style="color:#4de2c0">流程</b>　共 N 回合（開場自選），每回合每位玩家有 <b>3 個行動</b>。全員行動完畢後進行產能結算，接著抽一張<b>產業新聞卡</b>影響下一回合。<br><br>
+ <b style="color:#4de2c0">四種行動</b><br>
+ ・<b>採購設備</b>　增加產能與良率；買之前會播原理動畫，答對技術題可打 75 折。同型設備重複購買價格 +45%。<br>
+ ・<b>製程研發</b>　28nm → 14nm → 7nm → 3nm。單價變高但基礎良率大跌，需要更多設備補回，且有失敗機率。<br>
+ ・<b>外交簽約</b>　雙方各付費用，永久 +2% 良率並累積協議分。<br>
+ ・<b>挖角人才</b>　每位 +2% 良率，最多 5 位，越挖越貴。<br><br>
+ <b style="color:#4de2c0">收入公式</b><br>
+ 出貨片數 = 產能 × 良率 × 4　│　收入 = 出貨片數 × 製程單價<br><br>
+ <b style="color:#4de2c0">勝負</b><br>
+ 所有回合結束後，<b>總分最高者獲勝</b>。<br>
+ 分數 = 資金 + 累計出貨×2 + 製程等級×800 + 設備×60 + 協議×200 + 人才×150<br><br>
+ <b style="color:#4de2c0">設計理念</b><br>
+ 先進製程不是「花錢就變強」：單價上升的同時良率崩跌，必須用整條設備鏈把良率救回來——這正是真實半導體產業最核心的挑戰。
+ </div><br><button class="gho" onclick="closeM()">關閉</button>`);
+}
+let SEL={h:[true,false,false,false,false],r:15};
+function setup(){
+ G=null;
+ $("hud").innerHTML="準備開始";
+ ["players","turnInfo","detail"].forEach(k=>$(k).innerHTML="");
+ $("acts").innerHTML="";
+ openM(`<h2>晶片大戰 CHIP WARS</h2>
+  <div class="mid">五個晶片大國競逐半導體霸權。透過<b>採購設備、製程研發、外交簽約、挖角人才</b>擴張實力，
+  回合結束時<b style="color:#4de2c0">總分最高者獲勝</b>。</div>
+  <hr><b style="color:#4de2c0;font-size:12px;letter-spacing:2px">遊戲長度</b>
+  <div class="sel" id="rsel">${[8,12,15,20,25].map(r=>`<button onclick="setR(${r})" class="${SEL.r===r?'on':''}">${r} 回合</button>`).join("")}</div>
+  <b style="color:#4de2c0;font-size:12px;letter-spacing:2px">陣營設定</b>
+  <div class="mid" style="margin-bottom:6px">點右側按鈕切換由玩家或 AI 控制（可多人輪流同一台電腦）。</div>
+  ${COUNTRIES.map((c,i)=>`<div class="item" style="border-left:3px solid ${c.color}">
+    <div><b style="color:${c.color}">${c.name}</b> <span class="tag">${c.flag}</span>
+     <div class="d">${c.desc}<br>特性：<span style="color:#4de2c0">${c.perk}</span>　起始資金 $${c.money}</div></div>
+    <button id="s${i}" onclick="tog(${i})" class="${SEL.h[i]?'on':''}">${SEL.h[i]?'玩家':'AI'}</button></div>`).join("")}
+  <br><button class="pri" onclick="start()">開始遊戲 →</button>
+  <button class="gho" onclick="rules()">看規則</button>`,true);
+}
+function setR(r){SEL.r=r;[...document.querySelectorAll("#rsel button")].forEach(b=>
+ b.classList.toggle("on",b.textContent===r+" 回合"));}
+function tog(i){SEL.h[i]=!SEL.h[i];const b=$("s"+i);b.textContent=SEL.h[i]?"玩家":"AI";b.classList.toggle("on",SEL.h[i]);}
+function start(){
+ G={round:1,turn:0,acts:ACTS,maxR:SEL.r,boom:0,quake:0,inflate:0,mature:0,over:false,links:[],
+    players:COUNTRIES.map((c,i)=>mkPlayer(c,SEL.h[i]))};
+ closeM();
+ $("log").innerHTML="";
+ log(`遊戲開始：五國進入 ${G.maxR} 回合的晶片軍備競賽`,"hi");
+ render();
+ if(!cur().human)setTimeout(aiPlay,700);
+}
+mapLoop();
+setup();
+</script>
