@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SEMICON FAB TRAINER — Wafer Line Control</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       STAGE ROOT
+       全部畫面內容都包在一個固定 16:9 的容器內，並用 CSS 依視窗大小
+       等比例縮放（見 layout.css 的 #stage-viewport 規則），
+       確保在一般筆電全螢幕（16:9 / 16:10）下版面比例一致，
+       不會因視窗大小跑版。
+  ============================================================ -->
+  <div id="stage-outer">
+    <div id="stage-viewport">
+
+      <!-- 標題列 -->
+      <header id="title-bar">
+        <span id="title-bar-text">SEMICON FAB TRAINER v1.0 — Wafer Line Control</span>
+        <div id="title-bar-actions">
+          <button class="tb-btn" id="btn-glossary" title="製程說明">?</button>
+          <button class="tb-btn" id="btn-exit" title="離開">✕</button>
+        </div>
+      </header>
+
+      <div id="main-body">
+
+        <!-- ============================================================
+             左側：製程流程（Process Line）
+             由 core/levelManager.js 依據 app.js 註冊的關卡順序自動產生，
+             不需手動維護按鈕清單。
+        ============================================================ -->
+        <aside id="process-line">
+          <div class="panel-label">PROCESS LINE</div>
+          <div id="station-list"><!-- station buttons 由 buttons.js 動態插入 --></div>
+
+          <fieldset class="groove-box" id="overall-progress-box">
+            <legend>Overall Progress</legend>
+            <div class="progress-track">
+              <div class="progress-fill" id="overall-progress-fill"></div>
+              <div class="progress-label" id="overall-progress-label">0%</div>
+            </div>
+          </fieldset>
+
+          <div id="process-line-actions">
+            <button class="win-btn" id="btn-reset-step">Cancel Step</button>
+            <button class="win-btn" id="btn-open-end-screen" disabled>Finish</button>
+          </div>
+        </aside>
+
+        <!-- ============================================================
+             中央：攝影機 / 工作桌面舞台
+             canvas 分成兩個視覺區域（同一張畫布，用比例切割，見
+             camera.js 的 TABLE_ZONE_RATIO）：
+               - 上 3/4：手部操作／機台辨識區
+               - 下 1/4：桌面（可放置已 detach 的物件，如燒杯、晶圓夾）
+        ============================================================ -->
+        <section id="stage-center">
+
+          <div id="live-feed-bar">
+            <span>LIVE FEED — CAM 1</span>
+            <span id="rec-indicator"><i class="rec-dot"></i>REC</span>
+          </div>
+
+          <div id="camera-frame">
+            <video id="camera-video" muted playsinline autoplay></video>
+            <canvas id="camera-canvas" width="1280" height="720"></canvas>
+
+            <!-- 桌面區域的視覺提示（由 CSS 依 TABLE_ZONE_RATIO 定位，
+                 實際判定邏輯仍在 camera.js / gripper.js 內用座標計算，
+                 這裡只是讓桌面在畫面上「看得出來」） -->
+            <div id="table-zone-overlay">
+              <span class="table-zone-hint">TABLE</span>
+            </div>
+
+            <!-- 可 attach 到手上的物件放置層，由 gripper.js 管理 -->
+            <div id="attachable-layer"></div>
+
+            <!-- 畫圖（第一關：手繪 pattern）疊加層，由 painter.js 管理 -->
+            <canvas id="painter-canvas" width="1280" height="720"></canvas>
+
+            <div id="status-line">NO CAMERA</div>
+          </div>
+
+          <fieldset class="groove-box" id="instructions-box">
+            <legend id="station-title">—</legend>
+            <div id="station-instructions">請於左側製程流程選擇第一個站點以開始。</div>
+          </fieldset>
+
+          <fieldset class="groove-box" id="step-progress-box">
+            <legend>Current Step Progress</legend>
+            <div class="progress-track">
+              <div class="progress-fill" id="step-progress-fill"></div>
+              <div class="progress-label" id="step-progress-label">0%</div>
+            </div>
+          </fieldset>
+
+        </section>
+      </div>
+
+      <footer id="status-bar"></footer>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       通用 Modal（提示 / 關卡完成 / 詢問）
+       由 buttons.js + app.js 共用同一組 DOM，內容由 JS 填入。
+  ============================================================ -->
+  <div id="modal-root" class="modal-overlay hidden">
+    <div class="modal-window">
+      <div class="modal-title-bar" id="modal-title"></div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       結局畫面（成功 / 失敗）
+       由 screens.js 全權管理內容與顯示/隱藏，index.html 只提供容器。
+  ============================================================ -->
+  <div id="end-screen-root" class="end-screen hidden"></div>
+
+  <!-- ============================================================
+       模組載入順序：
+       1. core/*        — 事件匯流排、遊戲狀態、關卡管理器（無業務邏輯）
+       2. 功能模組        — camera / gesture / gripper / painter / buttons / screens / exportManager
+       3. 關卡模組        — waferBreak.js（範例關卡，其餘關卡依相同介面另建檔案）
+       4. app.js         — 組裝以上所有模組，是唯一知道「完整流程長怎樣」的地方
+  ============================================================ -->
+  <script src="js/core/eventBus.js"></script>
+  <script src="js/core/gameState.js"></script>
+  <script src="js/core/levelManager.js"></script>
+
+  <script src="js/camera.js"></script>
+  <script src="js/gesture.js"></script>
+  <script src="js/gripper.js"></script>
+  <script src="js/painter.js"></script>
+  <script src="js/buttons.js"></script>
+  <script src="js/exportManager.js"></script>
+  <script src="js/screens.js"></script>
+
+  <script src="js/waferBreak.js"></script>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
