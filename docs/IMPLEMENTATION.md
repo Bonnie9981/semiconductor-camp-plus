@@ -102,13 +102,15 @@ const inset = frame.ui.panelInset();   // 面板實際右緣，收起時為 0
 
 | kind | 用途 | 已用於 | 適合 |
 | --- | --- | --- | --- |
-| `choice` | 從 N 個選項挑 M 個 | — | 製程選擇、正負光阻、顯影液、蝕刻方式 |
+| `choice` | 從 N 個選項挑 M 個 | 沉積的製程選擇（備援） | 正負光阻、顯影液、蝕刻方式 |
 | `mix` | 用 ＋/− 調份數 | — | 需要精確數值但不需要動手的場合 |
 | `pour` | 唯讀顯示杯內容物 + 送出/倒掉 | RCA 前三步 | 配方是「動手倒出來」的場合 |
-| `action` | 單一按鈕 | RCA 乾燥步驟 | 開始曝光、開始蝕刻、啟動機台 |
+| `action` | 單一按鈕 | RCA 乾燥、沉積各階段 | 說明目前該做什麼 + 沒有鏡頭時的備援 |
 
-`choice` 與 `mix` 目前**還沒有任何關卡在用**，但都已實作完成並通過型別檢查。
-第 2、3、4、5 關會需要 `choice`。
+**面板的定位是「說明 + 備援」，不是主要互動。** 第二關的所有操作都在機台上用手完成，
+面板只負責解釋為什麼要這麼做，並在沒有攝影機時提供等效按鈕。新關卡請延續這個原則。
+
+`mix` 目前沒有任何關卡在用，但已實作完成並通過型別檢查。
 
 ---
 
@@ -322,36 +324,60 @@ export class Stage4Develop extends BaseStage {
 
 ## 6. 第 2~5 關的實作建議
 
-### 第二關 · 薄膜沉積
+### 第二關 · 薄膜沉積 ✅ 已完成
 
-**唯一的架構難題：分支。** PVD 選完就直接沉積，CVD 要多一步鍍金屬層。
-但 `BaseStage` 的子步驟目前是線性的。
+已實作，可以當成「機台型關卡」的範本。三件值得抄的事：
 
-建議做法 —— **在 `onSubEnter()` 裡跳過不需要的步驟**：
+**1. 用「把東西放進哪裡」取代選擇題。**
+製程選擇沒有做成選項按鈕，而是兩台機器並排、玩家把晶圓拖進哪一台就選了哪一種。
+放置判定就是 `pointInCircle(釋放點, layout.wafer, 容差)`。
+
+**2. 機台控制是可拖曳的實體。** `scene/Chamber.ts` 把命中區域與繪圖分開：
 
 ```ts
-protected override onSubEnter(index: number): void {
-  if (this.substeps[index]?.id === 'metal' && this.method === 'pvd') {
-    this.nextSub();     // PVD 不需要，直接跳過
-    return;
-  }
-  // …
+const layout = chamberLayout(geo, kind);   // 只算幾何，回傳可命中的區域
+drawChamber(ctx, geo, layout, state, time); // 只畫圖，不含邏輯
+```
+
+Stage 用 `layout` 做捏合判定、把結果寫回自己的狀態，再組成 `state` 交回去畫。
+三種控制的拖曳換算：
+
+```ts
+door      = clamp((p.x - closedX) / (openX - closedX), 0, 1);       // 水平
+power     = clamp((lever.bottom - p.y) / (lever.bottom - top), 0, 1); // 垂直
+valves[i] = clamp(抓取時的值 + (p.x - 抓取時的x) / 140, 0, 1);        // 相對水平
+```
+
+⚠️ 旋鈕用**相對位移**（記住抓取瞬間的值與座標），不是絕對座標 —— 否則一抓就跳值。
+
+**3. 製程窗口。** 控制值落在綠帶內品質 = 1，超出後線性衰減，沉積速率乘上品質。
+`windowFit()` 的上下衰減幅度分開設定，因為「不足」與「過量」的懲罰通常不對稱
+（PVD 功率過高會過熱，比不足更糟）。
+
+**分支的處理**：PVD 一次就鍍上金屬，CVD 要多一步。子步驟是線性的，所以在
+`onSubEnter()` 直接跳過：
+
+```ts
+if (sub?.id === 'metal' && this.method === 'pvd') {
+  this.nextSub();
+  return;
 }
 ```
 
 子步驟列上那一格會顯示成「已完成」。若希望它顯示為「不適用」，
 需要在 `UIManager.renderSubsteps()` 加一個 `skipped` 狀態。
 
-**動畫**：兩種沉積都是粒子系統，但運動方式不同 ——
+**粒子** 在 `scene/Particles.ts`，用 `mode` 切換兩種運動：
 
-| | PVD（e-gun） | CVD（PECVD） |
+| | ballistic（PVD） | diffusive（CVD） |
 | --- | --- | --- |
-| 粒子來源 | 底部靶材被電子束打中後氣化 | 上方通入的氣體分子 |
-| 運動 | **直線**上升後落在晶圓上凝結 | **布朗式**亂走，被電漿激發後才反應 |
+| 來源 | 上方靶材被電子束氣化 | 上方噴淋頭通入的氣體 |
+| 運動 | **筆直下落**，畫成短線段表現速度 | **邊飄邊亂走**，畫成雙原子分子 |
+| 落地 | 白色收縮閃光＝凝結 | 同上，時間較長 |
 | 結果 | 金屬層 | 氧化層（之後還要再鍍金屬） |
 
-粒子系統可參考 `SpinDryer.updateDroplets()` 的寫法（物件池 + 重生），
-不要每幀 new 陣列。
+物件池管理，達到上限就回收重生，不會每幀配置新陣列。第五關的乾式蝕刻
+可以直接重用 `ballistic` 模式（方向反過來即可）。
 
 ### 第三關 · 微影製程
 
@@ -399,7 +425,7 @@ for (let i = 0; i < SECTION_CELLS; i++) {
 
 | 問題 | 影響 | 建議 |
 | --- | --- | --- |
-| **子步驟是線性的** | 第二關的 PVD/CVD 分支只能用「跳過」模擬 | 若之後分支變多，考慮讓 `substeps` 變成可由關卡動態回傳的 getter |
+| **子步驟是線性的** | 第二關的 PVD 分支是用「跳過」模擬，被跳過的那格顯示為「已完成」而不是「不適用」 | 在 `UIManager.renderSubsteps()` 加 `skipped` 狀態；分支若變多，改讓 `substeps` 成為關卡動態回傳的 getter |
 | **`Stage1DrawPattern.ts` 目前沒被註冊** | 它還在 repo 裡但不在流程中 | 併進第三關的「圖案設計」子步驟後即可刪除或改名 |
 | **`ChoiceOption` 不支援示意圖** | 第三關的正負光阻需要圖解 | 加一個 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
 | **`WaferState.exposedMask` 沒有人寫入** | 第四關的顯影邏輯還沒有輸入 | 第三關的曝光步驟要負責填它 |
@@ -446,4 +472,14 @@ drawFlatWafer(ctx, point, r, color, withTweezers?)   // 平放的晶圓（scene/
 drawBottle(ctx, bottleVisual, time)                  // 藥瓶
 drawPourStream(ctx, mouth, landY, color, time, w?)   // 液柱
 drawDrain(ctx, geo, state, time)                     // 廢液桶
+
+// ── 機台（scene/Chamber.ts）──
+chamberLayout(geo, kind)              // 只算幾何，回傳可命中的區域
+drawChamber(ctx, geo, layout, state, time)
+pointInCircle(point, circle, pad?)    // 通用的圓形命中測試
+
+// ── 粒子（scene/Particles.ts）──
+const field = new DepositionField();
+field.update(dt, cfg);                // cfg.mode: 'ballistic' | 'diffusive'
+field.render(ctx, cfg, color);
 ```

@@ -5,6 +5,7 @@ import { GestureDetector, drawHandSkeleton } from './core/GestureDetector';
 import { StageManager } from './core/StageManager';
 import { WaferState } from './core/WaferState';
 import { Stage1RCA } from './stages/Stage1RCA';
+import { Stage2Deposition } from './stages/Stage2Deposition';
 import { StagePlaceholder } from './stages/StagePlaceholder';
 import type { BaseStage } from './stages/BaseStage';
 import { CrossSection } from './ui/CrossSection';
@@ -94,21 +95,7 @@ const camera = new CameraManager({
 
 stages
   .register(new Stage1RCA())
-  .register(
-    new StagePlaceholder({
-      id: 'deposition',
-      title: '薄膜沉積',
-      shortTitle: '薄膜沉積',
-      description: '選擇物理氣相沉積（e-gun 鍍膜）或化學氣相沉積（PECVD），在晶圓上長出薄膜。',
-      hint: '（尚未實作）PVD 用電子束加熱靶材使其氣化，直線下落凝結；CVD 通入氣體後以電漿促進反應長出氧化層。',
-      props: ['電子槍', '靶材', 'PECVD 腔體'],
-      substeps: [
-        { id: 'method', title: '製程選擇', desc: '物理氣相沉積（PVD）或化學氣相沉積（CVD）' },
-        { id: 'deposit', title: '沉積反應', desc: '粒子運動與鍍膜；CVD 另需電漿促進反應' },
-        { id: 'metal', title: '金屬鍍膜', desc: '走 CVD 路線時，需在氧化層上再鍍一層金屬' },
-      ],
-    }),
-  )
+  .register(new Stage2Deposition())
   .register(
     new StagePlaceholder({
       id: 'litho',
