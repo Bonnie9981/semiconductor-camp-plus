@@ -70,11 +70,27 @@ export class CrossSection {
 
       if (!layer.patterned) {
         this.fillLayer(ctx, x0, top, innerW, lh, layer.color);
-      } else {
-        // 圖案化的層：依 resistMask 切出缺口
+      } else if (layer.kind === 'resist') {
+        // 光阻：顯影後依 resistMask 留下圖案
         for (let i = 0; i < SECTION_CELLS; i++) {
           if (wafer.resistMask[i] < 0.5) continue;
           this.fillLayer(ctx, x0 + i * cellW, top, cellW + 0.5, lh, layer.color);
+        }
+      } else {
+        // 下層材料：依 etchedMask 挖掉。0.6 代表濕式蝕刻的側向咬蝕
+        // （undercut）——只吃掉一部分，畫成變窄的柱子。
+        for (let i = 0; i < SECTION_CELLS; i++) {
+          const e = wafer.etchedMask[i];
+          if (e > 0.9) continue;
+          const shrink = e > 0.4 ? cellW * 0.45 : 0;
+          this.fillLayer(
+            ctx,
+            x0 + i * cellW + shrink / 2,
+            top,
+            cellW - shrink + 0.5,
+            lh,
+            layer.color,
+          );
         }
       }
 
@@ -89,7 +105,7 @@ export class CrossSection {
       // 層名（放得下才畫）
       if (lh >= 11) {
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.font = "500 9px 'IBM Plex Mono', monospace";
+        ctx.font = "500 12px 'IBM Plex Mono', monospace";
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
         ctx.fillText(layer.label, x0 + 5, top + lh / 2);
@@ -106,7 +122,7 @@ export class CrossSection {
     ctx.strokeRect(x0 - 0.5, yTop - 0.5, innerW + 1, innerH + 1);
 
     ctx.fillStyle = 'rgba(150, 170, 180, 0.6)';
-    ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.font = "12px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('◀ 剖面放大 ▶', x0, yBottom + 5);

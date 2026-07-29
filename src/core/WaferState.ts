@@ -62,6 +62,16 @@ export class WaferState {
   /** 玩家選的是正光阻還是負光阻。 */
   resistTone: 'positive' | 'negative' = 'positive';
 
+  /**
+   * 蝕刻的側向咬蝕程度 0~1。
+   * 乾式蝕刻是鉛直的（0，側壁筆直）；濕式蝕刻是等向性的（1，溝槽會往光阻底下
+   * 橫向擴大，也就是 undercut）。截面圖靠這個值把兩種蝕刻畫成不同的形狀。
+   */
+  undercut = 0;
+
+  /** 哪些格子的材料已經被蝕刻掉；1 = 已蝕穿。 */
+  etchedMask: ResistMask = new Array(SECTION_CELLS).fill(0);
+
   constructor() {
     this.reset();
   }
@@ -74,6 +84,8 @@ export class WaferState {
     this.contamination = { particles: 1, oxide: 1, ions: 1, water: 0 };
     this.resistMask = new Array(SECTION_CELLS).fill(1);
     this.exposedMask = new Array(SECTION_CELLS).fill(0);
+    this.etchedMask = new Array(SECTION_CELLS).fill(0);
+    this.undercut = 0;
   }
 
   /** 疊上一層新的薄膜。 */
@@ -92,6 +104,40 @@ export class WaferState {
 
   removeLayer(kind: LayerKind): void {
     this.layers = this.layers.filter((l) => l.kind !== kind);
+  }
+
+  /**
+   * 顯影：依正／負光阻決定哪些格子的光阻被溶掉。
+   *   正光阻 —— 被光照到的斷鏈變可溶 → 曝光區被移除
+   *   負光阻 —— 被光照到的交聯硬化 → 曝光區保留，其餘被移除
+   */
+  develop(): void {
+    for (let i = 0; i < SECTION_CELLS; i++) {
+      const exposed = this.exposedMask[i] > 0.5;
+      const keep = this.resistTone === 'positive' ? !exposed : exposed;
+      this.resistMask[i] = keep ? 1 : 0;
+    }
+    const resist = this.layers.find((l) => l.kind === 'resist');
+    if (resist) resist.patterned = true;
+  }
+
+  /** 蝕刻：沒有光阻保護的地方被挖掉。 */
+  etch(undercut: number): void {
+    this.undercut = undercut;
+    for (let i = 0; i < SECTION_CELLS; i++) {
+      this.etchedMask[i] = this.resistMask[i] > 0.5 ? 0 : 1;
+    }
+    // 濕式蝕刻是等向性的，會往光阻底下橫向咬進去
+    if (undercut > 0.5) {
+      const base = [...this.etchedMask];
+      for (let i = 0; i < SECTION_CELLS; i++) {
+        if (base[i] < 0.5) continue;
+        if (i > 0) this.etchedMask[i - 1] = Math.max(this.etchedMask[i - 1], 0.6);
+        if (i < SECTION_CELLS - 1) this.etchedMask[i + 1] = Math.max(this.etchedMask[i + 1], 0.6);
+      }
+    }
+    const top = this.topLayer;
+    if (top.kind !== 'silicon') top.patterned = true;
   }
 
   /** RCA 是否已經洗乾淨（四項污染都低於門檻）。 */

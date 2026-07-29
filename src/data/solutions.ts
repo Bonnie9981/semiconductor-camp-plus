@@ -66,14 +66,14 @@ export const SOLUTIONS: Record<string, Solution> = {
     name: '丙酮',
     formula: 'CH₃COCH₃',
     color: '#cfd6da',
-    role: '有機溶劑，用來溶解並剝除光阻。',
+    role: '早期的光阻剝離溶劑。揮發快、閃點低，已被 NMP 取代。',
   },
   nmp: {
     id: 'nmp',
     name: 'NMP',
     formula: 'C₅H₉NO',
     color: '#9fb4c0',
-    role: '高沸點光阻剝離液，比丙酮更不易揮發。',
+    role: '半導體業界標準的光阻剝離液。閃點遠高於丙酮，可加溫操作且殘留少。',
   },
   koh: {
     id: 'koh',
@@ -85,9 +85,30 @@ export const SOLUTIONS: Record<string, Solution> = {
   tmah: {
     id: 'tmah',
     name: '四甲基氫氧化銨',
-    formula: 'TMAH',
+    formula: 'TMAH 2.38%',
     color: '#8ad4c4',
-    role: '半導體標準顯影液，無金屬離子污染。',
+    role: '半導體標準顯影液（MIF，不含金屬離子）。業界統一使用 2.38 wt% 水溶液，正、負光阻都用它。',
+  },
+  xylene: {
+    id: 'xylene',
+    name: '二甲苯',
+    formula: 'C₈H₁₀',
+    color: '#d8c489',
+    role: '早期橡膠系負光阻的溶劑型顯影液。現代負光阻已改用鹼性 TMAH，量產線不再使用。',
+  },
+  boe: {
+    id: 'boe',
+    name: '緩衝氧化蝕刻液',
+    formula: 'BOE (NH₄F+HF)',
+    color: '#6fd9c8',
+    role: '加了氟化銨緩衝劑的氫氟酸，蝕刻 SiO₂ 時速率穩定、不會啃壞光阻。對金屬鋁無效。',
+  },
+  pan: {
+    id: 'pan',
+    name: '鋁蝕刻液',
+    formula: 'PAN 80:15:3:2',
+    color: '#e2a0d0',
+    role: '磷酸／醋酸／硝酸混合液。硝酸先把鋁氧化、磷酸溶掉氧化鋁、醋酸降低表面張力幫助潤濕。',
   },
 };
 
