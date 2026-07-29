@@ -10,7 +10,7 @@ import type {
   SubStep,
 } from '../core/types';
 import { blendColor, solution, toMixRow } from '../data/solutions';
-import { Beaker, type BeakerGeometry } from '../scene/Beaker';
+import { Beaker, drawFlatWafer, WAFER_SQUASH, type BeakerGeometry } from '../scene/Beaker';
 import { bottleMouth, drawBottle, drawPourStream, type BottleVisual } from '../scene/Bottle';
 import { drainMouth, drawDrain, type DrainGeometry } from '../scene/Drain';
 import { SpinDryer, type DryerGeometry, type DryerPhase } from '../scene/SpinDryer';
@@ -115,6 +115,24 @@ const POUR_INTERVAL = 0.8;
 const MAX_PARTS = 12;
 /** 傾倒時的瓶身角度（負值＝往左倒，因為藥瓶排在杯子右邊）。 */
 const POUR_TILT = -2.0;
+/** 把整杯廢液倒進桶子時，調配杯的傾角（正值＝往右倒）。 */
+const DUMP_TILT = 1.2;
+
+/** 場景可用的水平範圍（已避開左側的互動面板）。 */
+interface SceneBounds {
+  left: number;
+  right: number;
+  w: number;
+}
+
+/** 藥瓶那一排的擺放參數。 */
+interface ShelfLayout {
+  scene: SceneBounds;
+  /** 瓶底所在的 y（＝層板高度）。 */
+  y: number;
+  /** 單一瓶身寬度。 */
+  w: number;
+}
 
 export class Stage1RCA extends BaseStage {
   readonly id = 'rca-clean';
@@ -271,38 +289,64 @@ export class Stage1RCA extends BaseStage {
     this.syncPanel();
   }
 
+  /**
+   * 場景（燒杯／藥瓶／機台）可用的水平範圍。
+   *
+   * 左界必須避開 UI 的互動面板，否則視窗一縮小，最左邊的藥瓶就會被面板蓋住。
+   * 面板寬度在 CSS 裡會隨斷點改變，所以這裡直接跟 UIManager 問「實際佔用了多少」，
+   * 而不是在 canvas 這邊再複製一份斷點——只要改 CSS 的 --panel-scene-w，
+   * 場景就會自動跟著讓位。
+   */
+  private sceneBounds(frame: StageFrame): SceneBounds {
+    const { width } = frame.desk.size;
+    const inset = frame.ui.panelInset();
+    const right = width - 14;
+    // 面板真的很寬（極窄視窗）時不讓場景被壓到沒有空間
+    const left = Math.min(inset > 0 ? inset + 26 : width * 0.06, width * 0.52);
+    return { left, right, w: Math.max(180, right - left) };
+  }
+
   // ────────────────────── 前三步：配液 → 浸泡（或倒掉重來） ────────────────────
 
   private frameWet(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { width, height } = desk.size;
+    const { height } = desk.size;
     const wafer = this.ctx.wafer;
     const recipe = RECIPES[this.currentSub!.id];
 
     this.splash = Math.max(0, this.splash - dt * 3);
 
     // ── 幾何佈局 ──
-    const bh = clamp(height * 0.26, 110, 172);
+    const scene = this.sceneBounds(frame);
+    const bh = clamp(Math.min(height * 0.26, scene.w * 0.42), 96, 172);
     const benchGeo: BeakerGeometry = {
-      cx: width * 0.52,
+      cx: scene.left + scene.w * 0.26,
       top: groundY - bh,
       width: bh * 0.76,
       height: bh,
     };
+    const drainW = clamp(scene.w * 0.13, 46, 78);
     const drainGeo: DrainGeometry = {
-      cx: width * 0.87,
+      cx: scene.right - drainW * 0.55,
       baseY: groundY,
-      width: clamp(width * 0.07, 52, 78),
+      width: drainW,
     };
-    const waferR = benchGeo.width * 0.3;
+    const waferR = benchGeo.width * 0.34;
+
+    // 藥瓶：尺寸依可用寬度算，但設下限，小螢幕上也要看得清標籤
+    const shelf: ShelfLayout = {
+      scene,
+      y: benchGeo.top - clamp(height * 0.045, 14, 40),
+      w: clamp((scene.w / recipe.pool.length) * 0.68, 32, 60),
+    };
 
     // 調配杯目前的位置與傾角（可能被拿在手上、或正在倒廢液）
     const { geo, tilt } = this.beakerTransform(benchGeo, drainGeo, dt);
 
     // ── 互動 ──
     if (this.phase === 'pour') {
-      this.updateBottles(hand, recipe, geo, width, height, dt);
+      this.updateBottles(hand, recipe, geo, shelf, dt);
     }
     if (this.phase === 'pour' || this.phase === 'wrong') {
       this.updateBeakerGrab(hand, benchGeo, drainGeo);
@@ -327,9 +371,14 @@ export class Stage1RCA extends BaseStage {
       time,
     );
 
-    // 等待中的晶圓（還沒輪到它下水）
+    // 等待中的晶圓（還沒輪到它下水），擺在調配杯左邊的載盤上
     if (this.waferDip < 0) {
-      this.drawWaferStand(ctx, width * 0.38, groundY, waferR, wafer.surfaceColor(), time);
+      const standX = clamp(
+        benchGeo.cx - benchGeo.width * 0.5 - waferR - 26,
+        scene.left + waferR + 8,
+        benchGeo.cx,
+      );
+      this.drawWaferStand(ctx, standX, groundY, waferR, wafer.surfaceColor(), time);
     }
 
     this.beaker.render(
@@ -351,13 +400,13 @@ export class Stage1RCA extends BaseStage {
       time,
     );
 
-    // 倒廢液的水流
+    // 倒廢液的水流：從杯嘴一路流進桶口
     if (this.phase === 'dumping' && drainFactor < 1 && drainFactor > 0) {
       const lip = this.beaker.lipPoint(geo, tilt);
-      drawPourStream(ctx, lip, drainMouth(drainGeo).y, liquid, time);
+      drawPourStream(ctx, lip, drainMouth(drainGeo).y + drainGeo.width * 0.1, liquid, time, 1.15);
     }
 
-    this.drawBottles(ctx, recipe, geo, width, height, hand, time);
+    this.drawBottles(ctx, recipe, geo, shelf, hand, time);
 
     // 杯口上方的倒液進度環
     if (this.pouring) this.drawPourGauge(ctx, geo, totalParts);
@@ -373,25 +422,27 @@ export class Stage1RCA extends BaseStage {
   ): { geo: BeakerGeometry; tilt: number } {
     if (this.phase === 'dumping') {
       this.dumpT = Math.min(1, this.dumpT + dt * 0.45);
-      const mouth = drainMouth(drain);
       const from = this.dumpFrom ?? { x: bench.cx, y: bench.top };
-      const to = { x: mouth.x - bench.width * 0.55, y: mouth.y - bench.height * 0.85 };
 
       // 0~0.3 移到桶口 → 0.3~0.8 傾倒排空 → 0.8~1 放回檯面
-      let p: Point;
       let tilt: number;
+      let t: number;
       if (this.dumpT < 0.3) {
-        const t = easeInOut(this.dumpT / 0.3);
-        p = { x: lerp(from.x, to.x, t), y: lerp(from.y, to.y, t) };
         tilt = 0;
+        t = easeInOut(this.dumpT / 0.3);
       } else if (this.dumpT < 0.8) {
-        p = to;
-        tilt = easeInOut(Math.min(1, (this.dumpT - 0.3) / 0.22)) * 1.15;
+        tilt = easeInOut(Math.min(1, (this.dumpT - 0.3) / 0.22)) * DUMP_TILT;
+        t = 1;
       } else {
-        const t = easeInOut((this.dumpT - 0.8) / 0.2);
-        p = { x: lerp(to.x, bench.cx, t), y: lerp(to.y, bench.top, t) };
-        tilt = 1.15 * (1 - t);
+        tilt = DUMP_TILT * (1 - easeInOut((this.dumpT - 0.8) / 0.2));
+        t = 1 - easeInOut((this.dumpT - 0.8) / 0.2);
       }
+
+      // 目標位置是「解」出來的，不是估的：先算出這個傾角下杯嘴相對杯子的位移，
+      // 再反推杯子要放哪裡，杯嘴才會正好落在桶口上方。傾角在動、杯口位置也
+      // 跟著動，所以每一幀都要重算——之前寫死偏移量才會對不準。
+      const to = this.pourPose(bench, drain, tilt);
+      const p = { x: lerp(from.x, to.x, t), y: lerp(from.y, to.y, t) };
 
       if (this.dumpT >= 1) this.finishDump();
       return { geo: { ...bench, cx: p.x, top: p.y }, tilt };
@@ -405,6 +456,26 @@ export class Stage1RCA extends BaseStage {
     }
 
     return { geo: bench, tilt: 0 };
+  }
+
+  /**
+   * 給定傾角，算出調配杯要擺在哪裡，杯嘴才會對準廢液桶口。
+   *
+   * Beaker.lipPoint() 是把杯嘴（右上角）繞杯底中心旋轉 tilt 得到的：
+   *     lip = beakerPos + R(tilt) · (杯嘴相對杯底中心的位移)
+   * 這裡要的是反運算——已知想要的 lip（桶口正上方），求 beakerPos。
+   * 因為旋轉是線性的，直接把「tilt=0 且杯子在原點時算出的杯嘴位移」轉一次再減掉即可。
+   */
+  private pourPose(bench: BeakerGeometry, drain: DrainGeometry, tilt: number): Point {
+    const mouth = drainMouth(drain);
+    // 杯嘴相對「杯子左上角(cx- w/2, top)」原點的偏移，在指定傾角下的值
+    const probe: BeakerGeometry = { ...bench, cx: 0, top: 0 };
+    const offset = this.beaker.lipPoint(probe, tilt);
+    // 讓杯嘴落在桶口正上方一點點，水流才有一小段可見的落差
+    return {
+      x: mouth.x - offset.x,
+      y: mouth.y - drain.width * 0.55 - offset.y,
+    };
   }
 
   /** 倒廢液時杯內剩餘液體的比例。 */
@@ -436,33 +507,43 @@ export class Stage1RCA extends BaseStage {
 
   // ── 藥瓶：抓取與傾倒 ──
 
-  /** 藥瓶在檯面上的靜置位置。 */
-  private bottleRest(index: number, count: number, width: number, height: number): Point {
-    const x0 = width * 0.4;
-    const x1 = width * 0.96;
+  /** 藥瓶在層板上的靜置位置（瓶底中心）。 */
+  private bottleRest(index: number, count: number, shelf: ShelfLayout): Point {
+    const half = shelf.w / 2 + 4;
+    const x0 = shelf.scene.left + half;
+    const x1 = shelf.scene.right - half;
     const step = count > 1 ? (x1 - x0) / (count - 1) : 0;
-    return { x: x0 + index * step, y: height * 0.42 };
+    return { x: x0 + index * step, y: shelf.y };
+  }
+
+  /** 抓取判定半徑：跟著瓶身大小走，瓶子放大時也要跟著好抓。 */
+  private grabRadius(shelf: ShelfLayout): number {
+    return Math.max(44, shelf.w * 1.15);
   }
 
   private updateBottles(
     hand: StageFrame['hand'],
     recipe: WetRecipe,
     geo: BeakerGeometry,
-    width: number,
-    height: number,
+    shelf: ShelfLayout,
     dt: number,
   ): void {
     const count = recipe.pool.length;
+    const bottleH = shelf.w * 1.7;
 
     // 抓取：捏合且靠近某個瓶子
     if (hand.present && hand.pinching && !this.heldBottle && !this.heldBeaker) {
+      let best: { id: string; d: number } | null = null;
       for (let i = 0; i < count; i++) {
-        const rest = this.bottleRest(i, count, width, height);
-        if (dist(hand.pinchPoint, rest) < 46) {
-          this.heldBottle = recipe.pool[i];
-          break;
+        const rest = this.bottleRest(i, count, shelf);
+        // 判定點取瓶身中段，比瓶底更接近玩家視覺上的「瓶子」
+        const grip = { x: rest.x, y: rest.y - bottleH * 0.45 };
+        const d = dist(hand.pinchPoint, grip);
+        if (d < this.grabRadius(shelf) && (!best || d < best.d)) {
+          best = { id: recipe.pool[i], d };
         }
       }
+      if (best) this.heldBottle = best.id;
     }
 
     if (!this.heldBottle) {
@@ -486,7 +567,7 @@ export class Stage1RCA extends BaseStage {
     this.bottlePos = { x: hand.pinchPoint.x, y: hand.pinchPoint.y };
 
     // 判斷瓶口是否在杯口上方（用瓶口而不是瓶身，玩家才能直觀對準）
-    const mouth = bottleMouth(this.bottlePos, this.bottleTilt);
+    const mouth = bottleMouth(this.bottlePos, this.bottleTilt, bottleH);
     const total = this.mix.reduce((s, r) => s + r.parts, 0);
     const inZone =
       Math.abs(mouth.x - geo.cx) < geo.width * 0.62 &&
@@ -523,22 +604,34 @@ export class Stage1RCA extends BaseStage {
     ctx: CanvasRenderingContext2D,
     recipe: WetRecipe,
     geo: BeakerGeometry,
-    width: number,
-    height: number,
+    shelf: ShelfLayout,
     hand: StageFrame['hand'],
     time: number,
   ): void {
     const count = recipe.pool.length;
     const grabbable = this.phase === 'pour' && !this.heldBeaker;
+    const bottleH = shelf.w * 1.7;
+    const grab = this.grabRadius(shelf);
+
+    // 層板：讓藥瓶看起來是「站在架子上」而不是浮在半空
+    ctx.save();
+    const plankY = shelf.y + shelf.w * 0.2;
+    ctx.fillStyle = 'rgba(38, 46, 52, 0.72)';
+    ctx.fillRect(shelf.scene.left, plankY, shelf.scene.w, 5);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(shelf.scene.left, plankY, shelf.scene.w, 1.5);
+    ctx.restore();
 
     recipe.pool.forEach((id, i) => {
       const s = solution(id);
       const held = this.heldBottle === id;
-      const rest = this.bottleRest(i, count, width, height);
+      const rest = this.bottleRest(i, count, shelf);
       const pos = held && this.bottlePos ? this.bottlePos : rest;
 
       const visual: BottleVisual = {
         pos,
+        w: shelf.w,
+        h: bottleH,
         color: s.color,
         formula: s.formula,
         name: s.name,
@@ -548,7 +641,7 @@ export class Stage1RCA extends BaseStage {
           grabbable &&
           !this.heldBottle &&
           hand.present &&
-          dist(hand.pinchPoint, rest) < 52,
+          dist(hand.pinchPoint, { x: rest.x, y: rest.y - bottleH * 0.45 }) < grab,
         used: this.mix.some((r) => r.id === id),
       };
 
@@ -556,7 +649,7 @@ export class Stage1RCA extends BaseStage {
 
       // 液柱：從瓶口流到杯內液面
       if (held && this.pouring) {
-        const mouth = bottleMouth(visual.pos, visual.tilt);
+        const mouth = bottleMouth(visual.pos, visual.tilt, bottleH);
         const total = this.mix.reduce((sum, r) => sum + r.parts, 0);
         const surface = this.beaker.liquidSurfaceY(
           geo,
@@ -648,7 +741,7 @@ export class Stage1RCA extends BaseStage {
     else this.beakerHand = null;
   }
 
-  /** 等待下水的晶圓，立在檯面的晶圓架上。 */
+  /** 等待下水的晶圓，平放在檯面的載盤上。 */
   private drawWaferStand(
     ctx: CanvasRenderingContext2D,
     cx: number,
@@ -657,46 +750,46 @@ export class Stage1RCA extends BaseStage {
     color: string,
     time: number,
   ): void {
-    const cy = groundY - r - 10;
+    const ry = r * WAFER_SQUASH;
+    const trayH = Math.max(8, r * 0.22);
+    const cy = groundY - trayH - ry;
 
     ctx.save();
-    // 架子
-    ctx.strokeStyle = '#7d8d95';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(cx - r * 0.8, groundY);
-    ctx.lineTo(cx - r * 0.3, cy + r * 0.5);
-    ctx.moveTo(cx + r * 0.8, groundY);
-    ctx.lineTo(cx + r * 0.3, cy + r * 0.5);
-    ctx.stroke();
 
-    // 晶圓（側立，跟浸泡時同一個造型）
-    const grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-    grad.addColorStop(0, '#f0f5f7');
-    grad.addColorStop(0.5, color);
-    grad.addColorStop(1, '#8d9ea6');
-    ctx.fillStyle = grad;
+    // 載盤：一個矮矮的圓形托盤，晶圓平躺在上面
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r * 0.34, r, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, groundY + 2, r * 1.2, ry * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(240,248,250,0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 
-    ctx.fillStyle = 'rgba(214, 230, 236, 0.65)';
-    ctx.font = "500 9px 'IBM Plex Mono', monospace";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('待清洗', cx, groundY + 5);
+    ctx.fillStyle = '#3a454b';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY - trayH, r * 1.18, ry * 1.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2a3238';
+    ctx.fillRect(cx - r * 1.18, groundY - trayH, r * 2.36, trayH);
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY, r * 1.18, ry * 1.05, 0, 0, Math.PI);
+    ctx.fill();
+
+    drawFlatWafer(ctx, { x: cx, y: cy }, r, color);
 
     // 待命呼吸
     const pulse = 0.5 + 0.5 * Math.sin(time * 2);
-    ctx.globalAlpha = 0.15 + pulse * 0.2;
+    ctx.globalAlpha = 0.15 + pulse * 0.22;
     ctx.strokeStyle = '#2ecfc7';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r * 0.34 + 5, r + 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, r + 6, ry + 5, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = 'rgba(224, 238, 243, 0.8)';
+    ctx.font = "600 11px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('待清洗晶圓', cx, groundY + 8);
+
     ctx.restore();
   }
 
@@ -780,16 +873,25 @@ export class Stage1RCA extends BaseStage {
   private frameDry(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { width } = desk.size;
+    const { height } = desk.size;
     const wafer = this.ctx.wafer;
 
-    const dw = clamp(width * 0.22, 150, 240);
-    const geo: DryerGeometry = { cx: width * 0.63, cy: groundY - (dw * 0.92) / 2, width: dw };
+    // 乾燥機擺在場景右半邊，左邊留給待放入的晶圓
+    const scene = this.sceneBounds(frame);
+    const dw = clamp(Math.min(scene.w * 0.44, height * 0.42), 130, 250);
+    const geo: DryerGeometry = {
+      cx: scene.right - dw * 0.6,
+      cy: groundY - (dw * 0.92) / 2,
+      width: dw,
+    };
     const drum = this.dryer.drumCircle(geo);
     const button = this.dryer.buttonCircle(geo);
     const waferR = drum.r * 0.55;
 
-    const restPoint: Point = { x: geo.cx - dw * 0.72, y: groundY - waferR - 4 };
+    const restPoint: Point = {
+      x: clamp(geo.cx - dw * 0.85, scene.left + waferR + 10, geo.cx - dw * 0.6),
+      y: groundY - waferR - 6,
+    };
     let targetHot = false;
 
     if (this.phase === 'load') {

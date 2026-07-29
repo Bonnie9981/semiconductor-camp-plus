@@ -129,6 +129,17 @@ export class UIManager {
     return this.sectionCanvas;
   }
 
+  /**
+   * 左側互動面板目前佔用的寬度（含左邊距），單位 CSS px；面板收起時為 0。
+   *
+   * 關卡用它來決定場景（燒杯／藥瓶／機台）要從哪裡開始擺，這樣視窗一縮小、
+   * 面板一變窄，canvas 上的佈局就會跟著讓位，不需要在兩邊各維護一組斷點。
+   */
+  panelInset(): number {
+    if (this.stagePanel.classList.contains('hidden')) return 0;
+    return this.stagePanel.offsetLeft + this.stagePanel.offsetWidth;
+  }
+
   // ─────────────────────────────── 事件綁定 ────────────────────────────────
 
   private bindEvents(): void {

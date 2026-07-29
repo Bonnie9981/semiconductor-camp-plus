@@ -1,23 +1,65 @@
-# 半導體製程互動遊戲 · Semiconductor Process Simulator
+# 半導體製程沉浸式模擬 · Semiconductor Process Simulator
 
 以 **Vite + TypeScript + MediaPipe Hands** 打造的 WebAR 手勢互動遊戲。
-玩家用「捏合（Pinch）」手勢把虛擬道具吸附到手上，在畫面下方的虛擬桌面操作晶圓，
-一步步走完六道半導體製程。
+玩家用「捏合（Pinch）」手勢拿起虛擬器材 —— 藥瓶、調配杯、晶圓、鑷子 ——
+在畫面下方的虛擬實驗檯上一步步走完五道半導體製程。
 
-本版本的範疇：**完整的 UI 框架** ＋ **第一關「繪製光罩圖形」的完整實作**。
-第 2~6 關為刻意留空的 Stub，等待依照下方〈擴充開發指南〉接手。
+> **接手開發請先讀 [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md)。**
+> 那份文件說明整套架構的設計概念、每個模組的職責，以及第 2~5 關要怎麼接。
+
+---
+
+## 遊戲流程
+
+```
+半導體製程沉浸式模擬
+│
+├─ 1. RCA 清洗 ─────┬─ 去微粒          SC-1：DI : NH₄OH : H₂O₂ = 5 : 1 : 1
+│                   ├─ 去氧化層        氫氟酸水溶液溶解原生 SiO₂
+│                   ├─ 去離子          SC-2：DI : HCl : H₂O₂ = 6 : 1 : 1
+│                   └─ 乾燥            離心力甩乾 + 80°C 熱風
+│
+├─ 2. 薄膜沉積 ─────┬─ 製程選擇        物理氣相沉積（PVD）或化學氣相沉積（CVD）
+│                   ├─ 沉積反應        粒子運動與鍍膜
+│                   └─ 金屬鍍膜        CVD 路線才需要（PVD 會跳過）
+│
+├─ 3. 微影製程 ─────┬─ 光阻劑塗抹      用手把光阻均勻塗抹到晶圓上
+│                   ├─ 圖案設計        繪製要刻出的晶片圖案
+│                   ├─ 正負光阻選擇    決定曝光區要移除還是保留
+│                   └─ 曝光與烘烤      對準光罩後曝光
+│
+├─ 4. 顯影 ─────────┬─ 顯影液選擇      選出能溶解曝光區光阻的試劑
+│                   └─ 顯影反應        浸泡並顯現圖案
+│
+└─ 5. 蝕刻 ─────────┬─ 氧氣電漿清潔    確保目標材料完全裸露
+                    ├─ 蝕刻選擇        乾式（鉛直）或濕式（側向）
+                    └─ 去光阻與清洗    丙酮／NMP 剝除後以去離子水清洗
+```
+
+**目前的實作範圍**
+
+| 關卡 | 狀態 |
+| --- | --- |
+| 1. RCA 清洗 | ✅ 四個子步驟全部完成（配液互動、浸泡、旋轉乾燥） |
+| 2. 薄膜沉積 | 🚧 Stub —— metadata 與子步驟已定義，製程邏輯待實作 |
+| 3. 微影製程 | 🚧 Stub（繪圖互動的原型保留在 `Stage1DrawPattern.ts`） |
+| 4. 顯影 | 🚧 Stub |
+| 5. 蝕刻 | 🚧 Stub |
+
+Stub 關卡的 UI 框架、子步驟列、關卡切換與手勢管線都是活的，可以完整走一遍流程。
 
 ---
 
 ## 快速開始
 
 ```bash
-cd semiconductor-camp
+cd semiconductorAR
 npm install     # postinstall 會自動把 MediaPipe 資產複製到 public/mediapipe/（約 26MB）
 npm run dev     # → http://localhost:5173
 ```
 
-開啟後允許瀏覽器的攝影機權限即可開始。
+開啟後允許瀏覽器的攝影機權限即可開始。**沒有攝影機也玩得下去** —— 左側互動面板的
+按鈕都是真正的 HTML，用滑鼠一樣能操作（見〈沒有攝影機也能測〉）。
 
 > **getUserMedia 只在 `https` 或 `localhost` 下可用。**
 > 想用區網 IP 讓其他裝置連進來測試，請改用 `npx vite --https` 或在前面架一層 HTTPS 反向代理。
@@ -36,26 +78,38 @@ npm run dev     # → http://localhost:5173
 ## 專案結構
 
 ```
-semiconductor-camp/
+semiconductorAR/
 ├── index.html                  # 版面骨架（Header / Sidebar / Viewport / Panel / Footer / Modal）
 ├── vite.config.ts
+├── docs/
+│   └── IMPLEMENTATION.md       # ★ 實作概念與接手指南
 ├── scripts/
 │   └── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
 ├── src/
 │   ├── main.ts                 # 程式入口、關卡註冊、UI 事件綁定、rAF 主迴圈
-│   ├── style.css               # 設計 token（oklch 深色 Dashboard + IBM Plex）
+│   ├── style.css               # 設計 token（oklch 深色 Dashboard + IBM Plex）＋ 響應式斷點
 │   ├── core/
 │   │   ├── CameraManager.ts    # WebCam、前後鏡頭切換、MediaPipe Hands 整合
 │   │   ├── GestureDetector.ts  # 鏡像座標映射、Pinch 判斷、骨架繪製
 │   │   ├── StageManager.ts     # 關卡狀態機（locked → active → done）
-│   │   └── types.ts            # 全專案共用型別
+│   │   ├── WaferState.ts       # 晶圓的層堆疊與污染狀態（整條製程共用）
+│   │   └── types.ts            # 全專案共用型別（含子步驟與互動面板的定義）
+│   ├── data/
+│   │   └── solutions.ts        # 藥液資料表（名稱／化學式／顏色）與混色計算
+│   ├── scene/                  # 純繪圖模組：吃狀態、畫一格畫面，不含遊戲邏輯
+│   │   ├── Beaker.ts           # 燒杯／調配杯、平放晶圓的共用畫法
+│   │   ├── Bottle.ts           # 藥瓶與傾倒液柱
+│   │   ├── Drain.ts            # 廢液桶
+│   │   └── SpinDryer.ts        # 旋轉乾燥機
 │   ├── stages/
-│   │   ├── BaseStage.ts        # 關卡抽象基底
-│   │   ├── Stage1DrawPattern.ts# 第一關：Pinch 吸附畫筆 + 晶圓繪圖
-│   │   └── StagePlaceholder.ts # 第 2~6 關的空樣板
+│   │   ├── BaseStage.ts        # 關卡抽象基底（含子步驟機制）
+│   │   ├── Stage1RCA.ts        # 第一關：RCA 清洗（完整實作）
+│   │   ├── Stage1DrawPattern.ts# 繪圖互動原型，將併入第三關的「圖案設計」
+│   │   └── StagePlaceholder.ts # 第 2~5 關的 Stub 樣板
 │   ├── ui/
 │   │   ├── UIManager.ts        # 所有 HTML UI 的唯一操作入口
-│   │   └── VirtualDesk.ts      # 下方虛擬桌面：Chuck、晶圓、Pattern 圖層
+│   │   ├── VirtualDesk.ts      # 下方虛擬桌面：Chuck、晶圓、Pattern 圖層
+│   │   └── CrossSection.ts     # 右下角晶圓截面圖 HUD
 │   └── utils/
 │       └── Exporter.ts         # PNG 下載 + STL 擠出
 └── public/
@@ -67,7 +121,10 @@ semiconductor-camp/
 
 ```
 MediaPipe → CameraManager.latest → GestureDetector（鏡像/Pinch/平滑）
-          → BaseStage.onFrame() → VirtualDesk（畫圖）＋ UIManager（更新文案）
+          → BaseStage.onFrame() ─┬─▶ scene/*（畫場景）
+                                 ├─▶ VirtualDesk（畫桌面）
+                                 ├─▶ WaferState（改晶圓狀態）→ CrossSection（畫截面）
+                                 └─▶ UIManager.setPanel()（描述互動面板）
 ```
 
 ---
@@ -80,8 +137,8 @@ MediaPipe → CameraManager.latest → GestureDetector（鏡像/Pinch/平滑）
 | --- | --- | --- | --- |
 | `#stage-view` | 1 | `none` | 鏡頭視窗容器，由 JS 對齊到 `#viewport-slot` |
 | ├ `#video-element` | 1 | — | WebCam 影像（鏡像時只翻轉「它」） |
-| ├ `#ar-canvas` | 2 | `none` | 手勢骨架、吸附在手上的畫筆 |
-| └ `#desk-canvas` | 3 | `none` | 虛擬桌面：Chuck、晶圓、Pattern、筆尖游標 |
+| ├ `#ar-canvas` | 2 | `none` | 手勢骨架、吸附在手上的道具 |
+| └ `#desk-canvas` | 3 | `none` | 虛擬桌面與關卡自繪的場景（燒杯、藥瓶、機台） |
 | `#ui-layer` | 10 | `auto` | 所有 HTML：Header / Sidebar / Panel / HUD / Modal |
 
 `#ui-layer` 是一個 CSS Grid Dashboard，中間那格 `#viewport-slot` 只是**鏤空的視覺外框**
@@ -89,8 +146,57 @@ MediaPipe → CameraManager.latest → GestureDetector（鏡像/Pinch/平滑）
 精準疊上去。因此：
 
 - 三層 canvas 永遠在 UI 底下，**不可能攔截任何點擊**；
-- 位於視窗上的 HUD（鏡頭設定、手勢參考、畫筆顏色…）是真正的 HTML，照樣 100% 可點；
+- 位於視窗上的 HUD（鏡頭設定、手勢參考、互動面板…）是真正的 HTML，照樣 100% 可點；
 - canvas 尺寸永遠等於 slot 尺寸，座標不需要任何額外換算。
+
+---
+
+## 鏡頭視窗內的版面配置
+
+鏡頭視窗被切成三個互不重疊的區域，這是為了讓場景動畫永遠不被 UI 蓋住：
+
+```
+┌──────────────────────────────────────────────────────┐
+│ LIVE  攝影機  鏡像            ┌──────────────┐        │  vp-top
+│ ① 去微粒 ─ ② 去氧化層 ─ …    │ 手勢參考      │        │  #substep-strip  (top: 56)
+│         ┌ AR 提示橫幅 ┐       └──────────────┘        │  #ar-hint        (top: 94)
+│ ┌─────────────┐                                       │
+│ │             │        ▮ ▮ ▮ ▮ ▮ ▮   ← 藥瓶層板        │
+│ │ 互動面板     │                                       │  #stage-panel    (top: 146)
+│ │ (選擇/配比/  │         ╭───╮          ╭─╮            │
+│ │  動作按鈕)   │   ◯     │杯 │          │桶│            │  ← 場景（canvas）
+│ └─────────────┘  晶圓    ╰───╯          ╰─╯            │
+│ ┌───────────┐                                         │
+│ │ 晶圓截面   │                                         │  vp-bottom
+│ └───────────┘                                         │
+└──────────────────────────────────────────────────────┘
+```
+
+**場景會自動避開互動面板。** 關卡不是用寫死的百分比擺器材，而是跟 `UIManager.panelInset()`
+問「面板實際佔了多少寬度」，再從那裡往右佈局：
+
+```ts
+const inset = frame.ui.panelInset();          // 面板右緣（CSS px），收起時為 0
+const left  = Math.min(inset + 26, width * 0.52);
+const right = width - 14;
+```
+
+所以要調整版面只需要改 CSS 變數 `--panel-scene-w`，canvas 上的佈局會自動跟著讓位，
+不需要在 TypeScript 裡再維護一份斷點。
+
+### 響應式
+
+| 目標尺寸 | 對應處理 |
+| --- | --- |
+| 1920×1080 外接螢幕 | 預設值 |
+| 1512×982 MacBook Pro 14" | `max-height: 860px` → 壓低 Header/Footer，上方三條帶狀元素整體上移 |
+| 1440×900 MacBook Air 13" | 同上，另觸發 `max-width: 1420px` → 側欄與面板縮窄 |
+| 1366×768 Windows 筆電 | `max-height: 740px` → 再壓一次，字級與間距同步縮小 |
+| < 1180px 寬 | 側欄壓到 196/236px，子步驟列縮小字級 |
+
+canvas 上的器材尺寸則全部由 `clamp(依比例值, 下限, 上限)` 決定，
+例如燒杯高度是 `clamp(min(height × 0.26, sceneW × 0.42), 96, 172)` ——
+高度與寬度都不足時取小者，但永遠不小於可辨識的下限。
 
 ---
 
@@ -98,9 +204,9 @@ MediaPipe → CameraManager.latest → GestureDetector（鏡像/Pinch/平滑）
 
 ⚠️ **只翻 `<video>`，不要翻 AR canvas。**
 
-原始規格寫「video 與 AR canvas 都套 `transform: scaleX(-1)`，同時座標做 `(1-x)*W` 映射」，
-但這兩件事會互相抵消：座標翻到 800，canvas 再翻一次就變回 200，畫筆會往反方向跑；
-而且 canvas 上的畫筆圖示、文字也會整個左右顛倒。
+若 video 與 AR canvas 都套 `transform: scaleX(-1)`、同時座標又做 `(1-x)*W` 映射，
+這兩件事會互相抵消：座標翻到 800，canvas 再翻一次就變回 200，道具會往反方向跑；
+而且 canvas 上的圖示與文字也會整個左右顛倒。
 
 正確作法（本專案的實作）：
 
@@ -132,23 +238,29 @@ if (mirror) px = cw - px;
 
 ## 第一關的互動循環
 
+前三個子步驟不是選選項，而是真的動手配液：
+
 ```
-MediaPipe landmarks
-  └─▶ GestureDetector      鏡像映射 + Landmark 4/8 距離 + 遲滯 + 指數平滑
-        └─▶ Stage1.onFrame()
-              ├─ Attach     捏合 → 畫筆吸附到 pinchPoint
-              ├─ 命中測試   pinchPoint 是否落在 VirtualDesk 的晶圓圓形內
-              ├─ 作用       命中就在 Pattern 圖層畫線
-              └─ 回饋       AR 層畫筆 + 桌面層游標 + 中央提示 + 右側手部狀態
+捏起藥瓶 ─▶ 移到調配杯上方 ─▶ 瓶身自動傾倒、液柱流下
+     │                              │  每 0.8 秒進 1 份（杯口有進度環）
+     │                              ▼
+     └── 放開＝放回層板        杯子的液面高度與混合顏色即時改變
+                                    │
+                        ┌───────────┴───────────┐
+                   送去浸泡                  倒掉
+                        │                       │
+              配方對 ─▶ 浸泡動畫        捏起調配杯 ─▶ 移到廢液桶 ─▶ 放開
+              配方錯 ─▶ 鎖住只能倒掉              （或按面板的「倒掉」）
 ```
 
 - **Pinch 門檻**：`|landmark[4] - landmark[8]| < 0.05` 判定捏合，
   大於 `0.05 × 1.5` 才放開（遲滯區間，避免在門檻附近瘋狂閃爍）。可在「設定」中即時調整。
-- **過關條件**：圖形覆蓋晶圓面積 ≥ 0.8%（`Stage1DrawPattern.MIN_COVERAGE`）。
-- **Pattern 圖層**：所有筆畫畫在一張 720×720 的離螢幕 canvas 上，與螢幕解析度脫鉤 ——
-  視窗縮放、匯出、左下角預覽框共用同一份資料，resize 不會弄丟圖形。
-- 依規格，第一關**不做**正／負光阻切換，該機制留給後續關卡
-  （`Exporter` 的 `invert` 選項已經預留好）。
+- **判定時機**：成分與份數在按下「送去浸泡」時才一起檢查。左側面板隨時顯示杯內清單，
+  玩家可以自己核對。配錯 → 進入 `wrong` 狀態，唯一的出口是把整杯倒掉重來
+  （真實製程配錯藥液也不可能微調，只能整槽報廢）。
+- **份數要完全相符**：5:1:1 就是 5:1:1，10:2:2 不算對。
+- **第四步（乾燥）** 改用手勢：捏合夾起晶圓 → 拖進滾筒的虛線圈 → 放開 → 按 START。
+  沒有鏡頭時，左側面板會提供等效的按鈕。
 
 ---
 
@@ -170,258 +282,31 @@ MediaPipe landmarks
   極座標版本所有面共用頂點、沒有內部垂直牆，邊界又是一圈封閉的圓，
   **任何解析度下都保證封閉且 2-manifold**（已用 V−E+F=2 驗證），順帶得到真正的圓形晶圓邊緣。
 
-  預設 `resolution: 120` → 57,600 面、約 2.8MB。圖案邊緣是一格寬的斜坡而非垂直峭壁，
-  這是「簡易擠出」的預期外觀，調高 `resolution` 會越來越接近垂直。
+  預設 `resolution: 120` → 57,600 面、約 2.8MB。
 
 ---
 
 ## 沒有攝影機也能測（開發用）
 
-`npm run dev` 模式下，主要模組會掛在 `window.__camp`：
+兩種方式：
+
+**1. 用滑鼠玩。** 左側互動面板是真正的 HTML，所有按鈕都能點。
+需要手勢的動作（夾晶圓、倒廢液）都另外提供了等效按鈕。
+
+**2. Console。** `npm run dev` 模式下，主要模組會掛在 `window.__camp`：
 
 ```js
-// 在晶圓上畫一筆
-const g = __camp.desk.geometry;
-__camp.desk.beginStroke(g.waferCX - 60, g.waferCY);
-__camp.desk.strokeTo(g.waferCX + 60, g.waferCY + 30);
-__camp.desk.endStroke();
+__camp.stages.completeCurrent({});      // 直接過關
+__camp.stages.goTo(2);                  // 跳關（locked 的關卡會被擋下）
+__camp.gesture.setPinchThreshold(0.08); // 放寬捏合判定
 
-__camp.stages.completeCurrent({});     // 直接過關
-__camp.stages.goTo(2);                 // 跳關（locked 的關卡會被擋下）
-__camp.gesture.setPinchThreshold(0.08);// 放寬捏合判定
+// 直接改晶圓狀態，驗證截面圖
+__camp.wafer.contamination.particles = 0;
+__camp.wafer.addLayer({ kind: 'oxide', label: 'SiO₂', thickness: 0.6,
+                        color: '#8fa8b8', patterned: false });
 ```
 
 `import.meta.env.DEV` 保護，production build 不會包含這段。
-
----
-
-# 擴充開發指南
-
-## A. 新增第二關：`Stage2Coating.ts`
-
-### 步驟 1 — 建立關卡類別
-
-新增 `src/stages/Stage2Coating.ts`，繼承 `BaseStage`。
-必要的 metadata（標題、提示、操作說明）是 `abstract`，TypeScript 會強迫你全部填完，
-UI 因此不可能出現空白欄位：
-
-```ts
-import type { InstructionStep, StageContext, StageFrame, StageResult } from '../core/types';
-import { BaseStage } from './BaseStage';
-
-export class Stage2Coating extends BaseStage {
-  readonly id = 'coating';                 // ← 結果會存進 stages.resultOf('coating')
-  readonly title = '塗佈光阻';
-  readonly shortTitle = '光阻塗佈';        // LIVE 標籤與底部流程列用
-  readonly description = '抓取燒杯把光阻倒到晶圓上，再旋轉塗佈鋪平。';
-  readonly hint = '捏合抓住燒杯，移到晶圓上方後把手腕往下轉就會開始倒。';
-  readonly primaryLabel = '完成塗佈';
-  readonly usesPenTools = false;           // 這關不需要「畫筆顏色 / 已繪製圖形」HUD
-
-  readonly instructions: InstructionStep[] = [
-    { glyph: '🤏', title: '抓起燒杯', desc: '把手移到桌上的燒杯附近再捏合。' },
-    { glyph: '↗️', title: '移到晶圓上方', desc: '維持捏合，把燒杯帶到晶圓正上方。' },
-    { glyph: '🔄', title: '傾斜手腕', desc: '手腕往下轉超過 50° 就會開始倒出光阻。' },
-  ];
-
-  override onEnter(ctx: StageContext): void {
-    super.onEnter(ctx);
-    ctx.desk.setWaferVisible(true);        // 這關要看得到晶圓
-  }
-
-  override onFrame(frame: StageFrame): void { /* 見 B 節 */ }
-
-  override canComplete(): boolean { return this.poured >= 1; }
-
-  override buildResult(): StageResult {
-    return { thickness: this.poured, uniformity: this.uniformity };
-  }
-
-  override restart(): void { this.poured = 0; }
-}
-```
-
-### 步驟 2 — 註冊到 `StageManager`
-
-打開 `src/main.ts`，把對應位置的 `StagePlaceholder` 換掉即可，**其他檔案都不用動**：
-
-```diff
-+import { Stage2Coating } from './stages/Stage2Coating';
-
- stages
-   .register(new Stage1DrawPattern())
--  .register(
--    new StagePlaceholder({
--      id: 'coating',
--      title: '塗佈光阻',
--      /* … */
--    }),
--  )
-+  .register(new Stage2Coating())
-   .register(/* 第三關 … */);
-```
-
-註冊順序＝關卡順序。`StageManager` 會自動處理：
-
-- 第一關 `active`、其餘 `locked`；
-- `completeCurrent()` 把目前關標成 `done` 並解鎖下一關；
-- 左側步驟列、底部流程列、Header 進度條、右側面板全部由 `UIManager.syncStages()` 重畫。
-
-你在關卡裡想「直接判定失敗」時呼叫 `this.ctx.stages.fail('光阻厚度不均，重來一次')`，
-失敗 Modal 會自動跳出來。
-
----
-
-## B. 把「Pinch 吸附畫筆」直接改成「Pinch 抓取燒杯 / 晶圓夾」
-
-第一關的 Attach 邏輯其實只有四行，而且**與道具無關**。整個模式是：
-
-```
-1. Attach   哪個條件成立時，道具跟著手走？
-2. 命中     道具目前在哪個作用區上？
-3. 作用     命中時每幀做什麼？
-4. 回饋     怎麼畫這個道具、怎麼更新 UI？
-```
-
-### 差異對照
-
-| | 第一關（畫筆） | 第二關（燒杯） |
-| --- | --- | --- |
-| Attach 條件 | 只要捏合就吸附 | 捏合 **且** 手離燒杯夠近才拿得起來 |
-| 錨點 | `hand.pinchPoint` | 同上（道具位置＝捏合點） |
-| 命中區 | `desk.isOnWafer(p)` | 晶圓正上方（同一個 `isOnWafer`） |
-| 額外輸入 | 無 | **手腕傾斜角**（決定倒不倒） |
-| 作用 | `desk.strokeTo()` | 累加倒出的量 |
-
-### 可以直接抄的實作
-
-```ts
-import { INDEX_TIP, THUMB_TIP } from '../core/GestureDetector';
-import type { Point, StageFrame } from '../core/types';
-
-const GRAB_RADIUS = 70;   // 手離道具多近才抓得起來（px）
-const POUR_TILT = 0.9;    // 手腕傾斜超過約 50° 開始倒
-const POUR_RATE = 0.45;   // 每秒倒出的量
-
-private attached = false;
-private beaker: Point = { x: 0, y: 0 };
-private poured = 0;
-
-override onFrame(frame: StageFrame): void {
-  const { hand, ar, desk, ui, dt } = frame;
-
-  if (!hand.present) {
-    this.attached = false;
-    ui.setArHint('🖐️ 張開手掌，讓系統看見你的手');
-    ui.setHandState('✋', '（未偵測到手）', 'NO HAND', false);
-    return;
-  }
-
-  const p = hand.pinchPoint;
-
-  // ── 1. Attach ───────────────────────────────────────────────────
-  // 與第一關唯一的差別：多一個「要碰到燒杯」的距離判斷。
-  // 想做成「一捏就有」（像畫筆那樣），把 distance 判斷拿掉就好。
-  if (hand.justPinched && distance(p, this.beaker) < GRAB_RADIUS) this.attached = true;
-  if (!hand.pinching) this.attached = false;
-  if (this.attached) this.beaker = { ...p };        // ← 道具跟著捏合點走
-
-  // ── 2. 命中 + 3. 作用 ────────────────────────────────────────────
-  const tilt = handTilt(hand);                       // 手腕傾斜角
-  const overWafer = desk.isOnWafer(this.beaker.x, this.beaker.y);
-  const pouring = this.attached && overWafer && Math.abs(tilt) > POUR_TILT;
-  if (pouring) this.poured = Math.min(1, this.poured + dt * POUR_RATE);
-
-  // ── 4. 回饋 ─────────────────────────────────────────────────────
-  this.drawBeaker(ar, this.beaker, tilt, this.attached);
-  if (pouring) this.drawPourStream(ar, this.beaker, desk.geometry);
-  desk.drawCursor(p.x, p.y, this.attached);
-
-  ui.setArHint(
-    pouring       ? `🧪 正在倒光阻…（${Math.round(this.poured * 100)}%）`
-    : this.attached ? '🧪 燒杯已附著在你的手上 — 移到晶圓上方後傾斜手腕'
-    :                 '🤏 把手移到燒杯上再捏合，就能拿起來',
-    this.attached,
-  );
-  ui.setHandState(
-    this.attached ? '🧪' : '✋',
-    this.attached ? '燒杯（已吸附）' : '（空手）',
-    `PINCH ${hand.pinchDistance.toFixed(3)} / TILT ${tilt.toFixed(2)}`,
-    this.attached,
-  );
-}
-
-/** 用拇指尖 → 食指尖的向量當作手腕旋轉角。 */
-function handTilt(hand: StageFrame['hand']): number {
-  const a = hand.landmarks[THUMB_TIP];
-  const b = hand.landmarks[INDEX_TIP];
-  return Math.atan2(b.y - a.y, b.x - a.x);
-}
-
-function distance(a: Point, b: Point): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-```
-
-### 畫道具：把 `drawPen()` 改個形狀就好
-
-`Stage1DrawPattern.drawPen()` 的骨架可以整段複製，只換中間的路徑：
-
-```ts
-private drawBeaker(ctx: CanvasRenderingContext2D, at: Point, tilt: number, attached: boolean): void {
-  ctx.save();
-  ctx.globalAlpha = attached ? 1 : 0.5;
-  ctx.translate(at.x, at.y);
-  ctx.rotate(tilt);                 // ← 畫筆是固定的 0.42，燒杯改成跟著手腕轉
-  // 杯身
-  ctx.fillStyle = 'rgba(180, 225, 235, 0.35)';
-  ctx.strokeStyle = '#cfe8ef';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.rect(-27, -38, 54, 76);
-  ctx.fill();
-  ctx.stroke();
-  // 液面
-  ctx.fillStyle = '#0f6b5c';
-  ctx.fillRect(-25, 38 - 46 * (1 - this.poured), 50, 46 * (1 - this.poured));
-  ctx.restore();
-}
-```
-
-### 「晶圓夾」也是同一套
-
-夾子（tweezers）只是把「作用」從倒液體換成夾取／放置：
-
-```ts
-// Attach：同上，把 this.beaker 換成 this.tweezers
-// 作用：捏合放開的瞬間，如果夾子在 Chuck 上方就完成放置
-if (hand.justReleased && this.holdingWafer && this.overChuck(desk)) {
-  this.placed = true;
-  this.ctx.stages.completeCurrent(this.buildResult());
-}
-```
-
-### 建議：需要第三個道具時再抽共用類別
-
-兩關之內用複製貼上最快也最好讀。等到第三個「可抓取道具」出現時，
-再把上面的 Attach 區塊抽成 `src/core/AttachableProp.ts`：
-
-```ts
-export class AttachableProp {
-  constructor(public position: Point, private grabRadius = 70) {}
-  attached = false;
-  update(hand: HandFrame): void {
-    if (hand.justPinched && Math.hypot(hand.pinchPoint.x - this.position.x,
-                                       hand.pinchPoint.y - this.position.y) < this.grabRadius) {
-      this.attached = true;
-    }
-    if (!hand.pinching) this.attached = false;
-    if (this.attached) this.position = { ...hand.pinchPoint };
-  }
-}
-```
-
-之後每個關卡就只剩 `this.beaker.update(hand)` 一行。
 
 ---
 
@@ -431,8 +316,11 @@ export class AttachableProp {
 | --- | --- |
 | 畫面全黑、右下顯示「鏡頭無法使用」 | 未授權攝影機，或不是 `https` / `localhost`。 |
 | 骨架與真人的手位置對不上 | 檢查 `gesture.setVideoSize()` 是否拿到 `video.videoWidth`（metadata 載入後才有值）。 |
-| 手往右移，畫面上的筆往左跑 | 鏡像被翻了兩次。確認 **只有 `#video-element`** 套了 `scaleX(-1)`。 |
+| 手往右移，畫面上的道具往左跑 | 鏡像被翻了兩次。確認 **只有 `#video-element`** 套了 `scaleX(-1)`。 |
 | 很難捏合成功 | 「設定 → Pinch 靈敏度」調大，或在 `main.ts` 改 `new GestureDetector({ pinchOn: 0.07 })`。 |
+| 藥瓶抓不起來 | 抓取半徑是 `max(44, 瓶寬 × 1.15)`，見 `Stage1RCA.grabRadius()`。 |
+| 倒得太快／太慢 | `Stage1RCA.ts` 頂端的 `POUR_INTERVAL`（預設 0.8 秒 = 1 份）。 |
+| 互動面板蓋住場景 | 場景左界來自 `UIManager.panelInset()`。若自訂了面板寬度，改 CSS 的 `--panel-scene-w` 即可。 |
 | 低階筆電掉幀 | `CameraManager.createHands()` 把 `modelComplexity` 從 `1` 改成 `0`（lite 模型）。 |
 | `Hands is not a constructor` | `public/mediapipe/` 不存在。重跑 `npm install` 或 `node scripts/copy-mediapipe.mjs`。 |
 | 想改用 CDN 而不是自架資產 | 把 `CameraManager.ts` 的 `MP_BASE` 改成 `https://cdn.jsdelivr.net/npm/@mediapipe`，並確認版本與 `package.json` 一致。 |

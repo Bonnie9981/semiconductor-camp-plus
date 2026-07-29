@@ -74,11 +74,15 @@ export class Beaker {
     };
   }
 
-  /** 晶圓在指定浸入進度時的中心點。 */
+  /**
+   * 晶圓在指定浸入進度時的中心點。
+   * 晶圓是平放的，所以垂直方向只佔 r × WAFER_SQUASH，浸入深度依這個半高計算。
+   */
   waferPoint(geo: BeakerGeometry, state: BeakerState): Point {
     const surface = this.liquidSurfaceY(geo, state.fillLevel);
-    const above = geo.top - state.waferR - 18;
-    const submerged = Math.min(surface + state.waferR + 6, geo.top + geo.height - state.waferR - 10);
+    const ry = state.waferR * WAFER_SQUASH;
+    const above = geo.top - ry - 30;
+    const submerged = Math.min(surface + ry + 16, geo.top + geo.height - ry - 14);
     return { x: geo.cx, y: lerp(above, submerged, clamp(state.waferDip, 0, 1)) };
   }
 
@@ -218,39 +222,14 @@ export class Beaker {
   ): void {
     const r = state.waferR;
     ctx.save();
-
-    // 夾持晶圓的鑷子（從上方伸下來）
-    if (state.waferDip < 0.98) {
-      ctx.strokeStyle = '#9fb0b8';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(p.x - 7, p.y - r - 26);
-      ctx.lineTo(p.x - 3, p.y - r + 2);
-      ctx.moveTo(p.x + 7, p.y - r - 26);
-      ctx.lineTo(p.x + 3, p.y - r + 2);
-      ctx.stroke();
-    }
-
-    // 晶圓本體（側看是一片薄橢圓，比正圓更像「立著泡進去」）
-    const grad = ctx.createLinearGradient(p.x - r, p.y - r, p.x + r, p.y + r);
-    grad.addColorStop(0, shade(state.waferColor, 1.18));
-    grad.addColorStop(0.5, state.waferColor);
-    grad.addColorStop(1, shade(state.waferColor, 0.78));
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y, r * 0.34, r, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(240,248,250,0.65)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    drawFlatWafer(ctx, p, r, state.waferColor, state.waferDip < 0.98);
 
     // 浸在液體裡時打一層流動的反光
     if (state.waferDip > 0.4) {
-      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(time * 3);
+      ctx.globalAlpha = 0.22 + 0.14 * Math.sin(time * 3);
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(p.x - r * 0.12, p.y - r * 0.3, r * 0.1, r * 0.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x - r * 0.25, p.y - r * WAFER_SQUASH * 0.35, r * 0.4, r * 0.12, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -300,6 +279,85 @@ export class Beaker {
   reset(): void {
     this.bubbles = [];
   }
+}
+
+/**
+ * 晶圓的透視壓扁比例。
+ * 真實製程中晶圓一律「平放」在載盤／鑷子上，不會立起來，所以畫成一個
+ * 被壓扁的橢圓（俯視略帶角度），而不是側立的薄片。
+ */
+export const WAFER_SQUASH = 0.3;
+
+/**
+ * 畫一片平放的晶圓：橢圓盤面 + 下緣的厚度側邊 + 定位平邊。
+ * 燒杯浸泡、檯面晶圓架、乾燥機夾取都共用這一支，三處造型才會一致。
+ */
+export function drawFlatWafer(
+  ctx: CanvasRenderingContext2D,
+  p: Point,
+  r: number,
+  color: string,
+  withTweezers = false,
+): void {
+  const ry = r * WAFER_SQUASH;
+  const thickness = Math.max(3, r * 0.09);
+
+  ctx.save();
+
+  // 鑷子：從上方左右各夾住晶圓邊緣
+  if (withTweezers) {
+    ctx.strokeStyle = '#a8b8c0';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x - r * 0.9, p.y - ry - r * 0.75);
+    ctx.lineTo(p.x - r * 0.86, p.y - ry * 0.1);
+    ctx.moveTo(p.x + r * 0.9, p.y - ry - r * 0.75);
+    ctx.lineTo(p.x + r * 0.86, p.y - ry * 0.1);
+    ctx.stroke();
+  }
+
+  // 晶圓的側面厚度
+  ctx.fillStyle = shade(color, 0.62);
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + thickness, r, ry, 0, 0, Math.PI);
+  ctx.lineTo(p.x - r, p.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // 盤面：左上受光的徑向漸層，看起來像鏡面矽晶
+  const grad = ctx.createRadialGradient(
+    p.x - r * 0.35,
+    p.y - ry * 0.5,
+    r * 0.05,
+    p.x,
+    p.y,
+    r,
+  );
+  grad.addColorStop(0, shade(color, 1.25));
+  grad.addColorStop(0.55, color);
+  grad.addColorStop(1, shade(color, 0.8));
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, r, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 定位平邊（primary flat）：靠近觀察者那一側切一小段弦
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, r, ry, 0, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(20, 28, 34, 0.55)';
+  ctx.fillRect(p.x - r * 0.42, p.y + ry * 0.78, r * 0.84, ry);
+  ctx.restore();
+
+  ctx.strokeStyle = 'rgba(240, 248, 250, 0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, r, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function roundRect(

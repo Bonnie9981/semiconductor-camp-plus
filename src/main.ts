@@ -97,31 +97,31 @@ stages
   .register(
     new StagePlaceholder({
       id: 'deposition',
-      title: '沉積',
-      shortTitle: '沉積',
+      title: '薄膜沉積',
+      shortTitle: '薄膜沉積',
       description: '選擇物理氣相沉積（e-gun 鍍膜）或化學氣相沉積（PECVD），在晶圓上長出薄膜。',
-      hint: '（尚未實作）PVD 用電子束打靶材、氣化後直線下落凝結；CVD 通入氣體後以電漿促進反應長出氧化層。',
+      hint: '（尚未實作）PVD 用電子束加熱靶材使其氣化，直線下落凝結；CVD 通入氣體後以電漿促進反應長出氧化層。',
       props: ['電子槍', '靶材', 'PECVD 腔體'],
       substeps: [
-        { id: 'method', title: '選擇製程', desc: '物理氣相沉積（PVD）或化學氣相沉積（CVD）' },
-        { id: 'deposit', title: '沉積薄膜', desc: '粒子運動與鍍膜動畫' },
-        { id: 'metal', title: '鍍金屬層', desc: '走 CVD 路線時，需在氧化層上再鍍一層金屬' },
+        { id: 'method', title: '製程選擇', desc: '物理氣相沉積（PVD）或化學氣相沉積（CVD）' },
+        { id: 'deposit', title: '沉積反應', desc: '粒子運動與鍍膜；CVD 另需電漿促進反應' },
+        { id: 'metal', title: '金屬鍍膜', desc: '走 CVD 路線時，需在氧化層上再鍍一層金屬' },
       ],
     }),
   )
   .register(
     new StagePlaceholder({
-      id: 'coating',
-      title: '光阻塗布',
-      shortTitle: '光阻塗布',
-      description: '把光阻均勻塗上晶圓，畫出光罩圖案，選擇正／負光阻，最後對位曝光。',
+      id: 'litho',
+      title: '微影製程',
+      shortTitle: '微影',
+      description: '把光阻均勻塗上晶圓，畫出光罩圖案，選擇正／負光阻，最後對位曝光並烘烤。',
       hint: '（尚未實作）用手把光阻塗滿晶圓 → 繪製圖案 → 選正／負光阻 → 對準晶圓後曝光。',
       props: ['光阻機', '光罩（鉻）', '曝光機'],
       substeps: [
-        { id: 'spread', title: '塗佈光阻', desc: '用手把光阻均勻塗抹到晶圓上' },
+        { id: 'spread', title: '光阻劑塗抹', desc: '用手把光阻均勻塗抹到晶圓上' },
         { id: 'draw', title: '圖案設計', desc: '繪製你想刻出的晶片圖案' },
-        { id: 'tone', title: '正負光阻', desc: '選擇曝光後要保留還是移除照到光的區域' },
-        { id: 'expose', title: '曝光', desc: '把光罩對準晶圓後按下曝光' },
+        { id: 'tone', title: '正負光阻選擇', desc: '選擇曝光後要移除還是保留照到光的區域' },
+        { id: 'expose', title: '曝光與烘烤', desc: '把光罩對準晶圓後曝光，再進行烘烤' },
       ],
     }),
   )
@@ -130,9 +130,13 @@ stages
       id: 'develop',
       title: '顯影',
       shortTitle: '顯影',
-      description: '泡入顯影液溶解光阻，使被曝光的區域被選擇性移除。',
-      hint: '（尚未實作）此關要選出正確的顯影試劑。',
+      description: '泡入顯影液溶解光阻，使被曝光的光阻區域被選擇性移除。',
+      hint: '（尚未實作）此關要選出正確的顯影試劑，再觀察顯影反應。',
       props: ['顯影液'],
+      substeps: [
+        { id: 'reagent', title: '顯影液選擇', desc: '選出能溶解曝光區光阻的試劑' },
+        { id: 'react', title: '顯影反應', desc: '浸泡並觀察圖案在截面圖上顯現' },
+      ],
     }),
   )
   .register(
@@ -140,13 +144,13 @@ stages
       id: 'etching',
       title: '蝕刻',
       shortTitle: '蝕刻',
-      description: '先以氧電漿清出裸露面，再用乾式或濕式蝕刻移除材料，最後剝除光阻。',
+      description: '先以氧氣電漿清出裸露面，再用乾式或濕式蝕刻移除材料，最後剝除光阻並清洗。',
       hint: '（尚未實作）乾式＝高能粒子鉛直轟擊；濕式＝化學藥劑側向蝕刻。',
       props: ['電漿腔體', '蝕刻槽', '丙酮／NMP'],
       substeps: [
-        { id: 'descum', title: '氧電漿清潔', desc: '掃過晶圓表面，確保目標材料完全裸露' },
-        { id: 'etch', title: '乾式／濕式蝕刻', desc: '選擇蝕刻方式：鉛直蝕刻或側向蝕刻' },
-        { id: 'strip', title: '去光阻', desc: '用丙酮／NMP 剝除光阻，再以去離子水清洗' },
+        { id: 'descum', title: '氧氣電漿清潔', desc: '掃過晶圓表面，確保目標材料完全裸露' },
+        { id: 'etch', title: '蝕刻選擇', desc: '乾式（鉛直蝕刻）或濕式（側向蝕刻）' },
+        { id: 'strip', title: '去光阻與清洗', desc: '用丙酮／NMP 剝除光阻，再以去離子水清洗' },
       ],
     }),
   );
