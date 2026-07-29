@@ -98,7 +98,7 @@ export class SpinDryer {
     roundRect(ctx, left + 10, top + 8, w - 20, 16, 5);
     ctx.fill();
     ctx.fillStyle = state.phase === 'spin' ? '#5ee9df' : 'rgba(180,200,210,0.55)';
-    ctx.font = "500 9px 'IBM Plex Mono', monospace";
+    ctx.font = "500 12px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(
@@ -198,7 +198,7 @@ export class SpinDryer {
       ctx.restore();
 
       ctx.fillStyle = state.targetHot ? '#5ee9df' : 'rgba(190, 220, 225, 0.7)';
-      ctx.font = "500 10px 'IBM Plex Mono', monospace";
+      ctx.font = "500 12px 'IBM Plex Mono', monospace";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(state.targetHot ? '放開放入' : '把晶圓夾到這裡', drum.cx, drum.cy);
@@ -231,7 +231,7 @@ export class SpinDryer {
     ctx.restore();
 
     ctx.fillStyle = live ? '#5ee9df' : 'rgba(160,180,190,0.55)';
-    ctx.font = "500 9px 'IBM Plex Mono', monospace";
+    ctx.font = "500 12px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('START', btn.cx, btn.cy + btn.r + 5);

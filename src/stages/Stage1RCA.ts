@@ -319,7 +319,7 @@ export class Stage1RCA extends BaseStage {
 
     // ── 幾何佈局 ──
     const scene = this.sceneBounds(frame);
-    const bh = clamp(Math.min(height * 0.26, scene.w * 0.42), 96, 172);
+    const bh = clamp(Math.min(height * 0.29, scene.w * 0.46), 110, 196);
     const benchGeo: BeakerGeometry = {
       cx: scene.left + scene.w * 0.26,
       top: groundY - bh,
@@ -338,7 +338,7 @@ export class Stage1RCA extends BaseStage {
     const shelf: ShelfLayout = {
       scene,
       y: benchGeo.top - clamp(height * 0.045, 14, 40),
-      w: clamp((scene.w / recipe.pool.length) * 0.68, 32, 60),
+      w: clamp((scene.w / recipe.pool.length) * 0.74, 38, 70),
     };
 
     // 調配杯目前的位置與傾角（可能被拿在手上、或正在倒廢液）
@@ -518,7 +518,7 @@ export class Stage1RCA extends BaseStage {
 
   /** 抓取判定半徑：跟著瓶身大小走，瓶子放大時也要跟著好抓。 */
   private grabRadius(shelf: ShelfLayout): number {
-    return Math.max(44, shelf.w * 1.15);
+    return Math.max(52, shelf.w * 1.2);
   }
 
   private updateBottles(
@@ -564,9 +564,21 @@ export class Stage1RCA extends BaseStage {
       return;
     }
 
-    this.bottlePos = { x: hand.pinchPoint.x, y: hand.pinchPoint.y };
+    // 限制在場景範圍內：拖出去會跑到左側面板底下或畫面外，看起來像瓶子消失了
+    this.bottlePos = {
+      x: clamp(hand.pinchPoint.x, shelf.scene.left + shelf.w * 0.5, shelf.scene.right - shelf.w * 0.5),
+      y: hand.pinchPoint.y,
+    };
 
-    // 判斷瓶口是否在杯口上方（用瓶口而不是瓶身，玩家才能直觀對準）
+    /*
+      判斷瓶口是否在杯口上方 —— 用**瓶口**而不是瓶身，玩家才能直觀地對準。
+
+      這個寫法有個已知的副作用：瓶身一傾倒，瓶口就往左甩約 0.9×瓶高，
+      有機會甩出判定區而讓傾倒中斷，那一瞬間液柱是落在杯子外面的。
+      曾經改成「用手的位置判定 + 傾倒時把瓶子吸附到杯口正上方」來根除它，
+      但那樣瓶子會自己滑走，手感變得不像在倒東西 —— 依實測回饋改回這個版本，
+      寧可留著這個小瑕疵，也要保住「自己拿著瓶子對準」的手感。
+    */
     const mouth = bottleMouth(this.bottlePos, this.bottleTilt, bottleH);
     const total = this.mix.reduce((s, r) => s + r.parts, 0);
     const inZone =
@@ -785,7 +797,7 @@ export class Stage1RCA extends BaseStage {
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = 'rgba(224, 238, 243, 0.8)';
-    ctx.font = "600 11px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.font = "600 13px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('待清洗晶圓', cx, groundY + 8);

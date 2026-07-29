@@ -137,7 +137,7 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
 
   // 大按鈕：使用者要求「夠大能夠輕鬆地按」，所以半徑下限 22px（直徑 44px），
   // 但也不能大到把控制欄擠掉，因此同時受機台高度限制。
-  const buttonR = clamp(Math.min(panelW * 0.3, geo.h * 0.13), 22, 38);
+  const buttonR = clamp(Math.min(panelW * 0.32, geo.h * 0.14), 26, 44);
   const button = {
     cx: panelCX,
     cy: geo.y + geo.h - pad - buttonR - 18,
@@ -321,7 +321,7 @@ function drawTarget(
   }
 
   ctx.fillStyle = 'rgba(214, 232, 240, 0.85)';
-  ctx.font = "700 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+  ctx.font = "700 14px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   ctx.fillText('金屬靶材', it.x + it.w / 2, y - 24);
@@ -347,7 +347,7 @@ function drawTarget(
     ctx.restore();
 
     ctx.fillStyle = '#8ff0ff';
-    ctx.font = "600 10px 'IBM Plex Mono', monospace";
+    ctx.font = "600 12px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('e⁻ BEAM', gunX - 4, gunY + 12);
@@ -401,14 +401,14 @@ function drawShowerhead(
     ctx.globalAlpha = 1;
 
     ctx.fillStyle = color;
-    ctx.font = "700 11px 'IBM Plex Mono', monospace";
+    ctx.font = "700 13px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(label, px, it.y + 2);
   });
 
   ctx.fillStyle = 'rgba(214, 232, 240, 0.85)';
-  ctx.font = "700 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+  ctx.font = "700 14px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText('氣體噴淋頭', it.x + it.w / 2, y + 3);
@@ -486,7 +486,7 @@ function drawWaferWithFilm(
 
   // 厚度標示，字級刻意放大
   ctx.save();
-  ctx.font = "700 14px 'IBM Plex Mono', monospace";
+  ctx.font = "700 17px 'IBM Plex Mono', monospace";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const label = `${Math.round(s.thickness * 100)} nm`;
@@ -625,7 +625,7 @@ function drawDoor(
 
   // 狀態文字放在滑軌下方，不跟軌道與把手重疊
   ctx.fillStyle = s.door < 0.02 ? '#5ee9df' : 'rgba(214, 230, 238, 0.9)';
-  ctx.font = "700 13px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+  ctx.font = "700 15px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(
@@ -688,12 +688,12 @@ function drawLever(
 
   // 標籤 + 數值
   ctx.fillStyle = 'rgba(220, 234, 240, 0.9)';
-  ctx.font = "700 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+  ctx.font = "700 14px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
   ctx.fillText('電子束功率', L.cx, L.top - 6);
 
-  ctx.font = "700 15px 'IBM Plex Mono', monospace";
+  ctx.font = "700 18px 'IBM Plex Mono', monospace";
   ctx.fillStyle = inWindow ? '#5ee996' : s.power > hi ? '#ff8a6a' : '#e8f2f6';
   ctx.textBaseline = 'top';
   ctx.fillText(`${Math.round(s.power * 100)}%`, L.cx, L.bottom + 6);
@@ -702,7 +702,7 @@ function drawLever(
     const pulse = 0.5 + 0.5 * Math.sin(time * 8);
     ctx.globalAlpha = 0.6 + pulse * 0.4;
     ctx.fillStyle = '#ff8a6a';
-    ctx.font = "700 11px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.font = "700 13px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
     ctx.fillText('過熱！', L.cx, L.bottom + 26);
   }
 
@@ -779,7 +779,7 @@ function drawValves(
 
     // 名稱在旋鈕上方；數值畫在旋鈕正中央，省下一整列的垂直空間
     ctx.fillStyle = colors[i];
-    ctx.font = "700 11px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.font = "700 13px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(names[i], v.cx, v.cy - v.r - 4);
@@ -862,7 +862,7 @@ function drawBigButton(
   ctx.fillText(s.running ? '■' : '▶', b.cx, b.cy + 1);
 
   // 標籤
-  ctx.font = "700 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+  ctx.font = "700 14px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
   ctx.textBaseline = 'top';
   ctx.lineWidth = 3.5;
   ctx.strokeStyle = 'rgba(8, 14, 18, 0.9)';

@@ -330,7 +330,7 @@ export class Stage2Deposition extends BaseStage {
     ctx.ellipse(p.x, p.y + ry * 0.9, r * 1.2, ry * 1.1, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = 'rgba(224, 238, 243, 0.85)';
-    ctx.font = "700 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.font = "700 14px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('待沉積晶圓', p.x, p.y + ry * 2.4);
@@ -578,7 +578,7 @@ export class Stage2Deposition extends BaseStage {
 
     // 讀數放在進度條下方那一列
     const ty = y + h + 3;
-    ctx.font = "700 12px 'IBM Plex Mono', monospace";
+    ctx.font = "700 14px 'IBM Plex Mono', monospace";
     ctx.textBaseline = 'top';
 
     ctx.textAlign = 'left';

@@ -206,7 +206,7 @@ export class Beaker {
 
     // 標籤
     ctx.fillStyle = 'rgba(226, 240, 244, 0.8)';
-    ctx.font = "500 11px 'IBM Plex Mono', monospace";
+    ctx.font = "500 13px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(state.label, cx, bottom + 12);

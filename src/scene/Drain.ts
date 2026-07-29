@@ -114,7 +114,7 @@ export function drawDrain(
   ctx.fillText('☣', geo.cx, top + h * 0.52);
 
   ctx.fillStyle = state.hot ? '#5ee9df' : 'rgba(200, 216, 222, 0.7)';
-  ctx.font = "500 10px 'IBM Plex Mono', monospace";
+  ctx.font = "500 12px 'IBM Plex Mono', monospace";
   ctx.textBaseline = 'top';
   ctx.fillText('WASTE · 廢液桶', geo.cx, geo.baseY + 8);
 
