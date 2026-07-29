@@ -92,6 +92,9 @@ export class VirtualDesk {
   /** 桌沿標籤；null 代表沿用預設。 */
   private deskLabel: string | null = null;
 
+  /** 關卡自訂的晶圓位置；null = 用預設（立在 Chuck 上）。 */
+  private placement: { cx: number; cy: number; r: number } | null = null;
+
   constructor(canvas: HTMLCanvasElement, preview: HTMLCanvasElement | null = null) {
     this.canvas = canvas;
     this.ctx = require2d(canvas);
@@ -145,6 +148,29 @@ export class VirtualDesk {
       chuckTop,
       chuckHeight,
     };
+
+    this.applyPlacement();
+  }
+
+  /**
+   * 覆寫晶圓在螢幕上的位置與半徑；null 代表回到預設。
+   *
+   * 自繪場景的關卡（例如微影製程要把晶圓放大到畫面中央）用它把 isOnWafer()
+   * 與筆畫的座標轉換一起搬過去，就能沿用 Pattern 圖層、覆蓋率計算與
+   * PNG / STL 匯出這一整套既有機制，不必自己再實作一份。
+   *
+   * 關卡會每一幀呼叫（場景尺寸隨視窗變動），所以這裡刻意做得很便宜。
+   */
+  setWaferPlacement(p: { cx: number; cy: number; r: number } | null): void {
+    this.placement = p;
+    this.applyPlacement();
+  }
+
+  private applyPlacement(): void {
+    if (!this.placement) return;
+    this.geo.waferCX = this.placement.cx;
+    this.geo.waferCY = this.placement.cy;
+    this.geo.waferR = this.placement.r;
   }
 
   get geometry(): Readonly<DeskGeometry> {
@@ -496,7 +522,7 @@ export class VirtualDesk {
   private drawDeskLabel(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.save();
     ctx.fillStyle = COLORS.deskText;
-    ctx.font = "500 11px 'IBM Plex Mono', monospace";
+    ctx.font = "500 13px 'IBM Plex Mono', monospace";
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(text, 16, this.geo.deskTop + 10);
