@@ -1,0 +1,62 @@
+# =========================
+# Node / Vite
+# =========================
+node_modules/
+dist/
+.vite/
+
+# npm / pnpm / yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Package manager cache
+.pnpm-store/
+.npm/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.local
+.env.*.local
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =========================
+# OS generated files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# MediaPipe generated assets
+# (created by postinstall script)
+# =========================
+public/mediapipe/
+
+# =========================
+# Build / cache
+# =========================
+coverage/
+.cache/
+*.tsbuildinfo
+
+# =========================
+# Optional assets
+# Keep uploads out of git if needed
+# =========================
+# public/uploads/
