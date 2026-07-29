@@ -1,6 +1,6 @@
 # 實作概念與接手指南
 
-這份文件寫給**接手第 2~5 關的人**。README 說明「這個專案是什麼、怎麼跑」，
+這份文件寫給**接手這個專案的人**。README 說明「這個專案是什麼、怎麼跑」，
 這裡說明「為什麼這樣設計、你要怎麼加東西進去」。
 
 ---
@@ -12,7 +12,7 @@
 3. [一個關卡的生命週期](#3-一個關卡的生命週期)
 4. [互動模式工具箱](#4-互動模式工具箱)
 5. [動手做：從 Stub 到完整關卡](#5-動手做從-stub-到完整關卡)
-6. [第 2~5 關的實作建議](#6-第-25-關的實作建議)
+6. [各關卡的實作筆記](#6-各關卡的實作筆記)
 7. [尚未解決的問題](#7-尚未解決的問題)
 
 ---
@@ -200,7 +200,12 @@ if (hand.present && hand.justPinched &&
 ### 模式 D：捏合當滑鼠（自動）
 
 `UIManager.updatePinchPointer()` 已經把捏合點對到 HTML 按鈕上了 ——
-懸停會亮、捏一下就是 click。**關卡不用做任何事**，面板按鈕自動就能用手勢按。
+懸停會亮、捏一下就是 click。**關卡不用做任何事**，任何標了 `data-pinch` 的
+按鈕自動就能用手勢按（含 Modal 上的按鈕）。
+
+⚠️ 但**手只到得了鏡頭視窗那一格**。座標是從 video 映射過來的，
+右側面板、Header 都在視野外，手指不過去。所以任何「非按不可」的操作
+都必須在視窗裡也有一份 —— 這就是 `#btn-stage-action` 存在的理由。
 
 ### 模式 E：解出對位，不要用估的
 
@@ -305,7 +310,7 @@ export class Stage4Develop extends BaseStage {
 
 ```diff
 // src/main.ts
-- .register(new StagePlaceholder({ id: 'develop', /* … */ }))
+  .register(new Stage3Litho())
 + .register(new Stage4Develop())
 ```
 
@@ -322,7 +327,7 @@ export class Stage4Develop extends BaseStage {
 
 ---
 
-## 6. 第 2~5 關的實作建議
+## 6. 各關卡的實作筆記
 
 ### 第二關 · 薄膜沉積 ✅ 已完成
 
@@ -379,58 +384,149 @@ if (sub?.id === 'metal' && this.method === 'pvd') {
 物件池管理，達到上限就回收重生，不會每幀配置新陣列。第五關的乾式蝕刻
 可以直接重用 `ballistic` 模式（方向反過來即可）。
 
-### 第三關 · 微影製程
+### 第三關 · 微影製程 ✅ 已完成
 
-四個子步驟裡有三個是全新的互動，但**「圖案設計」可以直接沿用
-`Stage1DrawPattern.ts`** —— 它已經有完整的捏合繪圖 + 覆蓋率判定 + Pattern 圖層，
-把它從「一個關卡」改成「一個子步驟的處理器」即可。
+值得注意的三件事：
 
-- **光阻劑塗抹**：捏合在晶圓上塗抹，記錄覆蓋率。可重用 `VirtualDesk.beginStroke/strokeTo`，
-  只是換成一支很粗的筆刷，並要求覆蓋率 > 90%。
-- **正負光阻選擇**：`choice` 面板，兩個選項各配一張示意圖。
-  目前 `ChoiceOption` 只有 `color` 與 `glyph`，要放示意圖需要擴充成
-  `preview?: (ctx, w, h) => void` 之類的 callback。
-- **曝光與烘烤**：把畫好的 Pattern 當成一張可拖曳的半透明光罩疊在晶圓上，
-  用捏合移動對位，對準後按鈕才啟用。對位計算參考[模式 E](#模式-e解出對位不要用估的)。
+**1. 沿用 VirtualDesk 的 Pattern 圖層，但把晶圓搬到畫面中央。**
+新增的 `desk.setWaferPlacement({cx, cy, r})` 會一併搬動 `isOnWafer()` 與筆畫的
+座標轉換，所以覆蓋率計算、PNG / STL 匯出這一整套機制都能直接沿用，
+不必再實作一份。關卡每幀呼叫它（場景尺寸隨視窗變動），離開時記得傳 `null` 還原。
 
-選完正負光阻後要寫進 `wafer.resistTone`，第四關的顯影結果才會正確。
+**2. 視角依「這一步在看什麼」切換。**
+塗佈與繪圖是**俯視正圓**（設計圖案本來就從正上方看，也讓座標換算是單純的圓），
+曝光是**正視**（才看得到 UV 燈 → 光罩 → 晶圓的上下關係）。同一關切換視角是可以的。
 
-### 第四關 · 顯影
-
-最單純的一關，[步驟 5](#5-動手做從-stub-到完整關卡) 的範例就是它。
-重點在顯影後要更新 `wafer.resistMask`：
+**3. 圖層要自己上色，不要用 `source-in` 合成。**
+光阻塗佈層一開始寫成「白色遮罩 + source-in 上色」，但合成是以整張 desk canvas
+為 destination，會連下面的晶圓一起塗滿。正解是**畫的時候就直接用光阻的顏色**：
 
 ```ts
-// 正光阻：曝光區被移除；負光阻：曝光區保留
-for (let i = 0; i < SECTION_CELLS; i++) {
-  const exposed = wafer.exposedMask[i] > 0.5;
-  wafer.resistMask[i] = (wafer.resistTone === 'positive') === exposed ? 0 : 1;
+const g = c.createRadialGradient(x, y, 0, x, y, brush);
+g.addColorStop(0, `rgba(${RESIST_RGB}, 1)`);
+g.addColorStop(1, `rgba(${RESIST_RGB}, 0)`);
+```
+
+`destination-out` 則是安全的（曝光動畫就靠它把被鉻擋住的光挖掉），
+因為它只會減少 alpha，不會把不相干的區域填滿。
+
+**光罩拖曳**與第二關的旋鈕一樣用**相對位移**，不是絕對座標：
+
+```ts
+this.dragFrom = { hand: {...hand.pinchPoint}, offset: {...this.maskOffset} };
+// 之後每幀
+this.maskOffset = {
+  x: this.dragFrom.offset.x + (hand.pinchPoint.x - this.dragFrom.hand.x),
+  y: this.dragFrom.offset.y + (hand.pinchPoint.y - this.dragFrom.hand.y),
+};
+```
+
+**交給第四關的資料**：曝光結束時 `writeExposedMask()` 取圖案中央一條水平帶，
+壓成 `SECTION_CELLS` 長度的陣列寫進 `wafer.exposedMask`（有鉻 = 0、沒畫到 = 1），
+並把玩家選的 `wafer.resistTone` 一起存好。
+
+### 第四關 · 顯影 ✅ 已完成
+
+`Stage4Develop` 只有 ~190 行，因為互動邏輯抽到了 `DipStageBase`：
+
+```ts
+const done = this.runDip(frame, groundY, round, { waferColor, filmColor });
+if (done) { wafer.develop(); this.nextSub(); }
+```
+
+`DipRound` 描述「這一輪有哪些槽、哪一槽是對的、選錯要說什麼」，其餘（抓取、
+拖曳、落點判定、下沉、攪拌、進度環、提起）全部由基底處理。第五關的濕蝕刻與
+去光阻直接重用同一支。
+
+**正確答案依前面的選擇而定**，這是刻意的：
+
+```ts
+private get answer(): string {
+  return this.ctx.wafer.resistTone === 'positive' ? 'tmah' : 'xylene';
 }
 ```
 
-### 第五關 · 蝕刻
+玩家必須回想自己在第三關選了正還是負光阻，兩關才真的串起來。
 
-- **氧氣電漿清潔**：一道掃過晶圓表面的光帶動畫，純過場。
-- **蝕刻選擇**：`choice` 面板選乾式或濕式。
-  - 乾式 → 粒子**垂直**轟擊，蝕出來的溝槽側壁是直的
-  - 濕式 → 先選蝕刻液（重用 `pour`／`choice` + `Beaker`），溝槽會**側向**擴大
-    （在截面圖上把溝槽畫寬一點，這就是「等向性蝕刻」的教學點）
-- **去光阻與清洗**：`wafer.removeLayer('resist')`，可重用 RCA 的燒杯與藥瓶模組。
+⚠️ **踩過的坑**：`onSubEnter()` 原本無條件 `resetDip()`，結果晶圓一泡下去、
+子步驟從「選試劑」推進到「顯影反應」時，正在進行的浸泡被清掉了。
+連續動作橫跨多個子步驟時，只在回到第 0 步才重設：
 
----
+```ts
+protected override onSubEnter(index: number): void {
+  if (index === 0) this.resetDip();
+}
+```
+
+### 第五關 · 蝕刻 ✅ 已完成
+
+三個子步驟用到兩種場景，都是重用既有模組：
+
+| 子步驟 | 重用了什麼 |
+| --- | --- |
+| 氧氣電漿清潔 | `scene/Chamber.ts`（kind `cvd`）+ `Particles`（diffusive） |
+| 蝕刻選擇 | 自繪的兩張說明卡；乾式走 Chamber，濕式走 `DipStageBase` |
+| 去光阻與清洗 | `DipStageBase` |
+
+**乾式與濕式的差別做在結果上，不只是動畫。** `WaferState.etch(undercut)`：
+
+```ts
+// 濕式蝕刻是等向性的，會往光阻底下橫向咬
+if (undercut > 0.5) {
+  for (...) if (base[i]) { etchedMask[i±1] = max(..., 0.6); }
+}
+```
+
+`CrossSection` 把 0.6 的格子畫成「變窄的柱子」，所以兩種蝕刻在截面圖上長得
+完全不一樣 —— 這才是這一步真正要教的東西。
+
+### 結業證書
+
+`utils/Certificate.ts`。三個階段：`capturePhoto()` → `composeCertificate()` → `canvasToPdf()`。
+
+**不要為了中文去引 PDF 函式庫。** 在 PDF 裡排文字就得嵌入中文字型（好幾 MB +
+subset + CID 編碼）。這裡先把整張證書畫在 canvas 上（文字由瀏覽器渲染成點陣），
+再把單一張 JPEG 包進最小的 PDF 骨架，完全不需要字型物件。
+
+PDF 的骨架只有 Catalog → Pages → Page → 一個 DCTDecode 影像。xref 表要記錄每個
+物件的**位元組位移**，所以整份文件用 `Uint8Array` 拼：
+
+```ts
+const push = (chunk: string | Uint8Array) => { parts.push(chunk); length += chunk.length; };
+const startObject = () => offsets.push(length);   // 呼叫時的 length 就是這個物件的位移
+```
+
+⚠️ 字串要以 **latin1 逐字元**寫入（`charCodeAt(i) & 0xff`），
+用 `TextEncoder` 的 UTF-8 會把中間的二進位 JPEG 段撐開，位移全部錯位。
 
 ## 7. 尚未解決的問題
 
-接手前請先知道這些：
+> 本節於 2026-07-30 逐條對照程式碼驗證過，狀態如下。
 
-| 問題 | 影響 | 建議 |
-| --- | --- | --- |
-| **子步驟是線性的** | 第二關的 PVD 分支是用「跳過」模擬，被跳過的那格顯示為「已完成」而不是「不適用」 | 在 `UIManager.renderSubsteps()` 加 `skipped` 狀態；分支若變多，改讓 `substeps` 成為關卡動態回傳的 getter |
-| **`Stage1DrawPattern.ts` 目前沒被註冊** | 它還在 repo 裡但不在流程中 | 併進第三關的「圖案設計」子步驟後即可刪除或改名 |
-| **`ChoiceOption` 不支援示意圖** | 第三關的正負光阻需要圖解 | 加一個 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
-| **`WaferState.exposedMask` 沒有人寫入** | 第四關的顯影邏輯還沒有輸入 | 第三關的曝光步驟要負責填它 |
-| **截面圖只有一種圖案化方式** | `CrossSection` 目前只依 `resistMask` 切最上層 | 濕蝕刻的側向擴大需要額外的寬度參數 |
-| **沒有自動化測試** | 只有 `tsc --noEmit` 把關 | 至少替 `WaferState` 的層操作與配方驗證加單元測試 |
+### 刻意保留的取捨
+
+| 現象 | 為什麼不修 |
+| --- | --- |
+| **第一關倒藥液時，瓶口可能短暫甩出杯口** | 判定用的是**瓶口**位置，而瓶身一傾倒瓶口就往左甩約 0.9×瓶高，有機會甩出判定區讓傾倒中斷。曾改成「用手的位置判定 + 傾倒時把瓶子吸附到杯口正上方」根除它，但那樣瓶子會自己滑走，手感不像在倒東西。依實測回饋選擇保留這個小瑕疵，換取「自己拿著瓶子對準」的手感。若之後要再挑戰，建議加**遲滯**（開始倒之後放寬判定區）而不是吸附。 |
+
+### 仍然存在
+
+| 問題 | 驗證方式 | 影響 | 建議 |
+| --- | --- | --- | --- |
+| **子步驟沒有「略過」狀態** | `UIManager.renderSubsteps()` 只算 `done = i < subIndex` 與 `active = i === subIndex` | 第二關走 PVD 時「金屬鍍膜」被跳過，進度列卻顯示打勾的「已完成」，會讓學生以為自己做過那一步 | 加第三種狀態：關卡回報哪些 index 被略過，樣式畫成灰色斜線 |
+| **`ChoiceOption` 不支援示意圖** | `core/types.ts` 的 `ChoiceOption` 只有 `sub` / `color` / `glyph` | 第三關的正負光阻、第五關的乾濕蝕刻都得自己在 canvas 上畫卡片繞過去 | 加 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
+| **`#hand-canvas` 蓋住整個視窗格** | `z-index: 60`、`pointer-events: none` | 不擋點擊，但之後若要放「需要被點到」的浮層，記得排在它之上 | — |
+| **沒有自動化測試** | 只有 `tsc --noEmit`；版面與 PDF 是一次性腳本驗的 | 迴歸只能靠手動玩 | 優先補 `WaferState.develop()/etch()`、配方驗證、PDF 位移三處 |
+
+### 已解決（保留紀錄）
+
+| 問題 | 解法 |
+| --- | --- |
+| ~~`exposedMask` 沒有人寫入~~ | 第三關 `writeExposedMask()`（`Stage3Litho.ts`）填入，第四關 `WaferState.develop()` 使用 |
+| ~~截面圖只有一種圖案化方式~~ | `CrossSection` 已分別處理 `resistMask`（光阻）與 `etchedMask`（下層材料，含 undercut 的變窄柱子） |
+| ~~手部骨架被 UI 蓋住~~ | 獨立的 `#hand-canvas`（z-index 60），詳見 README〈圖層規範〉 |
+| ~~右側面板的按鈕手構不到~~ | 視窗內的 `#btn-stage-action`，Modal 按鈕也都標了 `data-pinch` |
+| ~~`Stage1DrawPattern.ts` / `StagePlaceholder.ts` 是死碼~~ | 已刪除（刪除前 `grep -rn` 確認除檔案自身外無任何引用） |
 
 ---
 

@@ -5,7 +5,7 @@
 在畫面下方的虛擬實驗檯上一步步走完五道半導體製程。
 
 > **接手開發請先讀 [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md)。**
-> 那份文件說明整套架構的設計概念、每個模組的職責，以及第 2~5 關要怎麼接。
+> 那份文件說明整套架構的設計概念、每個模組的職責，以及怎麼新增關卡。
 
 ---
 
@@ -23,17 +23,17 @@
 │                   ├─ 沉積反應        粒子運動與鍍膜
 │                   └─ 金屬鍍膜        CVD 路線才需要（PVD 會跳過）
 │
-├─ 3. 微影製程 ─────┬─ 光阻劑塗抹      用手把光阻均勻塗抹到晶圓上
+├─ 3. 微影製程 ─────┬─ 光阻劑塗抹      中心滴一滴，靠旋轉塗佈鋪成均勻薄膜
 │                   ├─ 圖案設計        繪製要刻出的晶片圖案
 │                   ├─ 正負光阻選擇    決定曝光區要移除還是保留
 │                   └─ 曝光與烘烤      對準光罩後曝光
 │
-├─ 4. 顯影 ─────────┬─ 顯影液選擇      選出能溶解曝光區光阻的試劑
+├─ 4. 顯影 ─────────┬─ 顯影液選擇      TMAH 2.38%（MIF 標準顯影液，正負光阻通用）
 │                   └─ 顯影反應        浸泡並顯現圖案
 │
 └─ 5. 蝕刻 ─────────┬─ 氧氣電漿清潔    確保目標材料完全裸露
                     ├─ 蝕刻選擇        乾式（鉛直）或濕式（側向）
-                    └─ 去光阻與清洗    丙酮／NMP 剝除後以去離子水清洗
+                    └─ 去光阻與清洗    NMP 剝除後以去離子水清洗
 ```
 
 **目前的實作範圍**
@@ -42,11 +42,22 @@
 | --- | --- |
 | 1. RCA 清洗 | ✅ 四個子步驟全部完成（配液互動、浸泡、旋轉乾燥） |
 | 2. 薄膜沉積 | ✅ 完成，含 PVD／CVD 分支與粒子動畫 |
-| 3. 微影製程 | 🚧 Stub（繪圖互動的原型保留在 `Stage1DrawPattern.ts`） |
-| 4. 顯影 | 🚧 Stub |
-| 5. 蝕刻 | 🚧 Stub |
+| 3. 微影製程 | ✅ 完成（滴光阻／旋轉塗佈／繪圖／正負光阻／對位曝光） |
+| 4. 顯影 | ✅ 完成（選 TMAH、浸泡攪拌顯影） |
+| 5. 蝕刻 | ✅ 完成（O₂ 電漿清潔、乾／濕蝕刻分支、去光阻） |
 
-Stub 關卡的 UI 框架、子步驟列、關卡切換與手勢管線都是活的，可以完整走一遍流程。
+### 藥液正確答案的依據
+
+第四、五關的「正解」都查過業界資料，不是憑印象：
+
+| 步驟 | 正解 | 依據 |
+| --- | --- | --- |
+| 顯影 | **TMAH 2.38%** | 半導體標準顯影液，MIF（不含金屬離子）。**正光阻與負光阻都用它** —— 負光阻是靠鹼液溶掉「沒有交聯」的未曝光區。二甲苯只用於早期橡膠系負光阻，量產線已淘汰 |
+| 濕式蝕刻 | **PAN 鋁蝕刻液**（H₃PO₄ : CH₃COOH : HNO₃ : H₂O ≈ 80:15:3:2） | 此時最上層是金屬鋁。硝酸先氧化鋁、磷酸溶掉氧化鋁、醋酸降低表面張力幫助潤濕。BOE 是給 SiO₂ 用的，對鋁無效 |
+| 去光阻 | **NMP** | 業界標準剝離液，因閃點遠高於丙酮（可加溫操作）、殘留少而取代了丙酮。丙酮仍剝得掉，但屬早期做法 |
+
+五道製程全部走完後會進入**結業證書**畫面：自動拍一張照片，和你親手做出來的
+晶圓圖案排成一張證書，可下載 **PDF 證書**、**晶圓 PNG** 與 **3D 模型 STL**。
 
 ---
 
@@ -101,20 +112,25 @@ semiconductorAR/
 │   │   ├── Bottle.ts           # 藥瓶與傾倒液柱
 │   │   ├── Drain.ts            # 廢液桶
 │   │   ├── SpinDryer.ts        # 旋轉乾燥機
-│   │   ├── Chamber.ts          # 沉積腔體與機台上的實體控制元件
-│   │   └── Particles.ts        # 沉積粒子場（直線下落 / 擴散亂走）
+│   │   ├── Chamber.ts          # 沉積／電漿腔體與機台上的實體控制元件
+│   │   ├── Particles.ts        # 粒子場（直線下落 / 擴散亂走）
+│   │   ├── Aligner.ts          # 光罩對準曝光機（UV 燈 / 可拖曳光罩）
+│   │   └── TankBench.ts        # 一排藥液槽（顯影／濕蝕刻／去光阻共用）
 │   ├── stages/
 │   │   ├── BaseStage.ts        # 關卡抽象基底（含子步驟機制）
 │   │   ├── Stage1RCA.ts        # 第一關：RCA 清洗（完整實作）
 │   │   ├── Stage2Deposition.ts # 第二關：薄膜沉積（完整實作）
-│   │   ├── Stage1DrawPattern.ts# 繪圖互動原型，將併入第三關的「圖案設計」
-│   │   └── StagePlaceholder.ts # 第 3~5 關的 Stub 樣板
+│   │   ├── Stage3Litho.ts      # 第三關：微影製程（完整實作）
+│   │   ├── Stage4Develop.ts    # 第四關：顯影（完整實作）
+│   │   ├── Stage5Etch.ts       # 第五關：蝕刻（完整實作）
+│   │   └── DipStageBase.ts     # 「把晶圓拖進正確藥液槽」的共用基底
 │   ├── ui/
 │   │   ├── UIManager.ts        # 所有 HTML UI 的唯一操作入口
 │   │   ├── VirtualDesk.ts      # 下方虛擬桌面：Chuck、晶圓、Pattern 圖層
 │   │   └── CrossSection.ts     # 右下角晶圓截面圖 HUD
 │   └── utils/
-│       └── Exporter.ts         # PNG 下載 + STL 擠出
+│       ├── Exporter.ts         # PNG 下載 + STL 擠出
+│       └── Certificate.ts      # 拍照、證書排版、最小 PDF 產生器
 └── public/
     ├── assets/                 # 你自己的素材
     └── mediapipe/              # 由 postinstall 產生（已 gitignore）
@@ -140,9 +156,18 @@ MediaPipe → CameraManager.latest → GestureDetector（鏡像/Pinch/平滑）
 | --- | --- | --- | --- |
 | `#stage-view` | 1 | `none` | 鏡頭視窗容器，由 JS 對齊到 `#viewport-slot` |
 | ├ `#video-element` | 1 | — | WebCam 影像（鏡像時只翻轉「它」） |
-| ├ `#ar-canvas` | 2 | `none` | 手勢骨架、吸附在手上的道具 |
-| └ `#desk-canvas` | 3 | `none` | 虛擬桌面與關卡自繪的場景（燒杯、藥瓶、機台） |
+| ├ `#desk-canvas` | 2 | `none` | 虛擬桌面與關卡自繪的場景（燒杯、藥瓶、機台） |
+| └ `#ar-canvas` | 3 | `none` | 吸附在手上的道具 |
 | `#ui-layer` | 10 | `auto` | 所有 HTML：Header / Sidebar / Panel / HUD / Modal |
+| `#hand-canvas` | 60 | `none` | 手勢骨架與捏合游標 —— **疊在所有東西之上** |
+
+**手部骨架是獨立的一層，而且在最上面。** 只畫在 canvas（z-index 3）時，
+手一移到左側互動面板（HTML, z-index 10）就會被蓋掉，玩家看不到自己指著哪顆按鈕。
+`drawHandSkeleton()` 另外畫一圈**捏合游標**，明確標出所有命中判定實際使用的那個點。
+
+**視窗內也有一顆「完成本關 / 下一步」按鈕**（`#btn-stage-action`）。
+右側面板在鏡頭視野之外、手構不到，所以主要行動必須在視窗裡也有一份，
+整場遊戲才能純用手玩完。Modal 上的按鈕同樣標了 `data-pinch`，捏合游標按得到。
 
 `#ui-layer` 是一個 CSS Grid Dashboard，中間那格 `#viewport-slot` 只是**鏤空的視覺外框**
 （`pointer-events: none`），`main.ts` 的 `syncStageView()` 用 `ResizeObserver` 把 `#stage-view`
@@ -298,6 +323,34 @@ if (mirror) px = cw - px;
 
 ---
 
+## 第三關的互動循環
+
+四個子步驟，每一步都是用手完成的：
+
+| 子步驟 | 手勢 | 過關條件 |
+| --- | --- | --- |
+| 光阻劑塗抹 | 捏一下在中心滴一滴 | 滴完直接進旋轉塗佈（光阻靠離心力鋪開，不是用抹的） |
+| 圖案設計 | 捏合畫線 | 圖案覆蓋 ≥ 1.5% |
+| 正負光阻選擇 | 把手移到卡片上捏一下 | 兩張大卡片各附剖面示意圖 |
+| 曝光與烘烤 | 捏住光罩拖曳對位 → 按大按鈕 | 兩組十字記號重合到 14 µm 內 |
+
+**視角會切換**：前兩步是**俯視**（設計圖案就該從正上方看，晶圓直徑 328–486px），
+第四步切到**正視**，才看得到 UV 燈 → 光罩 → 晶圓的上下關係。
+
+**關鍵教學點：畫出來的圖案是鉻層，會擋住光。** 這是初學者最容易搞反的地方，
+所以曝光動畫刻意用「先鋪滿一層光，再用圖案挖掉」來表達：
+
+```ts
+ctx.fillRect(...);                       // 光罩到晶圓之間鋪滿 UV
+ctx.globalCompositeOperation = 'destination-out';
+ctx.drawImage(pattern, ...);             // 有鉻的地方把光挖掉
+```
+
+曝光結束時把圖案換算成 `WaferState.exposedMask`（有鉻 = 0，沒畫到 = 1），
+第四關的顯影再依 `resistTone` 決定哪一邊的光阻被溶掉。
+
+---
+
 ## 匯出（Exporter）
 
 - **PNG**：`desk.composeWaferImage(1024)` 合成「白底圓形晶圓 + 圖案」後存檔，所見即所得。
@@ -358,3 +411,29 @@ __camp.wafer.addLayer({ kind: 'oxide', label: 'SiO₂', thickness: 0.6,
 | 低階筆電掉幀 | `CameraManager.createHands()` 把 `modelComplexity` 從 `1` 改成 `0`（lite 模型）。 |
 | `Hands is not a constructor` | `public/mediapipe/` 不存在。重跑 `npm install` 或 `node scripts/copy-mediapipe.mjs`。 |
 | 想改用 CDN 而不是自架資產 | 把 `CameraManager.ts` 的 `MP_BASE` 改成 `https://cdn.jsdelivr.net/npm/@mediapipe`，並確認版本與 `package.json` 一致。 |
+
+
+---
+
+## 結業證書
+
+五道製程全部完成後會自動進入證書畫面：
+
+```
+allComplete ─▶ capturePhoto(video)      從 <video> 擷取一張 4:3 照片（依鏡像翻轉）
+            ─▶ composeCertificate()     照片 + 晶圓圖 + 製程紀錄排版成 1684×1190 canvas
+            ─▶ canvasToPdf()            包成 A4 橫式 PDF
+```
+
+**為什麼不用 PDF 函式庫？** 證書上有大量中文，任何在 PDF 裡「排文字」的方案
+都得嵌入中文字型（一個檔就好幾 MB，還要處理 subset 與 CID 編碼）。
+這裡改成先把整張證書畫在 canvas 上（文字由瀏覽器渲染成點陣），
+再把單一張 JPEG 包進最小的 PDF 骨架 —— 不需要任何字型物件，
+輸出也保證跟畫面上看到的一模一樣。
+
+PDF 只用到 Catalog → Pages → Page → 一個 DCTDecode 影像。xref 表需要每個物件的
+位元組位移，所以整份文件是以 `Uint8Array` 拼出來的（字串以 latin1 逐字元寫入，
+才不會破壞中間的二進位 JPEG 段）。
+
+證書畫面同時提供三種下載：**PDF 證書**、**晶圓 PNG**、**3D 模型 STL**。
+中途的關卡結算視窗**不提供任何下載** —— 那時候拿到的是半成品。
