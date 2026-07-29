@@ -51,7 +51,7 @@
 
   /* 鏡頭視窗內的互動面板寬度。場景（燒杯／藥瓶）會依這個值往右讓開，
      所以改這裡就等於同時調整了 canvas 的佈局。 */
-  --panel-scene-w: 300px;
+  --panel-scene-w: 324px;
   /* 左下角截面圖 HUD 佔掉的高度，互動面板的 max-height 要扣掉它。 */
   --hud-reserve: 190px;
 
@@ -84,7 +84,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -164,7 +164,19 @@ body {
   transform: scaleX(-1);
 }
 
-#ar-canvas {
+/*
+  場景層在下、手部骨架層在上。
+  骨架必須壓在所有道具與機台之上，玩家才看得到自己的手正指著哪一顆按鈕——
+  被燒杯或腔體擋住的話，捏合對位會變成瞎猜。
+*/
+/* 手部骨架層：固定定位、疊在所有 UI 之上（含 Modal），但完全不吃事件。 */
+#hand-canvas {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+}
+
+#desk-canvas {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -173,7 +185,7 @@ body {
   pointer-events: none;
 }
 
-#desk-canvas {
+#ar-canvas {
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -550,8 +562,9 @@ body {
   background: oklch(0.16 0.015 250 / 0.82);
   border: 1px solid oklch(0.4 0.05 190 / 0.5);
   border-radius: var(--r-pill);
-  padding: 9px 20px;
-  font-size: 14.5px;
+  padding: 11px 24px;
+  font-size: 16.5px;
+  font-weight: 600;
   color: var(--text);
   backdrop-filter: blur(6px);
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
@@ -703,14 +716,15 @@ body {
   background: oklch(0.24 0.05 190 / 0.4);
 }
 .hand-icon {
-  font-size: 24px;
+  font-size: 30px;
 }
 .hand-label {
-  font-size: 14.5px;
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--text-2);
 }
 .hand-sub {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--text-4);
   margin-top: 2px;
 }
@@ -720,9 +734,9 @@ body {
 }
 .btn {
   font-family: var(--sans);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 11px 16px;
+  font-size: 16.5px;
+  font-weight: 700;
+  padding: 14px 18px;
   border-radius: var(--r-md);
   border: 1px solid transparent;
   cursor: pointer;
@@ -769,12 +783,49 @@ body {
   border: none;
   color: var(--text-5);
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: underline;
   cursor: pointer;
 }
 .link-btn:hover {
   color: var(--accent-bright);
+}
+
+/*
+  結算視窗的「繼續下一步」是玩家在這個畫面唯一要做的事，
+  原本卻是一行灰色底線文字，比旁邊的下載按鈕還不顯眼。
+  升級成有漸層、有箭頭動畫的主要按鈕。
+*/
+#btn-modal-continue {
+  margin-top: 16px;
+  padding: 15px 40px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--accent-bright), var(--accent-dim));
+  color: var(--accent-ink);
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 8px 26px oklch(0.75 0.14 190 / 0.35);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+#btn-modal-continue::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+}
+#btn-modal-continue:hover,
+#btn-modal-continue.is-pinch-hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 34px oklch(0.75 0.14 190 / 0.5);
+  color: var(--accent-ink);
+}
+#btn-modal-continue:active {
+  transform: translateY(0);
 }
 
 .status-foot {
@@ -1009,22 +1060,23 @@ body {
 .substep {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
+  gap: 7px;
+  padding: 7px 14px;
   border-radius: var(--r-pill);
   background: oklch(0.16 0.015 250 / 0.82);
   border: 1px solid oklch(0.35 0.02 250 / 0.9);
   backdrop-filter: blur(4px);
-  font-size: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--text-4);
   white-space: nowrap;
   transition: all 0.2s;
 }
 .substep-num {
   font-family: var(--mono);
-  font-size: 10px;
-  width: 16px;
-  height: 16px;
+  font-size: 11.5px;
+  width: 19px;
+  height: 19px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -1082,13 +1134,13 @@ body {
   overflow: hidden;
 }
 .sp-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17.5px;
+  font-weight: 700;
   color: var(--text);
 }
 .sp-note {
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--text-3);
   /* 關卡的說明會用 \n 分行（例如「說明」與「目標配方」兩段） */
   white-space: pre-line;
@@ -1103,7 +1155,7 @@ body {
   padding: 0 4px;
 }
 .sp-error {
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--danger-2);
   background: oklch(0.25 0.08 25 / 0.4);
   border: 1px solid var(--danger-line);
@@ -1115,15 +1167,16 @@ body {
 .sp-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 11px 12px;
   border-radius: var(--r-md);
   border: 1px solid oklch(0.32 0.015 250);
   background: oklch(0.2 0.012 250 / 0.9);
   color: var(--text-2);
   font-family: var(--sans);
-  font-size: 13.5px;
+  font-size: 15px;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s;
@@ -1143,8 +1196,8 @@ body {
   cursor: not-allowed;
 }
 .sp-dot {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   flex: none;
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -1156,7 +1209,7 @@ body {
 }
 .sp-sub {
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--text-4);
 }
 .sp-check {
@@ -1182,8 +1235,8 @@ body {
   gap: 6px;
 }
 .sp-step {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--r-sm);
   border: 1px solid oklch(0.4 0.02 250);
   background: oklch(0.26 0.015 250);
@@ -1201,14 +1254,14 @@ body {
 }
 .sp-count {
   font-family: var(--mono);
-  font-size: 14px;
-  min-width: 20px;
+  font-size: 15.5px;
+  min-width: 24px;
   text-align: center;
   color: var(--text);
 }
 .sp-ratio {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--text-3);
   text-align: center;
   padding: 5px 0;
@@ -1224,7 +1277,7 @@ body {
   color: var(--accent-bright);
 }
 .sp-empty {
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--text-4);
   text-align: center;
   padding: 14px 0;
@@ -1278,7 +1331,7 @@ body {
     --sidebar-w: 226px;
     --panel-w: 268px;
     --stage-pad: 14px;
-    --panel-scene-w: 272px;
+    --panel-scene-w: 292px;
   }
 }
 
@@ -1287,7 +1340,7 @@ body {
     --sidebar-w: 196px;
     --panel-w: 236px;
     --stage-pad: 10px;
-    --panel-scene-w: 246px;
+    --panel-scene-w: 262px;
   }
   .brand-title {
     font-size: 18px;
@@ -1358,4 +1411,127 @@ body {
   .hud-head {
     margin-bottom: 4px;
   }
+}
+
+
+/* ==========================================================================
+   結業證書
+   ========================================================================== */
+.modal-cert {
+  max-width: 940px;
+  width: min(94vw, 940px);
+}
+.cert-frame {
+  margin: 14px 0 4px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid oklch(0.4 0.05 190 / 0.5);
+  background: #101820;
+}
+#cert-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cert-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+
+/* ==========================================================================
+   視窗內的主要行動按鈕
+   右側面板在鏡頭視野外、手構不到，所以把「完成本關 / 下一步」也放進視窗裡。
+   ========================================================================== */
+.stage-action {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 36px;
+  border-radius: var(--r-pill);
+  border: none;
+  background: linear-gradient(135deg, var(--accent-bright), var(--accent-dim));
+  color: var(--accent-ink);
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 0 oklch(0.85 0.13 190 / 0.55);
+  animation: pulse-action 2s ease-in-out infinite;
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+.stage-action:hover,
+.stage-action.is-pinch-hover {
+  filter: brightness(1.1);
+  animation: none;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.55), 0 0 0 6px oklch(0.85 0.13 190 / 0.3);
+}
+/* 箭頭獨立一個元素，才能只讓它滑動而不動到文字 */
+.stage-action::after {
+  content: '→';
+  font-size: 21px;
+  line-height: 1;
+  animation: nudge-arrow 1.4s ease-in-out infinite;
+}
+.stage-action:hover::after,
+.stage-action.is-pinch-hover::after {
+  animation-duration: 0.7s;
+}
+@keyframes pulse-action {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 0 oklch(0.85 0.13 190 / 0.55);
+  }
+  70%,
+  100% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 14px oklch(0.85 0.13 190 / 0);
+  }
+}
+@keyframes nudge-arrow {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+
+/* ==========================================================================
+   結業證書的「再玩一次」
+   整場遊戲的收尾動作，做成最大的一顆按鈕。
+   ========================================================================== */
+.btn-play-again {
+  margin-top: 18px;
+  width: 100%;
+  max-width: 460px;
+  padding: 20px 40px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--accent-bright), var(--accent-dim));
+  color: var(--accent-ink);
+  font-family: var(--sans);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 12px 34px oklch(0.75 0.14 190 / 0.4);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.btn-play-again:hover,
+.btn-play-again.is-pinch-hover {
+  filter: brightness(1.1);
+  transform: translateY(-3px);
+  box-shadow: 0 18px 44px oklch(0.75 0.14 190 / 0.55);
+}
+.btn-play-again:active {
+  transform: translateY(0);
 }

@@ -32,8 +32,14 @@ export interface UICallbacks {
   onToggleSkeleton: (visible: boolean) => void;
   onExportPNG: () => void;
   onExportSTL: () => void;
+  onExportPDF: () => void;
+  onRetakePhoto: () => void;
+  /** 證書畫面的「再玩一次」：整場重置回第一關。 */
+  onPlayAgain: () => void;
   onRetry: () => void;
   onExit: () => void;
+  /** 視窗內的主要行動按鈕（完成本關 / 下一步）。 */
+  onStageAction: () => void;
 }
 
 export interface SuccessModalData {
@@ -87,6 +93,7 @@ export class UIManager {
   // 關卡內互動
   private readonly substepStrip = el<HTMLElement>('substep-strip');
   private readonly stagePanel = el<HTMLElement>('stage-panel');
+  private readonly stageAction = el<HTMLButtonElement>('btn-stage-action');
   private readonly sectionCard = el<HTMLElement>('hud-cross-section');
   private readonly sectionCanvas = el<HTMLCanvasElement>('cross-section-canvas');
 
@@ -98,6 +105,8 @@ export class UIManager {
   private readonly modalSuccess = el<HTMLElement>('modal-success');
   private readonly modalFail = el<HTMLElement>('modal-fail');
   private readonly modalHelp = el<HTMLElement>('modal-help');
+  private readonly modalCert = el<HTMLElement>('modal-cert');
+  private readonly certCanvas = el<HTMLCanvasElement>('cert-canvas');
   private readonly modalSettings = el<HTMLElement>('modal-settings');
   private readonly successTitle = el<HTMLElement>('success-title');
   private readonly successDesc = el<HTMLElement>('success-desc');
@@ -124,6 +133,23 @@ export class UIManager {
     return this.previewCanvas;
   }
 
+  /**
+   * 視窗內的主要行動按鈕。傳 null 收起來。
+   *
+   * 右側面板在鏡頭視野之外，手構不到，所以「完成本關 / 下一步」必須在視窗內
+   * 也有一顆，整場遊戲才能純用手玩完。
+   */
+  setStageAction(label: string | null): void {
+    if (this.cache.get('stageAction') === (label ?? '')) return;
+    this.cache.set('stageAction', label ?? '');
+    if (label === null) {
+      this.stageAction.classList.add('hidden');
+      return;
+    }
+    this.stageAction.textContent = label;
+    this.stageAction.classList.remove('hidden');
+  }
+
   /** 截面圖 HUD 的 canvas，交給 CrossSection 直接畫。 */
   getSectionCanvas(): HTMLCanvasElement {
     return this.sectionCanvas;
@@ -144,6 +170,7 @@ export class UIManager {
 
   private bindEvents(): void {
     this.btnPrimary.addEventListener('click', () => this.cb.onPrimary());
+    this.stageAction.addEventListener('click', () => this.cb.onStageAction());
     this.btnNext.addEventListener('click', () => this.cb.onNext());
     this.btnClear.addEventListener('click', () => this.cb.onClearPattern());
     this.btnMirror.addEventListener('click', () => this.cb.onToggleMirror());
@@ -159,6 +186,15 @@ export class UIManager {
       this.cb.onRetry();
     });
     el<HTMLButtonElement>('btn-exit').addEventListener('click', () => this.cb.onExit());
+
+    el<HTMLButtonElement>('btn-cert-pdf').addEventListener('click', () => this.cb.onExportPDF());
+    el<HTMLButtonElement>('btn-cert-png').addEventListener('click', () => this.cb.onExportPNG());
+    el<HTMLButtonElement>('btn-cert-stl').addEventListener('click', () => this.cb.onExportSTL());
+    el<HTMLButtonElement>('btn-cert-retake').addEventListener('click', () => this.cb.onRetakePhoto());
+    el<HTMLButtonElement>('btn-cert-close').addEventListener('click', () => {
+      this.closeModal();
+      this.cb.onPlayAgain();
+    });
 
     el<HTMLButtonElement>('btn-help').addEventListener('click', () => this.openModal(this.modalHelp));
     el<HTMLButtonElement>('btn-help-close').addEventListener('click', () => this.closeModal());
@@ -720,7 +756,7 @@ export class UIManager {
 
     if (!hand.present) {
       ctx.fillStyle = 'rgba(150, 170, 180, 0.5)';
-      ctx.font = "10px 'IBM Plex Mono', monospace";
+      ctx.font = "12px 'IBM Plex Mono', monospace";
       ctx.textAlign = 'center';
       ctx.fillText('🤚 尋找手部…', w / 2, h / 2 + 3);
       this.setText(this.grStatus, 'NO HAND');
@@ -779,8 +815,22 @@ export class UIManager {
     this.openModal(this.modalFail);
   }
 
+  /** 顯示結業證書。傳入已排版好的 canvas，這裡只負責縮放顯示。 */
+  showCertificate(image: HTMLCanvasElement): void {
+    const ctx = this.certCanvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, this.certCanvas.width, this.certCanvas.height);
+      ctx.drawImage(image, 0, 0, this.certCanvas.width, this.certCanvas.height);
+    }
+    this.openModal(this.modalCert);
+  }
+
+  isCertificateOpen(): boolean {
+    return !this.modalRoot.classList.contains('hidden') && !this.modalCert.classList.contains('hidden');
+  }
+
   private openModal(modal: HTMLElement): void {
-    for (const m of [this.modalSuccess, this.modalFail, this.modalHelp, this.modalSettings]) {
+    for (const m of [this.modalSuccess, this.modalFail, this.modalHelp, this.modalSettings, this.modalCert]) {
       m.classList.toggle('hidden', m !== modal);
     }
     this.modalRoot.classList.remove('hidden');

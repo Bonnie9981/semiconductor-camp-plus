@@ -48,6 +48,13 @@
       </div>
     </div>
 
+    <!--
+      手部骨架獨立一層，z-index 高於 #ui-layer 的所有 HTML。
+      骨架只畫在 canvas 上（z-index 3）時，手一移到左側互動面板（HTML, z-index 10）
+      就會被蓋掉，玩家看不到自己指著哪顆按鈕。pointer-events:none 所以不擋點擊。
+    -->
+    <canvas id="hand-canvas"></canvas>
+
     <div id="ui-layer">
       <!-- ───────────────────────────── Header ───────────────────────────── -->
       <header id="app-header">
@@ -119,6 +126,12 @@
 
             <!-- 畫面中間：AR 狀態提示 -->
             <div id="ar-hint" class="ar-hint">🖐️ 張開手掌，讓系統看見你的手</div>
+
+            <!--
+              視窗內的主要行動按鈕。右側面板在鏡頭視野之外，手構不到；
+              這一顆在視窗內，所以「完成本關 / 下一步」也能純用手完成。
+            -->
+            <button id="btn-stage-action" class="stage-action hidden" type="button" data-pinch="1"></button>
 
             <!-- 下方虛擬桌面上的 HUD：左＝截面圖 / 已繪製圖形，右＝畫筆顏色 -->
             <div class="vp-bottom">
@@ -202,7 +215,28 @@
             <button id="btn-export-png" class="btn btn-primary" type="button">下載圖案 PNG</button>
             <button id="btn-export-stl" class="btn btn-ghost" type="button">下載 3D 物件 (.stl)</button>
           </div>
-          <button id="btn-modal-continue" class="link-btn" type="button">繼續下一步 →</button>
+          <button id="btn-modal-continue" data-pinch="1" class="link-btn" type="button">繼續下一步 →</button>
+        </div>
+
+        <!-- 結業證書：五道製程全部完成後才出現 -->
+        <div id="modal-cert" class="modal modal-cert hidden">
+          <div class="modal-kicker mono">ALL PROCESSES COMPLETE</div>
+          <h2 class="modal-title">製程全部完成！</h2>
+          <p class="modal-desc">
+            這是你的結業證書 —— 上面有你的照片與親手做出來的晶圓圖案。
+          </p>
+          <div class="cert-frame">
+            <canvas id="cert-canvas" width="842" height="595"></canvas>
+          </div>
+          <div class="modal-actions cert-actions">
+            <button id="btn-cert-retake" data-pinch="1" class="btn btn-ghost" type="button">重新拍照</button>
+            <button id="btn-cert-pdf" data-pinch="1" class="btn btn-primary" type="button">下載證書 PDF</button>
+            <button id="btn-cert-png" data-pinch="1" class="btn btn-ghost" type="button">下載晶圓圖片 PNG</button>
+            <button id="btn-cert-stl" data-pinch="1" class="btn btn-ghost" type="button">下載 3D 模型 STL</button>
+          </div>
+          <button id="btn-cert-close" data-pinch="1" class="btn-play-again" type="button">
+            🔄 再玩一次
+          </button>
         </div>
 
         <!-- 失敗 -->
@@ -211,7 +245,7 @@
           <h2 class="modal-title modal-title-danger">製程失敗</h2>
           <p id="fail-reason" class="modal-desc"></p>
           <div class="modal-actions">
-            <button id="btn-retry" class="btn btn-danger" type="button">重新開始本關</button>
+            <button id="btn-retry" data-pinch="1" class="btn btn-danger" type="button">重新開始本關</button>
           </div>
         </div>
 

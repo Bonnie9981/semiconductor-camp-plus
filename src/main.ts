@@ -6,23 +6,32 @@ import { StageManager } from './core/StageManager';
 import { WaferState } from './core/WaferState';
 import { Stage1RCA } from './stages/Stage1RCA';
 import { Stage2Deposition } from './stages/Stage2Deposition';
-import { StagePlaceholder } from './stages/StagePlaceholder';
+import { Stage3Litho } from './stages/Stage3Litho';
+import { Stage4Develop } from './stages/Stage4Develop';
+import { Stage5Etch } from './stages/Stage5Etch';
 import type { BaseStage } from './stages/BaseStage';
 import { CrossSection } from './ui/CrossSection';
 import { UIManager } from './ui/UIManager';
 import { VirtualDesk } from './ui/VirtualDesk';
 import { Exporter } from './utils/Exporter';
+import {
+  canvasToPdf,
+  capturePhoto,
+  composeCertificate,
+  makeSerial,
+  type CertificateData,
+} from './utils/Certificate';
 
 /**
  * main.ts —— 程式入口
  * ---------------------------------------------------------------------------
  *   1. 建立各個模組並互相接線
- *   2. 註冊五個製程關卡（第 1 關 RCA 已實作，2~5 關為 Stub）
+ *   2. 註冊五個製程關卡（全部已實作）
  *   3. 把 #stage-view（canvas 群）對齊到 UI 版面中間的鏤空格 #viewport-slot
  *   4. 跑唯一的 rAF 主迴圈：手勢 → 關卡 → 繪製 → UI
  *
  * 關卡順序（依製程實際流程）
- *   1 RCA 清洗 → 2 沉積 → 3 光阻塗布 → 4 顯影 → 5 蝕刻
+ *   1 RCA 清洗 → 2 薄膜沉積 → 3 微影製程 → 4 顯影 → 5 蝕刻
  */
 
 // ─────────────────────────────── DOM 取得 ─────────────────────────────────
@@ -32,7 +41,9 @@ const viewportSlot = requireEl<HTMLDivElement>('viewport-slot');
 const video = requireEl<HTMLVideoElement>('video-element');
 const arCanvas = requireEl<HTMLCanvasElement>('ar-canvas');
 const deskCanvas = requireEl<HTMLCanvasElement>('desk-canvas');
+const handCanvas = requireEl<HTMLCanvasElement>('hand-canvas');
 const arCtx = arCanvas.getContext('2d')!;
+const handCtx = handCanvas.getContext('2d')!;
 
 // ────────────────────────────── 模組建立 ──────────────────────────────────
 
@@ -72,12 +83,17 @@ const ui = new UIManager({
       baseThicknessMm: 1.5,
       patternHeightMm: 1.2,
     }),
+  onExportPDF: () => void downloadCertificatePdf(),
+  onRetakePhoto: () => openCertificate(true),
+  onPlayAgain: () => resetEverything(),
+  onStageAction: () => {
+    if (stages.isCurrentDone()) stages.advance();
+    else handlePrimary();
+  },
   onRetry: () => stages.restartCurrent(),
   onExit: () => {
     if (!window.confirm('要結束目前進度並回到第一關嗎？')) return;
-    desk.clear();
-    wafer.reset();
-    stages.reset();
+    resetEverything();
   },
 });
 
@@ -91,56 +107,14 @@ const camera = new CameraManager({
 });
 
 // ────────────────────────────── 關卡註冊 ──────────────────────────────────
-// 註冊順序 = 關卡順序。要實作第 2 關就把下面的 StagePlaceholder 換成你的類別。
+// 註冊順序 = 關卡順序。新增關卡只需在這裡多 register 一個 BaseStage 子類別。
 
 stages
   .register(new Stage1RCA())
   .register(new Stage2Deposition())
-  .register(
-    new StagePlaceholder({
-      id: 'litho',
-      title: '微影製程',
-      shortTitle: '微影',
-      description: '把光阻均勻塗上晶圓，畫出光罩圖案，選擇正／負光阻，最後對位曝光並烘烤。',
-      hint: '（尚未實作）用手把光阻塗滿晶圓 → 繪製圖案 → 選正／負光阻 → 對準晶圓後曝光。',
-      props: ['光阻機', '光罩（鉻）', '曝光機'],
-      substeps: [
-        { id: 'spread', title: '光阻劑塗抹', desc: '用手把光阻均勻塗抹到晶圓上' },
-        { id: 'draw', title: '圖案設計', desc: '繪製你想刻出的晶片圖案' },
-        { id: 'tone', title: '正負光阻選擇', desc: '選擇曝光後要移除還是保留照到光的區域' },
-        { id: 'expose', title: '曝光與烘烤', desc: '把光罩對準晶圓後曝光，再進行烘烤' },
-      ],
-    }),
-  )
-  .register(
-    new StagePlaceholder({
-      id: 'develop',
-      title: '顯影',
-      shortTitle: '顯影',
-      description: '泡入顯影液溶解光阻，使被曝光的光阻區域被選擇性移除。',
-      hint: '（尚未實作）此關要選出正確的顯影試劑，再觀察顯影反應。',
-      props: ['顯影液'],
-      substeps: [
-        { id: 'reagent', title: '顯影液選擇', desc: '選出能溶解曝光區光阻的試劑' },
-        { id: 'react', title: '顯影反應', desc: '浸泡並觀察圖案在截面圖上顯現' },
-      ],
-    }),
-  )
-  .register(
-    new StagePlaceholder({
-      id: 'etching',
-      title: '蝕刻',
-      shortTitle: '蝕刻',
-      description: '先以氧氣電漿清出裸露面，再用乾式或濕式蝕刻移除材料，最後剝除光阻並清洗。',
-      hint: '（尚未實作）乾式＝高能粒子鉛直轟擊；濕式＝化學藥劑側向蝕刻。',
-      props: ['電漿腔體', '蝕刻槽', '丙酮／NMP'],
-      substeps: [
-        { id: 'descum', title: '氧氣電漿清潔', desc: '掃過晶圓表面，確保目標材料完全裸露' },
-        { id: 'etch', title: '蝕刻選擇', desc: '乾式（鉛直蝕刻）或濕式（側向蝕刻）' },
-        { id: 'strip', title: '去光阻與清洗', desc: '用丙酮／NMP 剝除光阻，再以去離子水清洗' },
-      ],
-    }),
-  );
+  .register(new Stage3Litho())
+  .register(new Stage4Develop())
+  .register(new Stage5Etch());
 
 stages.attachContext({ ui, desk, stages, wafer });
 
@@ -155,16 +129,27 @@ stages.subscribe((event) => {
       break;
     case 'complete':
       ui.syncStages(stages);
-      openClearModal(event.stage);
+      // 全部完成時走證書流程（在 'allComplete' 處理），不開一般的結算視窗
+      if (stages.doneCount < stages.total) openClearModal(event.stage);
       break;
     case 'fail':
       ui.showFail(event.reason);
       break;
     case 'allComplete':
-      // Modal 已在 'complete' 事件中處理，這裡只留給音效 / 成就等副作用
+      openCertificate(true);
       break;
   }
 });
+
+/** 整場重來：清掉圖案、晶圓狀態與證書，關卡回到第一關。 */
+function resetEverything(): void {
+  desk.clear();
+  wafer.reset();
+  lastPhoto = null;
+  serial = null;
+  certificate = null;
+  stages.reset();
+}
 
 function handlePrimary(): void {
   const stage = stages.current;
@@ -172,21 +157,61 @@ function handlePrimary(): void {
   stages.completeCurrent(stage.buildResult());
 }
 
+/**
+ * 單一關卡完成時的結算視窗。
+ * 刻意**不提供任何下載** —— 3D 模型與圖片要等五道製程全部走完、
+ * 在結業證書那一頁一起給，中途下載到的是半成品。
+ */
 function openClearModal(stage: BaseStage): void {
-  const isFinal = stages.doneCount === stages.total;
   const hasPattern = desk.strokeCount > 0;
-
   ui.showSuccess({
-    title: isFinal ? '製程全部完成！' : `${stage.title} 完成！`,
-    description: isFinal
-      ? '恭喜完成整條製程。下方是你的最終晶圓圖案，可下載 PNG 或擠出成 3D 模型。'
-      : hasPattern
-        ? '圖形已送出。你可以先把成品存下來，再繼續下一個製程步驟。'
-        : `${stage.title} 已完成，下一個製程步驟已解鎖。`,
+    title: `${stage.title} 完成！`,
+    description: `${stage.title} 已完成，下一個製程步驟已解鎖。`,
     image: hasPattern ? desk.composeWaferImage(440) : null,
-    continueLabel: isFinal ? '關閉' : '繼續下一步 →',
-    showExports: hasPattern,
+    continueLabel: '繼續下一步 →',
+    showExports: false,
   });
+}
+
+// ─────────────────────────────── 結業證書 ─────────────────────────────────
+
+let certificate: HTMLCanvasElement | null = null;
+
+/** 依目前的製程紀錄排版證書；recapture 為 true 時重新拍一張照片。 */
+function openCertificate(recapture: boolean): void {
+  const date = new Date();
+  const deposition = stages.resultOf('deposition') as { method?: string } | undefined;
+  const litho = stages.resultOf('litho') as { tone?: string } | undefined;
+  const etch = stages.resultOf('etching') as { etchMethod?: string } | undefined;
+
+  const data: CertificateData = {
+    photo: recapture ? capturePhoto(video, camera.isMirrored()) : lastPhoto,
+    wafer: desk.composeWaferImage(720),
+    method: deposition?.method === 'cvd' ? '化學氣相沉積 CVD' : '物理氣相沉積 PVD',
+    tone: litho?.tone === 'negative' ? '負型光阻' : '正型光阻',
+    etch: etch?.etchMethod === 'wet' ? '濕式蝕刻 · 側向' : '乾式蝕刻 · 鉛直',
+    date,
+    serial: serial ?? (serial = makeSerial(date)),
+  };
+  lastPhoto = data.photo;
+
+  certificate = composeCertificate(data);
+  ui.showCertificate(certificate);
+}
+
+let lastPhoto: HTMLCanvasElement | null = null;
+let serial: string | null = null;
+
+async function downloadCertificatePdf(): Promise<void> {
+  if (!certificate) return;
+  const blob = await canvasToPdf(certificate);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `semiconductor-certificate-${serial ?? 'result'}.pdf`;
+  a.click();
+  // 交給瀏覽器抓取後再釋放，立刻 revoke 在 Safari 會下載到空檔
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 // ──────────────────────── 版面同步：canvas ↔ UI 鏤空格 ─────────────────────
@@ -219,6 +244,15 @@ function syncStageView(): void {
   arCanvas.height = Math.round(viewH * dpr);
   arCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+  // 手部圖層疊在所有 UI 之上，但用的是同一組座標，所以跟 #stage-view 對齊即可
+  handCanvas.style.left = `${rect.left}px`;
+  handCanvas.style.top = `${rect.top}px`;
+  handCanvas.style.width = `${rect.width}px`;
+  handCanvas.style.height = `${rect.height}px`;
+  handCanvas.width = Math.round(viewW * dpr);
+  handCanvas.height = Math.round(viewH * dpr);
+  handCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   desk.resize(viewW, viewH, dpr);
   gesture.setCanvasSize(viewW, viewH);
 }
@@ -245,9 +279,11 @@ function loop(now: number): void {
   const snapshot = camera.read();
   const hand = gesture.update(snapshot.landmarks, snapshot.handedness);
 
-  // 1) AR 層：先清空，畫共用的手部骨架
+  // 1) AR 層（道具）與手部層（骨架）各自清空。
+  //    骨架畫在獨立的 #hand-canvas 上，才會蓋在左側互動面板等 HTML 之上。
   arCtx.clearRect(0, 0, viewW, viewH);
-  if (showSkeleton) drawHandSkeleton(arCtx, hand);
+  handCtx.clearRect(0, 0, viewW, viewH);
+  if (showSkeleton) drawHandSkeleton(handCtx, hand);
 
   // 2) 桌面層：桌子 + Chuck + 晶圓 + 已畫的圖形
   desk.renderBase();
@@ -268,23 +304,34 @@ function loop(now: number): void {
     });
   }
 
-  // 4) 捏合當滑鼠：把捏合點換算成視窗座標，讓玩家不碰滑鼠也能操作左側面板。
-  //    Modal 開啟時停用，否則結算畫面會被手勢誤觸。
-  if (!ui.isModalOpen()) {
-    ui.updatePinchPointer(
-      viewLeft + hand.pinchPoint.x,
-      viewTop + hand.pinchPoint.y,
-      hand.present,
-      hand.justPinched,
-    );
-  } else {
-    ui.clearPinchHover();
-  }
+  // 4) 捏合當滑鼠：把捏合點換算成視窗座標。
+  //    Modal 開啟時也要保持啟用 —— 結算與證書畫面上的按鈕同樣得能用手按，
+  //    否則玩到一半就必須換回滑鼠。關卡互動本來就已經在 Modal 期間暫停了。
+  ui.updatePinchPointer(
+    viewLeft + hand.pinchPoint.x,
+    viewTop + hand.pinchPoint.y,
+    hand.present,
+    hand.justPinched,
+  );
 
   // 5) UI：截面圖 + 右上角手勢參考 + 主要按鈕可用狀態
   if (stages.current.usesCrossSection) crossSection.render(wafer, elapsed);
   ui.renderGestureRef(hand);
-  ui.setPrimaryEnabled(!stages.isCurrentDone() && stages.current.canComplete());
+
+  const done = stages.isCurrentDone();
+  const canComplete = stages.current.canComplete();
+  ui.setPrimaryEnabled(!done && canComplete);
+  ui.setStageAction(
+    ui.isModalOpen()
+      ? null
+      : done
+        ? stages.hasNext()
+          ? '下一步'
+          : null
+        : canComplete
+          ? stages.current.primaryLabel
+          : null,
+  );
 
   requestAnimationFrame(loop);
 }

@@ -228,9 +228,10 @@ export function drawHandSkeleton(
 
   // 連線
   ctx.strokeStyle = hand.pinching ? active : color;
-  ctx.lineWidth = hand.pinching ? 3.5 : 2.5;
-  ctx.shadowColor = hand.pinching ? active : 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur = hand.pinching ? 10 : 4;
+  // 骨架畫在最上層，要夠粗才不會被底下的機台紋理吃掉
+  ctx.lineWidth = hand.pinching ? 5 : 3.5;
+  ctx.shadowColor = hand.pinching ? active : 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = hand.pinching ? 14 : 7;
   ctx.beginPath();
   for (const [a, b] of HAND_CONNECTIONS) {
     ctx.moveTo(lm[a].x, lm[a].y);
@@ -240,12 +241,12 @@ export function drawHandSkeleton(
 
   // 關節點
   ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(10, 22, 26, 0.85)';
+  ctx.fillStyle = 'rgba(10, 22, 26, 0.9)';
   ctx.strokeStyle = hand.pinching ? active : color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   for (let i = 0; i < lm.length; i++) {
     const isTip = i === THUMB_TIP || i === INDEX_TIP;
-    const r = isTip ? 6 : 3.5;
+    const r = isTip ? 9 : 5;
     ctx.beginPath();
     ctx.arc(lm[i].x, lm[i].y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -255,14 +256,45 @@ export function drawHandSkeleton(
   // 拇指尖 ↔ 食指尖的「捏合距離」輔助線
   const t = lm[THUMB_TIP];
   const idx = lm[INDEX_TIP];
-  ctx.setLineDash(hand.pinching ? [] : [4, 5]);
-  ctx.strokeStyle = hand.pinching ? active : 'rgba(150, 235, 232, 0.4)';
-  ctx.lineWidth = hand.pinching ? 3 : 1.5;
+  ctx.setLineDash(hand.pinching ? [] : [5, 6]);
+  ctx.strokeStyle = hand.pinching ? active : 'rgba(150, 235, 232, 0.45)';
+  ctx.lineWidth = hand.pinching ? 4 : 2;
   ctx.beginPath();
   ctx.moveTo(t.x, t.y);
   ctx.lineTo(idx.x, idx.y);
   ctx.stroke();
   ctx.setLineDash([]);
+
+  // 捏合游標：明確標出「我現在指著哪裡」。
+  // 所有命中判定用的都是 pinchPoint，所以這一圈就是玩家的準心；
+  // 沒有它，對準機台上的按鈕與旋鈕只能靠猜。
+  const p = hand.pinchPoint;
+  ctx.strokeStyle = hand.pinching ? active : 'rgba(180, 240, 238, 0.7)';
+  ctx.lineWidth = hand.pinching ? 3.5 : 2;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, hand.pinching ? 16 : 11, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  const arm = hand.pinching ? 9 : 6;
+  const gap = hand.pinching ? 20 : 15;
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ]) {
+    ctx.moveTo(p.x + dx * gap, p.y + dy * gap);
+    ctx.lineTo(p.x + dx * (gap + arm), p.y + dy * (gap + arm));
+  }
+  ctx.stroke();
+
+  if (hand.pinching) {
+    ctx.fillStyle = active;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
