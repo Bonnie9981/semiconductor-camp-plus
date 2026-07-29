@@ -1,7 +1,7 @@
 import { HAND_CONNECTIONS, INDEX_TIP, THUMB_TIP } from '../core/GestureDetector';
 import type { CameraStatus, FacingMode } from '../core/CameraManager';
 import type { StageManager } from '../core/StageManager';
-import type { HandFrame, InstructionStep } from '../core/types';
+import type { HandFrame, InstructionStep, PanelSpec, SubStep } from '../core/types';
 
 /**
  * UIManager —— 所有 HTML UI（#ui-layer, z-index:10）的唯一操作入口。
@@ -84,6 +84,12 @@ export class UIManager {
   private readonly statusText = el<HTMLElement>('status-text');
   private readonly statusSub = el<HTMLElement>('status-sub');
 
+  // 關卡內互動
+  private readonly substepStrip = el<HTMLElement>('substep-strip');
+  private readonly stagePanel = el<HTMLElement>('stage-panel');
+  private readonly sectionCard = el<HTMLElement>('hud-cross-section');
+  private readonly sectionCanvas = el<HTMLCanvasElement>('cross-section-canvas');
+
   // Footer
   private readonly stageFlow = el<HTMLElement>('stage-flow');
 
@@ -116,6 +122,11 @@ export class UIManager {
   /** 左下角「已繪製圖形」預覽框，交給 VirtualDesk 直接畫。 */
   getPreviewCanvas(): HTMLCanvasElement {
     return this.previewCanvas;
+  }
+
+  /** 截面圖 HUD 的 canvas，交給 CrossSection 直接畫。 */
+  getSectionCanvas(): HTMLCanvasElement {
+    return this.sectionCanvas;
   }
 
   // ─────────────────────────────── 事件綁定 ────────────────────────────────
@@ -259,6 +270,7 @@ export class UIManager {
     this.setText(this.statusSub, `已完成 ${stages.doneCount} / ${total} 步驟`);
 
     this.renderInstructions(stage.instructions);
+    this.renderSubsteps(stage.substeps, stage.subIndex);
     this.setNextEnabled(stages.isCurrentDone() && stages.hasNext());
 
     // 只有需要畫筆的關卡才顯示下方工具列
@@ -266,6 +278,51 @@ export class UIManager {
     const preview = this.previewCanvas.closest<HTMLElement>('.hud-card');
     tools?.classList.toggle('hidden', !stage.usesPenTools);
     preview?.classList.toggle('hidden', !stage.usesPenTools);
+    this.sectionCard.classList.toggle('hidden', !stage.usesCrossSection);
+  }
+
+  /**
+   * 關卡內子步驟進度列。已完成的打勾、目前這步高亮、還沒到的變灰。
+   * subIndex 等於 substeps.length 代表全部做完（整列都會是打勾狀態）。
+   */
+  renderSubsteps(substeps: readonly SubStep[], subIndex: number): void {
+    if (substeps.length === 0) {
+      this.substepStrip.classList.add('hidden');
+      this.substepStrip.replaceChildren();
+      this.cache.delete('substeps');
+      return;
+    }
+
+    const key = `${substeps.map((s) => s.id).join('|')}#${subIndex}`;
+    if (this.cache.get('substeps') === key) return;
+    this.cache.set('substeps', key);
+
+    const nodes: HTMLElement[] = [];
+    substeps.forEach((step, i) => {
+      if (i > 0) {
+        const sep = document.createElement('li');
+        sep.className = 'substep-sep';
+        nodes.push(sep);
+      }
+      const li = document.createElement('li');
+      const done = i < subIndex;
+      const active = i === subIndex;
+      li.className = `substep ${active ? 'is-active' : ''} ${done ? 'is-done' : ''}`;
+      li.title = step.desc;
+
+      const num = document.createElement('span');
+      num.className = 'substep-num';
+      num.textContent = done ? '✓' : String(i + 1);
+
+      const label = document.createElement('span');
+      label.textContent = step.title;
+
+      li.append(num, label);
+      nodes.push(li);
+    });
+
+    this.substepStrip.replaceChildren(...nodes);
+    this.substepStrip.classList.remove('hidden');
   }
 
   private renderInstructions(steps: InstructionStep[]): void {
@@ -361,6 +418,270 @@ export class UIManager {
             ? '鏡頭無法使用'
             : '系統待命中',
     );
+  }
+
+  // ───────────────────────────── 關卡互動面板 ──────────────────────────────
+
+  /**
+   * 依關卡給的 PanelSpec 渲染左側互動面板；傳 null 收起面板。
+   *
+   * 關卡可以每一幀都呼叫這個方法（例如 confirmEnabled 會隨狀態變動），
+   * 但只有「簽章」真的改變時才會重建 DOM——否則每秒 60 次的 replaceChildren
+   * 會讓按鈕永遠無法被點到（每次重建都會打斷 click 事件）。
+   * 回呼則每次都更新到最新的 closure，所以不會抓到過期的狀態。
+   */
+  setPanel(spec: PanelSpec | null): void {
+    if (!spec) {
+      if (this.cache.get('panel') === '') return;
+      this.cache.set('panel', '');
+      this.stagePanel.classList.add('hidden');
+      this.stagePanel.replaceChildren();
+      this.panelSpec = null;
+      return;
+    }
+
+    this.panelSpec = spec;
+    const key = panelKey(spec);
+    if (this.cache.get('panel') === key) return;
+    this.cache.set('panel', key);
+    // 舊按鈕即將被丟棄，先把捏合高亮的參考斷開
+    this.clearPinchHover();
+
+    const nodes: HTMLElement[] = [];
+
+    const title = document.createElement('div');
+    title.className = 'sp-title';
+    title.textContent = spec.title;
+    nodes.push(title);
+
+    if (spec.note) {
+      const note = document.createElement('div');
+      note.className = 'sp-note';
+      note.textContent = spec.note;
+      nodes.push(note);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'sp-body';
+
+    if (spec.kind === 'choice') {
+      const atMax = spec.selected.length >= spec.max;
+      for (const opt of spec.options) {
+        const on = spec.selected.includes(opt.id);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `sp-option ${on ? 'is-on' : ''}`;
+        btn.disabled = !on && atMax;
+        btn.dataset.pinch = '1';
+
+        const dot = document.createElement('span');
+        dot.className = 'sp-dot';
+        dot.style.background = opt.color ?? 'var(--surface-4)';
+
+        const labels = document.createElement('span');
+        labels.className = 'sp-labels';
+        const main = document.createElement('span');
+        main.textContent = opt.glyph ? `${opt.glyph} ${opt.label}` : opt.label;
+        labels.append(main);
+        if (opt.sub) {
+          const sub = document.createElement('span');
+          sub.className = 'sp-sub';
+          sub.textContent = opt.sub;
+          labels.append(sub);
+        }
+
+        btn.append(dot, labels);
+        if (on) {
+          const check = document.createElement('span');
+          check.className = 'sp-check';
+          check.textContent = '✓';
+          btn.append(check);
+        }
+
+        // 回呼從 this.panelSpec 讀，永遠是最新的那份 spec
+        btn.addEventListener('click', () => {
+          const cur = this.panelSpec;
+          if (cur?.kind === 'choice') cur.onToggle(opt.id);
+        });
+        body.append(btn);
+      }
+    } else if (spec.kind === 'mix') {
+      for (const row of spec.rows) {
+        const line = document.createElement('div');
+        line.className = 'sp-mix-row';
+
+        const dot = document.createElement('span');
+        dot.className = 'sp-dot';
+        dot.style.background = row.color;
+
+        const labels = document.createElement('span');
+        labels.className = 'sp-labels';
+        const main = document.createElement('span');
+        main.textContent = row.label;
+        labels.append(main);
+        if (row.sub) {
+          const sub = document.createElement('span');
+          sub.className = 'sp-sub';
+          sub.textContent = row.sub;
+          labels.append(sub);
+        }
+
+        const parts = document.createElement('span');
+        parts.className = 'sp-parts';
+        const minus = stepButton('−', () => {
+          const cur = this.panelSpec;
+          if (cur?.kind === 'mix') cur.onAdjust(row.id, -1);
+        });
+        const count = document.createElement('span');
+        count.className = 'sp-count';
+        count.textContent = String(row.parts);
+        const plus = stepButton('＋', () => {
+          const cur = this.panelSpec;
+          if (cur?.kind === 'mix') cur.onAdjust(row.id, +1);
+        });
+        parts.append(minus, count, plus);
+
+        line.append(dot, labels, parts);
+        body.append(line);
+      }
+
+      const ratio = document.createElement('div');
+      ratio.className = 'sp-ratio';
+      const total = spec.rows.reduce((s, r) => s + r.parts, 0);
+      ratio.innerHTML =
+        total === 0
+          ? '目前比例 <b>—</b>'
+          : `目前比例 <b>${spec.rows.map((r) => r.parts).join(' : ')}</b>　總量 ${total} 份`;
+      body.append(ratio);
+    } else if (spec.kind === 'pour') {
+      if (spec.rows.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'sp-empty';
+        empty.textContent = '調配杯是空的 — 捏起藥瓶倒進去';
+        body.append(empty);
+      } else {
+        for (const row of spec.rows) {
+          const line = document.createElement('div');
+          line.className = 'sp-mix-row';
+
+          const dot = document.createElement('span');
+          dot.className = 'sp-dot';
+          dot.style.background = row.color;
+
+          const labels = document.createElement('span');
+          labels.className = 'sp-labels';
+          const main = document.createElement('span');
+          main.textContent = row.label;
+          labels.append(main);
+          if (row.sub) {
+            const sub = document.createElement('span');
+            sub.className = 'sp-sub';
+            sub.textContent = row.sub;
+            labels.append(sub);
+          }
+
+          const parts = document.createElement('span');
+          parts.className = 'sp-count sp-count-right';
+          parts.textContent = `${row.parts} 份`;
+
+          line.append(dot, labels, parts);
+          body.append(line);
+        }
+
+        const ratio = document.createElement('div');
+        ratio.className = 'sp-ratio';
+        const total = spec.rows.reduce((s, r) => s + r.parts, 0);
+        ratio.innerHTML = `杯中比例 <b>${spec.rows
+          .map((r) => r.parts)
+          .join(' : ')}</b>　總量 ${total} 份`;
+        body.append(ratio);
+      }
+    }
+
+    if (spec.kind !== 'action') nodes.push(body);
+
+    if (spec.error) {
+      const err = document.createElement('div');
+      err.className = 'sp-error';
+      err.textContent = spec.error;
+      nodes.push(err);
+    }
+
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.className = 'btn btn-primary sp-confirm';
+    confirm.dataset.pinch = '1';
+    if (spec.kind === 'action') {
+      confirm.textContent = spec.label;
+      confirm.disabled = !spec.enabled;
+      confirm.addEventListener('click', () => {
+        const cur = this.panelSpec;
+        if (cur?.kind === 'action' && cur.enabled) cur.onClick();
+      });
+    } else {
+      confirm.textContent = spec.confirmLabel;
+      confirm.disabled = !spec.confirmEnabled;
+      confirm.addEventListener('click', () => {
+        const cur = this.panelSpec;
+        if (cur && cur.kind !== 'action' && cur.confirmEnabled) cur.onConfirm();
+      });
+    }
+    nodes.push(confirm);
+
+    // 調配杯多一顆「倒掉」；答錯時它會是唯一能按的按鈕
+    if (spec.kind === 'pour') {
+      const dump = document.createElement('button');
+      dump.type = 'button';
+      dump.className = 'btn btn-danger sp-confirm';
+      dump.dataset.pinch = '1';
+      dump.textContent = spec.dumpLabel;
+      dump.disabled = !spec.dumpEnabled;
+      dump.addEventListener('click', () => {
+        const cur = this.panelSpec;
+        if (cur?.kind === 'pour' && cur.dumpEnabled) cur.onDump();
+      });
+      nodes.push(dump);
+    }
+
+    this.stagePanel.replaceChildren(...nodes);
+    this.stagePanel.classList.remove('hidden');
+  }
+
+  private panelSpec: PanelSpec | null = null;
+
+  // ────────────────────────── 捏合當滑鼠用（AR 點擊） ───────────────────────
+
+  /** 上一幀捏合游標懸停到的元素，用來在移開時清掉高亮。 */
+  private pinchHover: HTMLElement | null = null;
+
+  /**
+   * 把捏合點當成滑鼠游標：懸停在 [data-pinch] 按鈕上會亮起來，捏合的瞬間
+   * 觸發 click。這樣整個遊戲不用碰滑鼠也能玩完，跟 AR 的定位一致。
+   *
+   * @param pageX/pageY 視窗座標（main.ts 已把 canvas 座標加上 #stage-view 的位移）
+   * @param justPinched 這一幀「剛剛捏下去」
+   */
+  updatePinchPointer(pageX: number, pageY: number, present: boolean, justPinched: boolean): void {
+    let target: HTMLElement | null = null;
+    if (present) {
+      const hit = document.elementFromPoint(pageX, pageY);
+      target = (hit as HTMLElement | null)?.closest<HTMLElement>('[data-pinch]') ?? null;
+      if (target?.matches(':disabled')) target = null;
+    }
+
+    if (target !== this.pinchHover) {
+      this.pinchHover?.classList.remove('is-pinch-hover');
+      target?.classList.add('is-pinch-hover');
+      this.pinchHover = target;
+    }
+
+    if (justPinched && target) target.click();
+  }
+
+  /** 面板被重建時舊的 hover 元素已不在 DOM，清掉參考避免記憶體滯留。 */
+  clearPinchHover(): void {
+    this.pinchHover?.classList.remove('is-pinch-hover');
+    this.pinchHover = null;
   }
 
   // ────────────────────── 右上角「手勢參考」小視窗 ─────────────────────────
@@ -474,4 +795,38 @@ function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
   if (!node) throw new Error(`UIManager: 找不到 #${id}（index.html 是否被改動？）`);
   return node as T;
+}
+
+function stepButton(glyph: string, onClick: () => void): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sp-step';
+  btn.textContent = glyph;
+  btn.dataset.pinch = '1';
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+/**
+ * 面板的重建簽章。只要玩家看得見的東西沒變就不重建 DOM
+ * （見 UIManager.setPanel 的說明）。
+ */
+function panelKey(spec: PanelSpec): string {
+  const head = `${spec.kind}|${spec.title}|${spec.note ?? ''}|${spec.error ?? ''}`;
+  if (spec.kind === 'choice') {
+    return `${head}|${spec.options.map((o) => o.id).join(',')}|${[...spec.selected]
+      .sort()
+      .join(',')}|${spec.max}|${spec.confirmLabel}|${spec.confirmEnabled}`;
+  }
+  if (spec.kind === 'mix') {
+    return `${head}|${spec.rows.map((r) => `${r.id}:${r.parts}`).join(',')}|${
+      spec.confirmLabel
+    }|${spec.confirmEnabled}`;
+  }
+  if (spec.kind === 'pour') {
+    return `${head}|${spec.rows.map((r) => `${r.id}:${r.parts}`).join(',')}|${
+      spec.confirmLabel
+    }|${spec.confirmEnabled}|${spec.dumpLabel}|${spec.dumpEnabled}`;
+  }
+  return `${head}|${spec.label}|${spec.enabled}`;
 }

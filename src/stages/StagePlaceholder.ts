@@ -1,4 +1,10 @@
-import type { InstructionStep, StageContext, StageFrame, StageResult } from '../core/types';
+import type {
+  InstructionStep,
+  StageContext,
+  StageFrame,
+  StageResult,
+  SubStep,
+} from '../core/types';
 import { BaseStage } from './BaseStage';
 
 /**
@@ -22,6 +28,11 @@ export interface PlaceholderConfig {
   /** 未來這一關預計要用的道具，只作為畫面提示。 */
   props?: string[];
   instructions?: InstructionStep[];
+  /**
+   * 這一關規劃中的子步驟。即使還沒實作也先填上，玩家就能從畫面上方的
+   * 子步驟列看出整關會做哪些事，實作時也不用再重新設計流程。
+   */
+  substeps?: SubStep[];
 }
 
 export class StagePlaceholder extends BaseStage {
@@ -31,6 +42,7 @@ export class StagePlaceholder extends BaseStage {
   readonly description: string;
   readonly hint: string;
   readonly instructions: InstructionStep[];
+  readonly substeps: readonly SubStep[];
   readonly primaryLabel = '模擬完成（Demo）';
   readonly usesPenTools = false;
 
@@ -44,6 +56,7 @@ export class StagePlaceholder extends BaseStage {
     this.description = config.description;
     this.hint = config.hint;
     this.props = config.props ?? [];
+    this.substeps = config.substeps ?? [];
     this.instructions = config.instructions ?? [
       {
         glyph: '🚧',
@@ -67,6 +80,7 @@ export class StagePlaceholder extends BaseStage {
     super.onEnter(ctx);
     // 尚未實作的關卡不使用晶圓，桌面留空
     ctx.desk.setWaferVisible(false);
+    ctx.ui.setPanel(null);
   }
 
   override onExit(): void {

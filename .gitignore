@@ -60,3 +60,7 @@ coverage/
 # Keep uploads out of git if needed
 # =========================
 # public/uploads/
+# =========================
+# Claude Code local config
+# =========================
+.claude/

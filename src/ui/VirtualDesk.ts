@@ -86,8 +86,11 @@ export class VirtualDesk {
   /** 畫筆粗細，單位是螢幕 CSS px（畫進 Pattern 時會換算）。 */
   private penWidth = 18;
 
-  /** false 時只畫桌面，不畫晶圓與圖形（給還沒實作的 2~6 關使用）。 */
+  /** false 時只畫桌面，不畫晶圓與圖形（自行繪製場景的關卡設 false）。 */
   private waferVisible = true;
+
+  /** 桌沿標籤；null 代表沿用預設。 */
+  private deskLabel: string | null = null;
 
   constructor(canvas: HTMLCanvasElement, preview: HTMLCanvasElement | null = null) {
     this.canvas = canvas;
@@ -148,8 +151,26 @@ export class VirtualDesk {
     return this.geo;
   }
 
+  /** 視窗尺寸（CSS px），關卡佈置自己的場景時需要。 */
+  get size(): { width: number; height: number } {
+    return { width: this.width, height: this.height };
+  }
+
+  /**
+   * 桌面層的 2D context。自行繪製場景的關卡（燒杯、乾燥機、腔體…）
+   * 在 renderBase() 之後拿它來畫，畫出來的東西會蓋在桌面上、位於 UI 之下。
+   */
+  get context(): CanvasRenderingContext2D {
+    return this.ctx;
+  }
+
   setWaferVisible(visible: boolean): void {
     this.waferVisible = visible;
+  }
+
+  /** 桌面標籤文字，關卡可覆寫成自己的機台名稱。 */
+  setDeskLabel(label: string | null): void {
+    this.deskLabel = label;
   }
 
   // ─────────────────────────────── 畫筆設定 ────────────────────────────────
@@ -319,13 +340,13 @@ export class VirtualDesk {
     ctx.restore();
 
     if (!this.waferVisible) {
-      this.drawDeskLabel(ctx, '此步驟尚未使用晶圓桌面');
+      this.drawDeskLabel(ctx, this.deskLabel ?? '此步驟由關卡自行佈置場景');
       return;
     }
 
     this.drawChuck(ctx);
     this.drawWafer(ctx);
-    this.drawDeskLabel(ctx, 'WAFER · 200mm  |  CHUCK');
+    this.drawDeskLabel(ctx, this.deskLabel ?? 'WAFER · 200mm  |  CHUCK');
   }
 
   /** 關卡在 renderBase() 之後呼叫，畫出筆尖游標（在最上層 canvas 才不會被桌面蓋住）。 */

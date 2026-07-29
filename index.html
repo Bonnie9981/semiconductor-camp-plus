@@ -107,14 +107,31 @@
               </div>
             </div>
 
+            <!-- 關卡內子步驟進度列（例如 RCA 的 去微粒→去氧化層→去離子→乾燥） -->
+            <ol id="substep-strip" class="substep-strip hidden"></ol>
+
+            <!--
+              關卡互動面板：選溶液 / 調配比 / 單一動作按鈕。
+              由 UIManager.setPanel(PanelSpec) 依關卡描述渲染，關卡本身不碰 DOM。
+              絕對定位在畫面左側，把中間與右側讓給燒杯／乾燥機等場景動畫。
+            -->
+            <div id="stage-panel" class="stage-panel hidden"></div>
+
             <!-- 畫面中間：AR 狀態提示 -->
             <div id="ar-hint" class="ar-hint">🖐️ 張開手掌，讓系統看見你的手</div>
 
-            <!-- 下方虛擬桌面上的 HUD：左＝已繪製圖形，右＝畫筆顏色 / 清除 -->
+            <!-- 下方虛擬桌面上的 HUD：左＝截面圖 / 已繪製圖形，右＝畫筆顏色 -->
             <div class="vp-bottom">
-              <div class="hud-card">
-                <div class="hud-head mono">已繪製圖形</div>
-                <canvas id="pattern-preview" class="preview-canvas" width="96" height="96"></canvas>
+              <div class="vp-bottom-left">
+                <div class="hud-card hud-card-section hidden" id="hud-cross-section">
+                  <div class="hud-head mono">晶圓截面 · CROSS SECTION</div>
+                  <canvas id="cross-section-canvas" class="section-canvas" width="216" height="128"></canvas>
+                </div>
+
+                <div class="hud-card">
+                  <div class="hud-head mono">已繪製圖形</div>
+                  <canvas id="pattern-preview" class="preview-canvas" width="96" height="96"></canvas>
+                </div>
               </div>
 
               <div class="hud-card hud-card-tools">

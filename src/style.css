@@ -228,6 +228,7 @@ body {
 .passthrough button,
 .passthrough input,
 .passthrough .hud-card,
+.passthrough .stage-panel,
 .passthrough .gesture-ref {
   pointer-events: auto;
 }
@@ -968,6 +969,269 @@ body {
   accent-color: oklch(0.75 0.14 190);
 }
 
+/* ==========================================================================
+   關卡內子步驟進度列
+   絕對定位在 vp-top 下方，右邊預留 190px 給「手勢參考」小視窗。
+   ========================================================================== */
+.substep-strip {
+  position: absolute;
+  top: 58px;
+  left: 16px;
+  right: 200px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  list-style: none;
+  pointer-events: none;
+}
+.substep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  background: oklch(0.16 0.015 250 / 0.82);
+  border: 1px solid oklch(0.35 0.02 250 / 0.9);
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  color: var(--text-4);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.substep-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: oklch(0.3 0.015 250);
+  color: var(--text-3);
+}
+.substep.is-active {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  background: oklch(0.24 0.06 190 / 0.85);
+}
+.substep.is-active .substep-num {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.substep.is-done {
+  color: var(--ok);
+  border-color: oklch(0.5 0.12 145 / 0.7);
+}
+.substep.is-done .substep-num {
+  background: oklch(0.4 0.12 145);
+  color: oklch(0.95 0.02 145);
+}
+.substep-sep {
+  width: 10px;
+  height: 1px;
+  background: oklch(0.4 0.02 250);
+  flex: none;
+}
+
+/* ==========================================================================
+   關卡互動面板（選溶液 / 調配比 / 動作按鈕）
+   ========================================================================== */
+.stage-panel {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 300px;
+  max-height: 66%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-xl);
+  background: oklch(0.16 0.015 250 / 0.92);
+  border: 1px solid oklch(0.4 0.05 190 / 0.5);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  animation: fade-up 0.22s ease-out;
+  overflow: hidden;
+}
+.sp-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.sp-note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+  /* 關卡的說明會用 \n 分行（例如「說明」與「目標配方」兩段） */
+  white-space: pre-line;
+}
+.sp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.sp-error {
+  font-size: 12px;
+  color: var(--danger-2);
+  background: oklch(0.25 0.08 25 / 0.4);
+  border: 1px solid var(--danger-line);
+  border-radius: var(--r-sm);
+  padding: 6px 9px;
+}
+
+/* ── 選擇題 ── */
+.sp-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid oklch(0.32 0.015 250);
+  background: oklch(0.2 0.012 250 / 0.9);
+  color: var(--text-2);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sp-option:hover:not(:disabled),
+.sp-option.is-pinch-hover:not(:disabled) {
+  border-color: var(--accent-dim);
+  background: oklch(0.24 0.03 190 / 0.9);
+}
+.sp-option.is-on {
+  border-color: var(--accent);
+  background: oklch(0.26 0.06 190 / 0.9);
+  color: var(--accent-bright);
+}
+.sp-option:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.sp-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.sp-labels {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sp-sub {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-4);
+}
+.sp-check {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--accent-bright);
+}
+
+/* ── 配比 ── */
+.sp-mix-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  background: oklch(0.2 0.012 250 / 0.9);
+  border: 1px solid oklch(0.3 0.015 250);
+}
+.sp-parts {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sp-step {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  border: 1px solid oklch(0.4 0.02 250);
+  background: oklch(0.26 0.015 250);
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.12s;
+}
+.sp-step:hover,
+.sp-step.is-pinch-hover {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.sp-count {
+  font-family: var(--mono);
+  font-size: 14px;
+  min-width: 20px;
+  text-align: center;
+  color: var(--text);
+}
+.sp-ratio {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 5px 0;
+  border-top: 1px solid oklch(0.28 0.015 250);
+}
+.sp-ratio b {
+  color: var(--accent-bright);
+}
+.sp-count-right {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent-bright);
+}
+.sp-empty {
+  font-size: 12.5px;
+  color: var(--text-4);
+  text-align: center;
+  padding: 14px 0;
+  border: 1px dashed oklch(0.35 0.02 250);
+  border-radius: var(--r-md);
+}
+
+.sp-confirm {
+  width: 100%;
+}
+
+/* 捏合游標懸停在按鈕上時的高亮（滑鼠 hover 的手勢版） */
+.is-pinch-hover {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── 截面圖 HUD ── */
+.hud-card-section {
+  padding: 8px 10px 9px;
+}
+.section-canvas {
+  display: block;
+  border-radius: var(--r-sm);
+  background: #0d1216;
+}
+.vp-bottom-left {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
 /* ─────────────────────── 小螢幕：壓縮側欄寬度 ─────────────────────────── */
 @media (max-width: 1180px) {
   :root {
@@ -980,5 +1244,12 @@ body {
   }
   .progress-block {
     min-width: 160px;
+  }
+  .stage-panel {
+    width: 258px;
+    padding: 11px;
+  }
+  .substep-strip {
+    top: 52px;
   }
 }

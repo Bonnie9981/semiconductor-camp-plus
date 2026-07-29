@@ -3,9 +3,11 @@ import './style.css';
 import { CameraManager } from './core/CameraManager';
 import { GestureDetector, drawHandSkeleton } from './core/GestureDetector';
 import { StageManager } from './core/StageManager';
-import { Stage1DrawPattern } from './stages/Stage1DrawPattern';
+import { WaferState } from './core/WaferState';
+import { Stage1RCA } from './stages/Stage1RCA';
 import { StagePlaceholder } from './stages/StagePlaceholder';
 import type { BaseStage } from './stages/BaseStage';
+import { CrossSection } from './ui/CrossSection';
 import { UIManager } from './ui/UIManager';
 import { VirtualDesk } from './ui/VirtualDesk';
 import { Exporter } from './utils/Exporter';
@@ -14,9 +16,12 @@ import { Exporter } from './utils/Exporter';
  * main.ts —— 程式入口
  * ---------------------------------------------------------------------------
  *   1. 建立各個模組並互相接線
- *   2. 註冊六個關卡（第 1 關已實作，2~6 關為 Stub）
+ *   2. 註冊五個製程關卡（第 1 關 RCA 已實作，2~5 關為 Stub）
  *   3. 把 #stage-view（canvas 群）對齊到 UI 版面中間的鏤空格 #viewport-slot
  *   4. 跑唯一的 rAF 主迴圈：手勢 → 關卡 → 繪製 → UI
+ *
+ * 關卡順序（依製程實際流程）
+ *   1 RCA 清洗 → 2 沉積 → 3 光阻塗布 → 4 顯影 → 5 蝕刻
  */
 
 // ─────────────────────────────── DOM 取得 ─────────────────────────────────
@@ -32,6 +37,8 @@ const arCtx = arCanvas.getContext('2d')!;
 
 const stages = new StageManager();
 const gesture = new GestureDetector({ pinchOn: 0.05 });
+/** 整條製程共用的同一片晶圓：每一關都在改它的層堆疊與污染狀態。 */
+const wafer = new WaferState();
 
 const ui = new UIManager({
   onSelectStage: (index) => stages.goTo(index),
@@ -68,11 +75,13 @@ const ui = new UIManager({
   onExit: () => {
     if (!window.confirm('要結束目前進度並回到第一關嗎？')) return;
     desk.clear();
+    wafer.reset();
     stages.reset();
   },
 });
 
 const desk = new VirtualDesk(deskCanvas, ui.getPreviewCanvas());
+const crossSection = new CrossSection(ui.getSectionCanvas());
 
 const camera = new CameraManager({
   video,
@@ -84,25 +93,46 @@ const camera = new CameraManager({
 // 註冊順序 = 關卡順序。要實作第 2 關就把下面的 StagePlaceholder 換成你的類別。
 
 stages
-  .register(new Stage1DrawPattern())
+  .register(new Stage1RCA())
   .register(
     new StagePlaceholder({
-      id: 'coating',
-      title: '塗佈光阻',
-      shortTitle: '光阻塗佈',
-      description: '抓取燒杯把光阻倒到晶圓上，再用旋轉塗佈（spin coating）鋪平。',
-      hint: '（尚未實作）此關預計以 Pinch 抓取燒杯，傾斜手腕即可倒出光阻。',
-      props: ['燒杯', '旋轉塗佈機'],
+      id: 'deposition',
+      title: '沉積',
+      shortTitle: '沉積',
+      description: '選擇物理氣相沉積（e-gun 鍍膜）或化學氣相沉積（PECVD），在晶圓上長出薄膜。',
+      hint: '（尚未實作）PVD 用電子束打靶材、氣化後直線下落凝結；CVD 通入氣體後以電漿促進反應長出氧化層。',
+      props: ['電子槍', '靶材', 'PECVD 腔體'],
+      substeps: [
+        { id: 'method', title: '選擇製程', desc: '物理氣相沉積（PVD）或化學氣相沉積（CVD）' },
+        { id: 'deposit', title: '沉積薄膜', desc: '粒子運動與鍍膜動畫' },
+        { id: 'metal', title: '鍍金屬層', desc: '走 CVD 路線時，需在氧化層上再鍍一層金屬' },
+      ],
     }),
   )
   .register(
     new StagePlaceholder({
-      id: 'exposure',
-      title: '曝光顯影',
-      shortTitle: '曝光顯影',
-      description: '把第一關畫好的光罩對準晶圓，曝光後再顯影出圖形。',
-      hint: '（尚未實作）此關預計以雙手對位光罩，並在此導入正／負光阻切換。',
-      props: ['光罩', '曝光機'],
+      id: 'coating',
+      title: '光阻塗布',
+      shortTitle: '光阻塗布',
+      description: '把光阻均勻塗上晶圓，畫出光罩圖案，選擇正／負光阻，最後對位曝光。',
+      hint: '（尚未實作）用手把光阻塗滿晶圓 → 繪製圖案 → 選正／負光阻 → 對準晶圓後曝光。',
+      props: ['光阻機', '光罩（鉻）', '曝光機'],
+      substeps: [
+        { id: 'spread', title: '塗佈光阻', desc: '用手把光阻均勻塗抹到晶圓上' },
+        { id: 'draw', title: '圖案設計', desc: '繪製你想刻出的晶片圖案' },
+        { id: 'tone', title: '正負光阻', desc: '選擇曝光後要保留還是移除照到光的區域' },
+        { id: 'expose', title: '曝光', desc: '把光罩對準晶圓後按下曝光' },
+      ],
+    }),
+  )
+  .register(
+    new StagePlaceholder({
+      id: 'develop',
+      title: '顯影',
+      shortTitle: '顯影',
+      description: '泡入顯影液溶解光阻，使被曝光的區域被選擇性移除。',
+      hint: '（尚未實作）此關要選出正確的顯影試劑。',
+      props: ['顯影液'],
     }),
   )
   .register(
@@ -110,33 +140,18 @@ stages
       id: 'etching',
       title: '蝕刻',
       shortTitle: '蝕刻',
-      description: '以蝕刻液或電漿把沒有被光阻保護的區域移除。',
-      hint: '（尚未實作）此關預計以 Pinch 抓取晶圓夾，把晶圓浸入蝕刻槽。',
-      props: ['晶圓夾', '蝕刻槽'],
-    }),
-  )
-  .register(
-    new StagePlaceholder({
-      id: 'deposition',
-      title: '薄膜沉積',
-      shortTitle: '薄膜沉積',
-      description: '在圖形化後的晶圓上長出金屬或介電質薄膜。',
-      hint: '（尚未實作）此關預計以手勢控制沉積腔體的參數與時間。',
-      props: ['濺鍍靶材', '腔體'],
-    }),
-  )
-  .register(
-    new StagePlaceholder({
-      id: 'inspection',
-      title: '檢測封裝',
-      shortTitle: '檢測封裝',
-      description: '量測線寬與缺陷，通過後切割並封裝成晶片。',
-      hint: '（尚未實作）此關預計以 Pinch 縮放顯微鏡視野找出缺陷。',
-      props: ['顯微鏡', '封裝載板'],
+      description: '先以氧電漿清出裸露面，再用乾式或濕式蝕刻移除材料，最後剝除光阻。',
+      hint: '（尚未實作）乾式＝高能粒子鉛直轟擊；濕式＝化學藥劑側向蝕刻。',
+      props: ['電漿腔體', '蝕刻槽', '丙酮／NMP'],
+      substeps: [
+        { id: 'descum', title: '氧電漿清潔', desc: '掃過晶圓表面，確保目標材料完全裸露' },
+        { id: 'etch', title: '乾式／濕式蝕刻', desc: '選擇蝕刻方式：鉛直蝕刻或側向蝕刻' },
+        { id: 'strip', title: '去光阻', desc: '用丙酮／NMP 剝除光阻，再以去離子水清洗' },
+      ],
     }),
   );
 
-stages.attachContext({ ui, desk, stages });
+stages.attachContext({ ui, desk, stages, wafer });
 
 // ───────────────────────────── 關卡事件 → UI ──────────────────────────────
 
@@ -144,6 +159,7 @@ stages.subscribe((event) => {
   switch (event.type) {
     case 'change':
     case 'reset':
+    case 'substep':
       ui.syncStages(stages);
       break;
     case 'complete':
@@ -174,8 +190,8 @@ function openClearModal(stage: BaseStage): void {
     description: isFinal
       ? '恭喜完成整條製程。下方是你的最終晶圓圖案，可下載 PNG 或擠出成 3D 模型。'
       : hasPattern
-        ? '光罩圖形已送出。你可以先把成品存下來，再繼續下一個製程步驟。'
-        : '此步驟為示範用的空關卡，已標記完成並解鎖下一步。',
+        ? '圖形已送出。你可以先把成品存下來，再繼續下一個製程步驟。'
+        : `${stage.title} 已完成，下一個製程步驟已解鎖。`,
     image: hasPattern ? desk.composeWaferImage(440) : null,
     continueLabel: isFinal ? '關閉' : '繼續下一步 →',
     showExports: hasPattern,
@@ -188,6 +204,9 @@ function openClearModal(stage: BaseStage): void {
 
 let viewW = 1;
 let viewH = 1;
+/** #stage-view 在視窗中的左上角座標；把 canvas 座標換算成 clientX/Y 時要用。 */
+let viewLeft = 0;
+let viewTop = 0;
 
 function syncStageView(): void {
   const rect = viewportSlot.getBoundingClientRect();
@@ -201,6 +220,8 @@ function syncStageView(): void {
 
   viewW = rect.width;
   viewH = rect.height;
+  viewLeft = rect.left;
+  viewTop = rect.top;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   arCanvas.width = Math.round(viewW * dpr);
@@ -246,6 +267,7 @@ function loop(now: number): void {
       ui,
       desk,
       stages,
+      wafer,
       hand,
       ar: arCtx,
       width: viewW,
@@ -255,7 +277,21 @@ function loop(now: number): void {
     });
   }
 
-  // 4) UI：右上角手勢參考 + 主要按鈕可用狀態
+  // 4) 捏合當滑鼠：把捏合點換算成視窗座標，讓玩家不碰滑鼠也能操作左側面板。
+  //    Modal 開啟時停用，否則結算畫面會被手勢誤觸。
+  if (!ui.isModalOpen()) {
+    ui.updatePinchPointer(
+      viewLeft + hand.pinchPoint.x,
+      viewTop + hand.pinchPoint.y,
+      hand.present,
+      hand.justPinched,
+    );
+  } else {
+    ui.clearPinchHover();
+  }
+
+  // 5) UI：截面圖 + 右上角手勢參考 + 主要按鈕可用狀態
+  if (stages.current.usesCrossSection) crossSection.render(wafer, elapsed);
   ui.renderGestureRef(hand);
   ui.setPrimaryEnabled(!stages.isCurrentDone() && stages.current.canComplete());
 
@@ -269,7 +305,7 @@ function loop(now: number): void {
 //   __camp.stages.completeCurrent({});   // 直接過關
 //   __camp.gesture.setPinchThreshold(0.08);
 if (import.meta.env.DEV) {
-  Object.assign(window, { __camp: { stages, desk, ui, camera, gesture, Exporter } });
+  Object.assign(window, { __camp: { stages, desk, ui, camera, gesture, wafer, Exporter } });
 }
 
 syncStageView();

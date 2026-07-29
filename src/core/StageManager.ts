@@ -14,6 +14,7 @@ import type { StageContext, StageResult, StageStatus } from './types';
 
 export type StageEvent =
   | { type: 'change'; index: number; stage: BaseStage }
+  | { type: 'substep'; index: number; stage: BaseStage }
   | { type: 'complete'; index: number; stage: BaseStage; result: StageResult }
   | { type: 'allComplete' }
   | { type: 'fail'; reason: string }
@@ -153,6 +154,14 @@ export class StageManager {
 
   fail(reason: string): void {
     this.emit({ type: 'fail', reason });
+  }
+
+  /**
+   * 由 BaseStage.goToSub() 呼叫，通知 UI「關卡內的子步驟換了」。
+   * 刻意不放進 goTo()／completeCurrent() 的流程，因為子步驟不改變關卡狀態機。
+   */
+  notifySubChange(): void {
+    this.emit({ type: 'substep', index: this.index, stage: this.current });
   }
 
   /** 重玩目前這一關（不動已完成的其他關卡）。 */
