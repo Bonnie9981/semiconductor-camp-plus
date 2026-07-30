@@ -9,10 +9,11 @@ import type {
   StageResult,
   SubStep,
 } from '../core/types';
-import { blendColor, solution, toMixRow } from '../data/solutions';
+import { blendColor, isUnsafePour, solution, toMixRow } from '../data/solutions';
 import { Beaker, drawFlatWafer, WAFER_SQUASH, type BeakerGeometry } from '../scene/Beaker';
 import { bottleMouth, drawBottle, drawPourStream, type BottleVisual } from '../scene/Bottle';
 import { drainMouth, drawDrain, type DrainGeometry } from '../scene/Drain';
+import { Explosion } from '../scene/Explosion';
 import { SpinDryer, type DryerGeometry, type DryerPhase } from '../scene/SpinDryer';
 import { BaseStage } from './BaseStage';
 
@@ -45,6 +46,8 @@ type Phase =
   | 'wrong'
   /** 倒廢液動畫進行中 */
   | 'dumping'
+  /** 配液順序錯誤導致突沸，爆炸動畫進行中 */
+  | 'boom'
   /** 浸泡動畫進行中 */
   | 'dip'
   /** 乾燥：等玩家把晶圓夾進滾筒 */
@@ -87,6 +90,7 @@ const RECIPES: Record<string, WetRecipe> = {
   },
   oxide: {
     title: '第二步 · 去除氧化層',
+    // 這一步只有一種藥液，杯子裡不會有兩種東西相遇，所以不涉及突沸。
     note: '矽一接觸空氣就會長出一層原生二氧化矽（SiO₂）。只有一種酸溶得掉它，倒 1 份就夠。',
     pool: ['hf', 'hcl', 'nh4oh', 'h2o2', 'hno3', 'di'],
     answer: ['hf'],
@@ -111,7 +115,7 @@ const RECIPES: Record<string, WetRecipe> = {
 
 /** 瓶口停在杯口上方多久算「倒進 1 份」。 */
 const POUR_INTERVAL = 0.8;
-/** 調配杯最多裝幾份，避免玩家一直倒到溢出。 */
+/** 調配杯最多裝幾份，避免玩家一直倒到溢出。最長的配方是 SC-2 的 8 份。 */
 const MAX_PARTS = 12;
 /** 傾倒時的瓶身角度（負值＝往左倒，因為藥瓶排在杯子右邊）。 */
 const POUR_TILT = -2.0;
@@ -140,7 +144,7 @@ export class Stage1RCA extends BaseStage {
   readonly shortTitle = 'RCA 清洗';
   readonly description =
     '晶圓進廠時表面有微粒、原生氧化層與金屬離子。親手配出三種清洗液把它們洗掉，最後甩乾。';
-  readonly hint = '捏合把藥瓶拿起來，移到調配杯上方就會開始倒；配錯了要整杯倒進廢液桶重來。';
+  readonly hint = '先加去離子水！沒有水墊底就把兩種藥液混在一起會突沸。配錯了要整杯倒進廢液桶重來。';
   readonly primaryLabel = '完成清洗';
   readonly usesCrossSection = true;
 
@@ -153,6 +157,7 @@ export class Stage1RCA extends BaseStage {
 
   readonly instructions: InstructionStep[] = [
     { glyph: '🤏', title: '捏起藥瓶', desc: '瓶子下方亮起光暈就代表抓得到，捏合即可拿起來。' },
+    { glyph: '💧', title: '先倒去離子水', desc: '杯子裡沒有水就倒濃藥液會突沸噴濺 —— 整杯報廢重配。' },
     { glyph: '🫗', title: '倒進調配杯', desc: '移到杯口上方瓶身會自動傾倒，每停留 0.8 秒進 1 份。' },
     { glyph: '💧', title: '送去浸泡', desc: '配方正確才會通過；配錯會鎖住，要整杯倒掉重來。' },
     { glyph: '🌀', title: '夾進乾燥機', desc: '最後一步捏合抓起晶圓，放進滾筒後按 START 甩乾。' },
@@ -186,6 +191,7 @@ export class Stage1RCA extends BaseStage {
   // ── 場景 ──
   private readonly beaker = new Beaker();
   private readonly dryer = new SpinDryer();
+  private readonly explosion = new Explosion();
   private waferDip = -1;
   private bubbling = 0;
 
@@ -264,6 +270,7 @@ export class Stage1RCA extends BaseStage {
     this.beakerHand = null;
     this.dumpT = 0;
     this.dumpFrom = null;
+    this.explosion.reset();
   }
 
   // ───────────────────────────────── 主迴圈 ────────────────────────────────
@@ -311,7 +318,7 @@ export class Stage1RCA extends BaseStage {
   private frameWet(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { height } = desk.size;
+    const { width, height } = desk.size;
     const wafer = this.ctx.wafer;
     const recipe = RECIPES[this.currentSub!.id];
 
@@ -344,7 +351,11 @@ export class Stage1RCA extends BaseStage {
     // 調配杯目前的位置與傾角（可能被拿在手上、或正在倒廢液）
     const { geo, tilt } = this.beakerTransform(benchGeo, drainGeo, dt);
 
-    // ── 互動 ──
+    // 爆點固定在杯口，縮放跟著杯子大小走
+    this.boomOrigin = { x: geo.cx, y: geo.top + geo.height * 0.15 };
+    this.boomScale = clamp(geo.width / 120, 0.8, 1.6);
+
+    // ── 互動（爆炸期間全部停掉） ──
     if (this.phase === 'pour') {
       this.updateBottles(hand, recipe, geo, shelf, dt);
     }
@@ -352,6 +363,20 @@ export class Stage1RCA extends BaseStage {
       this.updateBeakerGrab(hand, benchGeo, drainGeo);
     }
     if (this.phase === 'dip') this.advanceDip(recipe, dt);
+
+    if (this.phase === 'boom') {
+      this.explosion.update(dt);
+      // 閃焰過去之後杯子就空了 —— 玩家看得到「整杯報廢」
+      if (this.explosion.progress > 0.16 && this.mix.length > 0) {
+        this.mix = [];
+        this.beaker.reset();
+      }
+      if (!this.explosion.active) {
+        this.explosion.reset();
+        this.phase = 'pour';
+        // error 保留著，面板會繼續顯示為什麼炸掉
+      }
+    }
 
     // ── 液體狀態 ──
     const totalParts = this.mix.reduce((s, r) => s + r.parts, 0);
@@ -410,6 +435,9 @@ export class Stage1RCA extends BaseStage {
 
     // 杯口上方的倒液進度環
     if (this.pouring) this.drawPourGauge(ctx, geo, totalParts);
+
+    // 爆炸畫在最上層，才蓋得住器材
+    this.explosion.render(ctx, width, height);
 
     this.updateWetHints(ui, hand, recipe, totalParts);
   }
@@ -596,21 +624,51 @@ export class Stage1RCA extends BaseStage {
       this.pourAccum += dt;
       if (this.pourAccum >= POUR_INTERVAL) {
         this.pourAccum -= POUR_INTERVAL;
-        this.addPart(this.heldBottle);
+        if (!this.addPart(this.heldBottle)) return; // 突沸，這一幀後面都不用跑了
       }
     } else {
       this.pourAccum = 0;
     }
   }
 
-  /** 把一份藥液加進調配杯（依倒入順序排列）。 */
-  private addPart(id: string): void {
+  /**
+   * 把一份藥液加進調配杯。
+   * 回傳 false 代表這一倒違反了安全順序（杯子裡還沒有水），已觸發突沸。
+   */
+  private addPart(id: string): boolean {
+    if (isUnsafePour(id, this.mix.map((r) => r.id))) {
+      this.triggerBoom(id);
+      return false;
+    }
     const row = this.mix.find((r) => r.id === id);
     if (row) row.parts += 1;
     else this.mix.push(toMixRow(id, 1));
     this.splash = 1;
     this.error = null;
+    return true;
   }
+
+  /**
+   * 突沸：在沒有去離子水的狀態下，讓第二種藥液碰到第一種。
+   * 兩種濃藥液直接相遇是劇烈放熱反應，沒有水吸熱，界面瞬間到達沸點把液體噴出來。
+   * 懲罰是整杯報廢 —— 跟真實實驗室一樣，這種事發生了就是重配。
+   */
+  private triggerBoom(id: string): void {
+    this.phase = 'boom';
+    this.explosion.trigger(this.boomOrigin, solution(id).color, this.boomScale);
+    const others = this.mix.map((r) => solution(r.id).name).join('、');
+    this.error = `⚠ 突沸！杯子裡已經有${others}，在**沒有去離子水**的情況下又倒進${solution(id).name}。兩種濃藥液直接相遇是劇烈放熱反應 —— 沒有水吸熱與對流帶走熱量，界面瞬間到達沸點，把高溫腐蝕液整團噴出來。**先加去離子水墊底，再加其他藥液**。`;
+    // 手上的瓶子被嚇掉
+    this.heldBottle = null;
+    this.bottlePos = null;
+    this.bottleTilt = 0;
+    this.pouring = false;
+    this.pourAccum = 0;
+  }
+
+  /** 爆點與縮放；由 frameWet 每幀依燒杯位置更新。 */
+  private boomOrigin: Point = { x: 0, y: 0 };
+  private boomScale = 1;
 
   private drawBottles(
     ctx: CanvasRenderingContext2D,
@@ -814,6 +872,11 @@ export class Stage1RCA extends BaseStage {
     if (this.phase === 'dip') {
       ui.setArHint('💧 浸泡中 — 觀察右下角截面圖上的污染物被洗掉', true);
       ui.setHandState('💧', '浸泡中', `DIP ${this.timer.toFixed(1)}s`, true);
+      return;
+    }
+    if (this.phase === 'boom') {
+      ui.setArHint('💥 突沸！整杯報廢 —— 沒有水墊底就不能混兩種藥液', true);
+      ui.setHandState('💥', '突沸', 'RUNAWAY REACTION', false);
       return;
     }
     if (this.phase === 'dumping') {
@@ -1032,6 +1095,17 @@ export class Stage1RCA extends BaseStage {
       };
     }
 
+    if (this.phase === 'boom') {
+      return {
+        kind: 'action',
+        title: '💥 突沸！',
+        note: this.error ?? '',
+        label: '整杯已報廢…',
+        enabled: false,
+        onClick: () => {},
+      };
+    }
+
     const target = recipe.answer
       .map((id) => `${solution(id).name} ${recipe.ratio[id]} 份`)
       .join('、');
@@ -1039,7 +1113,7 @@ export class Stage1RCA extends BaseStage {
     return {
       kind: 'pour',
       title: recipe.title,
-      note: `${recipe.note}\n目標配方：${target}`,
+      note: `${recipe.note}\n目標配方：${target}\n⚠ 安全規則：沒有去離子水墊底時，**不可以把兩種藥液混在一起**（會突沸）。習慣上先加水。`,
       error: this.error ?? undefined,
       rows: this.mix,
       confirmLabel: '送去浸泡',
