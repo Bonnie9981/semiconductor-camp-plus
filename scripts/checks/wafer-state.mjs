@@ -1,0 +1,116 @@
+/**
+ * 晶圓狀態機檢查
+ * ---------------------------------------------------------------------------
+ * 測的是真正的 `WaferState.develop()` / `etch()`，以及「五關全部強制完成」
+ * 之後晶圓應該長什麼樣（開發者模式的 devComplete 鏈）。
+ *
+ * 這裡不 import 各個 Stage —— 它們需要完整的 StageContext（DOM、canvas）。
+ * 改成在這裡重現 devComplete() 對晶圓做的事，並與各關的實作保持同步。
+ * 如果哪天改了某一關的 devComplete()，這支檢查也要一起改。
+ */
+import { Report, SRC } from './lib.mjs';
+
+const { WaferState, SECTION_CELLS } = await import(`${SRC}core/WaferState.ts`);
+
+const report = new Report('晶圓狀態機（真實 WaferState）');
+
+// ── ① develop()：正負光阻的結果必須互補 ──
+{
+  const stripes = (i) => (Math.floor(i / 3) % 2 === 0 ? 1 : 0);
+  const masks = {};
+  for (const tone of ['positive', 'negative']) {
+    const w = new WaferState();
+    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = stripes(i);
+    w.resistTone = tone;
+    w.develop();
+    masks[tone] = [...w.resistMask];
+
+    const errs = [];
+    const kept = w.resistMask.filter((v) => v > 0.5).length;
+    if (kept === 0) errs.push('顯影後光阻全被洗掉，沒有圖案');
+    if (kept === SECTION_CELLS) errs.push('顯影後光阻完全沒被洗掉');
+    if (!w.layers.find((l) => l.kind === 'resist')?.patterned) {
+      errs.push('光阻層沒有被標記為 patterned，截面圖不會切出缺口');
+    }
+    report.add(`develop() ${tone}`, errs, `留下 ${kept}/${SECTION_CELLS} 格光阻`);
+  }
+
+  const complementary = masks.positive.every((v, i) => v > 0.5 !== masks.negative[i] > 0.5);
+  report.add(
+    'develop() 正負光阻互補',
+    complementary ? [] : ['同一張光罩下，正負光阻的顯影結果必須完全相反'],
+  );
+}
+
+// ── ② etch()：乾式側壁筆直、濕式有側向咬蝕 ──
+{
+  for (const [label, uc] of [
+    ['etch(0) 乾式', 0],
+    ['etch(1) 濕式', 1],
+  ]) {
+    const w = new WaferState();
+    w.addLayer({ kind: 'metal', label: '金屬層 Al', thickness: 0.5, color: '#c9ced6', patterned: false });
+    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
+    w.develop();
+    w.etch(uc);
+
+    const errs = [];
+    const through = w.etchedMask.filter((v) => v > 0.9).length;
+    const partial = w.etchedMask.filter((v) => v > 0.4 && v <= 0.9).length;
+    if (through === 0) errs.push('完全沒蝕穿任何一格');
+    if (through === SECTION_CELLS) errs.push('整片都被蝕穿，圖案消失');
+    if (uc === 0 && partial > 0) errs.push(`乾式蝕刻不該有側向咬蝕，卻有 ${partial} 格`);
+    if (uc === 1 && partial === 0) errs.push('濕式蝕刻應該要有側向咬蝕（undercut），卻完全沒有');
+    if (!w.topLayer.patterned) errs.push('最上層沒有被標記為 patterned');
+    report.add(label, errs, `蝕穿 ${through}、側向 ${partial}`);
+  }
+}
+
+// ── ③ devComplete 鏈：五關全部強制完成後的最終狀態 ──
+{
+  /** 重現各關 devComplete() 對晶圓做的事，順序與遊戲一致。 */
+  const runChain = (tone, method, etchMethod) => {
+    const w = new WaferState();
+    // 1 RCA
+    Object.assign(w.contamination, { particles: 0, oxide: 0, ions: 0, water: 0 });
+    // 2 薄膜沉積
+    if (method === 'cvd') {
+      w.addLayer({ kind: 'oxide', label: '二氧化矽 SiO₂', thickness: 0.7, color: '#93b3c6', patterned: false });
+    }
+    w.addLayer({ kind: 'metal', label: '金屬層 Al', thickness: 0.5, color: '#c9ced6', patterned: false });
+    // 3 微影
+    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
+    w.resistTone = tone;
+    // 4 顯影
+    w.develop();
+    // 5 蝕刻
+    w.etch(etchMethod === 'wet' ? 1 : 0);
+    w.removeLayer('resist');
+    return w;
+  };
+
+  for (const tone of ['positive', 'negative']) {
+    for (const method of ['pvd', 'cvd']) {
+      for (const etchMethod of ['dry', 'wet']) {
+        const w = runChain(tone, method, etchMethod);
+        const errs = [];
+        if (!w.isClean) errs.push('晶圓沒洗乾淨');
+        if (!w.hasLayer('metal')) errs.push('沒有金屬層 → 證書與 STL 會拿到空白晶圓');
+        if (method === 'cvd' && !w.hasLayer('oxide')) errs.push('CVD 路線缺氧化層');
+        if (w.hasLayer('resist')) errs.push('光阻沒剝掉 → 第五關的 canComplete() 過不了');
+        const through = w.etchedMask.filter((v) => v > 0.9).length;
+        if (through === 0 || through === SECTION_CELLS) errs.push('蝕刻結果沒有圖案');
+        report.add(
+          `devComplete 鏈 ${tone}/${method}/${etchMethod}`,
+          errs,
+          `層 ${w.layers.map((l) => l.kind).join('+')}`,
+        );
+      }
+    }
+  }
+}
+
+export default () => report.print();

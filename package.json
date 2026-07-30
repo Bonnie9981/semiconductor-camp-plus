@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "node scripts/copy-mediapipe.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check": "node --import ./scripts/checks/register.mjs scripts/checks/run.mjs",
+    "verify": "npm run typecheck && npm run check"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "0.3.1675466862",
