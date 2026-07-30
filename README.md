@@ -83,6 +83,8 @@ npm run dev     # → http://localhost:5173
 | `npm run build` | 型別檢查 + 產出 `dist/` |
 | `npm run preview` | 預覽 build 結果 |
 | `npm run typecheck` | 只跑 `tsc --noEmit` |
+| `npm run check` | 自動化檢查：晶圓狀態機、STL 幾何、版面、證書 PDF |
+| `npm run verify` | `typecheck` + `check`，送出前跑這個 |
 
 ---
 
@@ -94,8 +96,11 @@ semiconductorAR/
 ├── vite.config.ts
 ├── docs/
 │   └── IMPLEMENTATION.md       # ★ 實作概念與接手指南
+├── chip_wars/
+│   └── chip_wars.html          # 專案最初的單檔原型「晶片大戰」，已被 src/ 取代，僅留作參考
 ├── scripts/
-│   └── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
+│   ├── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
+│   └── checks/                 # 自動化檢查（npm run check），直接跑真正的原始碼
 ├── src/
 │   ├── main.ts                 # 程式入口、關卡註冊、UI 事件綁定、rAF 主迴圈
 │   ├── style.css               # 設計 token（oklch 深色 Dashboard + IBM Plex）＋ 響應式斷點
@@ -489,3 +494,50 @@ z-index 70）。刻意不用 `window.confirm` —— 原生對話框沒辦法用
 另外，五道製程全部完成後**延遲 1.6 秒**才開證書畫面：玩家是用捏合按下「完成蝕刻」的，
 手往往還停在原處，證書一瞬間跳出來的話，同一次捏合的殘留判定就可能直接打到
 「再玩一次」。
+
+
+---
+
+## 自動化檢查
+
+```bash
+npm run check      # 只跑檢查
+npm run verify     # typecheck + check（送出前跑這個）
+```
+
+四組檢查，**全部直接 import 真正的原始碼**：
+
+| 檢查 | 測什麼 | 曾經抓到 |
+| --- | --- | --- |
+| `wafer-state.mjs` | `WaferState.develop()` / `etch()`，以及五關全部強制完成後的最終狀態 | — |
+| `stl.mjs` | `Exporter.buildSTL()` 的封閉性、**定向一致性**、帶號體積 | 外緣側牆繞序反向 |
+| `layout.mjs` | `chamberLayout()` / `alignerLayout()` 在五種筆電尺寸下不重疊、元件不會太小 | 氣閥疊到大按鈕、腔門文字溢出機台 |
+| `pdf.mjs` | `canvasToPdf()` 的 xref 位移、JPEG 完整性、`/Length` | — |
+
+### 為什麼不是抄一份邏輯來測
+
+早期這些檢查是一次性腳本，把演算法複製一份到腳本裡跑。問題是**副本會隨原始碼改動
+而悄悄過期** —— 測過的東西跟出貨的東西不是同一份。
+
+現在改成直接 import `src/`：
+
+- `scripts/checks/loader-hook.mjs` —— Node ESM 解析 hook，把無副檔名的相對 import
+  補上 `.ts`（專案 tsconfig 用 `moduleResolution: "bundler"`，Vite 解得開、Node 解不開）。
+  Node 24 原生剝除型別，所以 `.ts` 可以直接載入。
+- `scripts/checks/dom-shim.mjs` —— 最小的 canvas 替身，只實作 `Exporter` 與
+  `Certificate` 真正呼叫到的方法（`drawImage` / `getImageData` / `toBlob`）。
+  其餘一律拋錯，這樣原始碼哪天用到別的 canvas API 會立刻炸掉提醒，而不是安靜回傳錯的值。
+
+唯一的例外是 `wafer-state.mjs` 裡的 devComplete 鏈：各關的 `devComplete()` 需要完整的
+`StageContext`（DOM、canvas、UIManager），只能在該檔重現。**改動任何一關的
+`devComplete()` 時要記得同步那一段。**
+
+### 檢查本身也驗證過
+
+把已修好的 bug 暫時放回去，確認檢查會失敗、離開碼為 1：
+
+```
+✗ 正光阻（圖案凸起）  102400 面、體積 -7928 mm³
+    → 640 條有向邊重複 → 有面的繞序方向相反，定向不一致
+    → 帶號體積 -7928 mm³ ≤ 0 → 整體法線朝內
+```

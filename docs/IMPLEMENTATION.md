@@ -524,7 +524,8 @@ const startObject = () => offsets.push(length);   // 呼叫時的 length 就是�
 | **子步驟沒有「略過」狀態** | `UIManager.renderSubsteps()` 只算 `done = i < subIndex` 與 `active = i === subIndex` | 第二關走 PVD 時「金屬鍍膜」被跳過，進度列卻顯示打勾的「已完成」，會讓學生以為自己做過那一步 | 加第三種狀態：關卡回報哪些 index 被略過，樣式畫成灰色斜線 |
 | **`ChoiceOption` 不支援示意圖** | `core/types.ts` 的 `ChoiceOption` 只有 `sub` / `color` / `glyph` | 第三關的正負光阻、第五關的乾濕蝕刻都得自己在 canvas 上畫卡片繞過去 | 加 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
 | **`#hand-canvas` 蓋住整個視窗格** | `z-index: 60`、`pointer-events: none` | 不擋點擊，但之後若要放「需要被點到」的浮層，記得排在它之上 | — |
-| **沒有自動化測試** | 只有 `tsc --noEmit`；版面、PDF 與 STL 都是用一次性腳本驗的 | 迴歸只能靠手動玩 | 這些腳本很值得收進 repo：STL 的「封閉 + 定向一致 + 帶號體積為正」與版面的重疊檢查都抓到過真實 bug |
+| **關卡邏輯沒有測試** | `npm run check` 已涵蓋 `WaferState`、STL 幾何、機台版面與證書 PDF（見 README〈自動化檢查〉），但各關的 `onFrame()` 狀態機仍完全沒有測試 | 互動流程的迴歸只能靠手動玩 | 關卡需要完整的 `StageContext`（DOM + canvas + UIManager）才跑得起來。若要補，先把 `StageContext` 的介面縮到可以做假物件的程度 |
+| **devComplete 鏈是重現的** | `scripts/checks/wafer-state.mjs` 裡的 devComplete 鏈是照各關實作重寫的，不是 import 真的 | 改了某一關的 `devComplete()` 而忘記同步檢查，測試會過但行為已變 | 同上：要 import 真的就得先能造假 `StageContext` |
 
 ### 已解決（保留紀錄）
 
