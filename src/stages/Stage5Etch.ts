@@ -74,7 +74,7 @@ export class Stage5Etch extends DipStageBase {
   readonly substeps: readonly SubStep[] = [
     { id: 'descum', title: '氧氣電漿清潔', desc: 'O₂ 電漿掃掉光阻殘渣，讓目標材料完全裸露' },
     { id: 'etch', title: '蝕刻選擇', desc: '乾式＝鉛直蝕刻；濕式＝側向蝕刻' },
-    { id: 'strip', title: '去光阻與清洗', desc: 'NMP 剝除光阻，再以去離子水沖洗' },
+    { id: 'strip', title: '去光阻與清洗', desc: '丙酮 → NMP → 去離子水，三步依序完成' },
   ];
 
   readonly instructions: InstructionStep[] = [
@@ -88,6 +88,8 @@ export class Stage5Etch extends DipStageBase {
   private phase: Phase = 'descum-load';
   private method: 'dry' | 'wet' | null = null;
   private timer = 0;
+  /** 去光阻的第幾輪：0 丙酮 → 1 NMP → 2 去離子水。 */
+  private stripStep = 0;
 
   // ── 機台狀態（descum 與乾蝕刻共用） ──
   private door = 1;
@@ -106,9 +108,27 @@ export class Stage5Etch extends DipStageBase {
     super.onEnter(ctx);
     ctx.desk.setWaferVisible(false);
     ctx.desk.setDeskLabel('ETCH BAY · 蝕刻區');
+    this.ensureResist();
     this.resetSub();
     this.method = null;
     this.onSubEnter(0);
+  }
+
+  /**
+   * 確保晶圓上有一層已圖案化的光阻。
+   * 正常流程會由第三、四關留下來；開發者模式直接跳關進來時沒有，
+   * 補一層才不會卡在「沒有光阻可以剝除」而永遠過不了關。
+   */
+  private ensureResist(): void {
+    const w = this.ctx?.wafer;
+    if (!w || w.hasLayer('resist')) return;
+    w.addLayer({
+      kind: 'resist',
+      label: '光阻層',
+      thickness: 0.45,
+      color: RESIST_COLOR,
+      patterned: true,
+    });
   }
 
   override onExit(): void {
@@ -124,16 +144,8 @@ export class Stage5Etch extends DipStageBase {
     if (w) {
       w.etchedMask = w.etchedMask.map(() => 0);
       w.undercut = 0;
-      if (!w.hasLayer('resist')) {
-        w.addLayer({
-          kind: 'resist',
-          label: '光阻層',
-          thickness: 0.45,
-          color: RESIST_COLOR,
-          patterned: true,
-        });
-      }
     }
+    this.ensureResist();
     this.onSubEnter(0);
   }
 
@@ -149,7 +161,10 @@ export class Stage5Etch extends DipStageBase {
     }
     if (sub.id === 'descum') this.phase = 'descum-load';
     else if (sub.id === 'etch') this.phase = 'choose';
-    else this.phase = 'strip';
+    else {
+      this.phase = 'strip';
+      this.stripStep = 0;
+    }
   }
 
   private resetMachine(): void {
@@ -629,34 +644,61 @@ export class Stage5Etch extends DipStageBase {
    */
   private wetRound(): DipRound {
     return {
-      tanks: [{ id: 'pan' }, { id: 'boe' }, { id: 'acetone' }, { id: 'di' }],
+      tanks: [{ id: 'pan' }, { id: 'hf' }, { id: 'hno3' }, { id: 'boe' }],
       answer: 'pan',
       seconds: 6,
       actionLabel: '蝕刻',
       wrongHint: (id) => {
-        if (id === 'acetone') return '丙酮是有機溶劑，只溶得掉光阻，對金屬鋁完全沒有作用。';
-        if (id === 'di') return '純水不會跟鋁反應，泡再久也蝕刻不動。';
-        return 'BOE 是蝕刻二氧化矽用的，對金屬鋁無效。這片晶圓最上層是鋁，要用磷酸系的 PAN 蝕刻液。';
+        if (id === 'hf') return '氫氟酸是蝕刻二氧化矽用的，對金屬鋁幾乎沒有作用，還會把下層的氧化矽一起吃掉。';
+        if (id === 'hno3') return '單獨的硝酸只會讓鋁表面鈍化（長出緻密的氧化鋁保護層），反而蝕不動。它必須跟磷酸搭配才有用。';
+        if (id === 'boe') return 'BOE 是加了緩衝劑的氫氟酸，同樣是給二氧化矽用的，對鋁無效。';
+        return '這不是蝕刻液。';
       },
     };
   }
 
   /**
-   * 去光阻。業界標準是 NMP —— 它的閃點遠高於丙酮，可以加溫操作、殘留也少，
-   * 早就取代了丙酮成為量產線的標準剝離液。丙酮雖然也剝得掉，但屬於早期做法。
+   * 去光阻與清洗，依製程規格分成三步：
+   *   ① 丙酮       先用揮發性溶劑把大部分光阻溶掉（**不可用去離子水** —— 光阻不溶於水）
+   *   ② NMP        再用高沸點剝離液把殘膜與殘渣徹底去除
+   *   ③ 去離子水   最後沖掉殘留的有機溶劑
+   * 順序不能顛倒：先水洗只會讓光阻更難剝，殘渣也會留在表面。
    */
-  private stripRound(): DipRound {
-    return {
-      tanks: [{ id: 'nmp' }, { id: 'acetone' }, { id: 'hf' }, { id: 'di' }],
-      answer: 'nmp',
-      seconds: 5,
-      actionLabel: '去光阻',
-      wrongHint: (id) => {
-        if (id === 'acetone') return '丙酮確實剝得掉光阻，但閃點低、揮發快、容易留下殘渣，量產線已改用 NMP。';
-        if (id === 'hf') return '氫氟酸會把你辛苦蝕出來的圖案連同下層材料一起吃掉。';
-        return '純水洗不掉光阻，需要有機溶劑。';
+  private stripRounds(): DipRound[] {
+    return [
+      {
+        tanks: [{ id: 'acetone' }, { id: 'di' }, { id: 'tmah' }, { id: 'hf' }],
+        answer: 'acetone',
+        seconds: 4.5,
+        actionLabel: '溶解光阻',
+        wrongHint: (id) => {
+          if (id === 'di') return '光阻不溶於水 —— 這一步**不可以用去離子水**，先水洗只會讓光阻更難剝除。';
+          if (id === 'tmah') return 'TMAH 是顯影液，只溶得掉曝光後改性的光阻，剝不掉整層。';
+          return '氫氟酸會把你辛苦蝕出來的圖案連同下層材料一起吃掉。';
+        },
       },
-    };
+      {
+        tanks: [{ id: 'nmp' }, { id: 'acetone' }, { id: 'di' }, { id: 'pan' }],
+        answer: 'nmp',
+        seconds: 4.5,
+        actionLabel: '剝除殘膜',
+        wrongHint: (id) => {
+          if (id === 'acetone') return '丙酮剛剛用過了。它揮發太快，留下的殘渣要靠高沸點的 NMP 才清得掉。';
+          if (id === 'di') return '還沒剝乾淨就沖水，殘渣會直接留在表面。';
+          return 'PAN 是鋁蝕刻液，會把你剛做好的金屬圖案吃掉。';
+        },
+      },
+      {
+        tanks: [{ id: 'di' }, { id: 'acetone' }, { id: 'nmp' }, { id: 'hno3' }],
+        answer: 'di',
+        seconds: 3.5,
+        actionLabel: '清洗',
+        wrongHint: (id) => {
+          if (id === 'acetone' || id === 'nmp') return '光阻已經剝乾淨了，這一步要用超純水把殘留的有機溶劑沖掉。';
+          return '酸會侵蝕晶圓。最後一道只需要去離子水。';
+        },
+      },
+    ];
   }
 
   private frameWet(frame: StageFrame, groundY: number): void {
@@ -677,14 +719,24 @@ export class Stage5Etch extends DipStageBase {
 
   private frameStrip(frame: StageFrame, groundY: number): void {
     const wafer = this.ctx.wafer;
-    const round = this.stripRound();
+    const rounds = this.stripRounds();
+    const round = rounds[this.stripStep];
+
     const done = this.runDip(frame, groundY, round, {
       waferColor: wafer.surfaceColor(),
-      filmColor: RESIST_COLOR,
+      // 第一輪之後光阻已經溶掉，晶圓表面就不再蓋著那層綠色
+      filmColor: this.stripStep === 0 ? RESIST_COLOR : null,
     });
+
     if (done) {
-      wafer.removeLayer('resist');
-      this.nextSub();
+      // 丙酮那一輪結束就把光阻層移掉，後兩輪是清洗殘膜與殘留溶劑
+      if (this.stripStep === 0) wafer.removeLayer('resist');
+      this.stripStep += 1;
+      if (this.stripStep >= rounds.length) {
+        this.nextSub();
+        return;
+      }
+      this.resetDip();
       return;
     }
     this.dipHints(frame, round);
@@ -725,7 +777,7 @@ export class Stage5Etch extends DipStageBase {
     }
 
     if (this.phase === 'wet' || this.phase === 'strip') {
-      const round = this.phase === 'wet' ? this.wetRound() : this.stripRound();
+      const round = this.phase === 'wet' ? this.wetRound() : this.stripRounds()[this.stripStep];
       if (this.dipIndex >= 0) {
         return {
           kind: 'action',
