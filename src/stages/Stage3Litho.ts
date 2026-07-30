@@ -387,8 +387,10 @@ export class Stage3Litho extends BaseStage {
 
     const gap = Math.max(16, scene.w * 0.04);
     const cw = (scene.w - gap) / 2;
-    const chH = Math.min(cw * 1.02, groundY - height * 0.2);
-    const top = (height * 0.2 + groundY) / 2 - chH / 2;
+    // 卡片做成「高瘦」而不是接近正方形 —— 三列剖面示意圖需要垂直空間，
+    // 小螢幕上用 w*1.02 會讓每列只剩不到 30px，第一列的標籤還會壓到標題。
+    const chH = Math.min(cw * 1.32, groundY - height * 0.19);
+    const top = (height * 0.19 + groundY) / 2 - chH / 2;
 
     const cards: { id: 'positive' | 'negative'; x: number }[] = [
       { id: 'positive', x: scene.left },
@@ -474,91 +476,163 @@ export class Stage3Litho extends BaseStage {
     ctx.font = "600 14px 'IBM Plex Mono', monospace";
     ctx.fillText(positive ? 'POSITIVE' : 'NEGATIVE', x + w / 2, y + 16 + clamp(w * 0.11, 18, 30) + 4);
 
-    // 示意圖區
+    // 示意圖區：三列（曝光 → 顯影後 → 蝕刻後）
     const dx = x + w * 0.1;
     const dw = w * 0.8;
-    const dTop = y + h * 0.28;
-    const rowH = h * 0.2;
+    /*
+      三列 + 每列上方的標籤 + 底部兩行結論，垂直空間很緊。
+      這組數字是用腳本對 1280×800 ~ 1920×1080 逐一驗過的：
+      最小卡片（211×279）時第一列標籤在 70、標題底在 57、三列結束在 206、
+      結論從 235 開始，每一段都不重疊。
+    */
+    const top0 = y + h * 0.3;
+    const rowH = h * 0.12;
+    const rowGap = h * 0.04;
 
-    this.drawToneDiagram(ctx, dx, dTop, dw, rowH, 'expose', positive);
-    this.drawToneDiagram(ctx, dx, dTop + rowH + h * 0.1, dw, rowH, 'develop', positive);
+    this.drawToneDiagram(ctx, dx, top0, dw, rowH, 'expose', positive);
+    this.drawToneDiagram(ctx, dx, top0 + (rowH + rowGap), dw, rowH, 'develop', positive);
+    this.drawToneDiagram(ctx, dx, top0 + (rowH + rowGap) * 2, dw, rowH, 'etch', positive);
 
-    // 說明
-    ctx.fillStyle = 'rgba(214, 230, 238, 0.9)';
-    ctx.font = `600 ${Math.round(clamp(w * 0.055, 12, 15))}px 'IBM Plex Sans', 'Noto Sans TC', sans-serif`;
+    // 結論：直接寫出「你畫的圖案最後會凸起還是凹陷」
     ctx.textAlign = 'center';
-    const caption = positive ? '被光照到的光阻「溶掉」' : '被光照到的光阻「留下」';
-    ctx.fillText(caption, x + w / 2, y + h - 30);
-    ctx.fillStyle = 'rgba(160, 182, 194, 0.75)';
-    ctx.font = "500 13px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.fillStyle = positive ? '#ffd68a' : '#8ae0ff';
+    ctx.font = `700 ${Math.round(clamp(w * 0.068, 14, 19))}px 'IBM Plex Sans', 'Noto Sans TC', sans-serif`;
     ctx.fillText(
-      positive ? '圖案與光罩相同' : '圖案與光罩相反',
+      positive ? '你畫的圖案 → 凸起' : '你畫的圖案 → 凹陷',
       x + w / 2,
-      y + h - 14,
+      y + h - 44,
+    );
+
+    ctx.fillStyle = 'rgba(200, 220, 230, 0.9)';
+    ctx.font = `600 ${Math.round(clamp(w * 0.052, 12, 15))}px 'IBM Plex Sans', 'Noto Sans TC', sans-serif`;
+    ctx.fillText(
+      positive ? '曝光區溶掉，鉻下方的光阻留著保護' : '曝光區留下，鉻下方的光阻被洗掉',
+      x + w / 2,
+      y + h - 20,
     );
 
     ctx.restore();
   }
 
+  /**
+   * 一列剖面示意圖。
+   *
+   * 關鍵是**鉻層要畫在中間**——那塊鉻就是玩家畫出來的 pattern。
+   * 之前把鉻畫在兩側、開口留在中間，玩家會把中間的凹槽誤讀成自己的圖案，
+   * 於是正負光阻看起來剛好顛倒。
+   *
+   * 三列合起來回答同一個問題：「我畫的那塊，最後是凸起還是凹陷？」
+   *   ① 曝光    UV 只從鉻的兩側穿過去，中間被擋住
+   *   ② 顯影後  正光阻 → 曝光區溶掉，只剩中間（鉻下方）的光阻
+   *             負光阻 → 曝光區交聯留下，中間反而被洗掉
+   *   ③ 蝕刻後  有光阻保護的地方留著，其餘被蝕掉
+   */
   private drawToneDiagram(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     w: number,
     h: number,
-    kind: 'expose' | 'develop',
+    kind: 'expose' | 'develop' | 'etch',
     positive: boolean,
   ): void {
-    const gapL = x + w * 0.38;
-    const gapR = x + w * 0.62;
-    const baseY = y + h - 10;
-    const resistH = h * 0.34;
-    const resistTop = baseY - resistH;
+    // 中間那塊鉻＝玩家畫的圖案
+    const cL = x + w * 0.36;
+    const cR = x + w * 0.64;
+    const baseY = y + h;
+    const subH = Math.max(7, h * 0.24);
+    const resistH = Math.max(8, h * 0.3);
+    const resistTop = baseY - subH - resistH;
 
     ctx.save();
     ctx.font = "600 12px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'bottom';
     ctx.fillStyle = 'rgba(150, 175, 188, 0.85)';
-    ctx.fillText(kind === 'expose' ? '① 曝光' : '② 顯影後', x, y - 13);
+    ctx.fillText(
+      kind === 'expose' ? '① 曝光' : kind === 'develop' ? '② 顯影後' : '③ 蝕刻後',
+      x,
+      y - 2,
+    );
+
+    if (kind === 'etch') {
+      /*
+        蝕刻後只畫基材的起伏，光阻已經剝掉。
+        正光阻：中間有光阻保護 → 中間留著 → 凸起
+        負光阻：中間沒有保護   → 中間被蝕掉 → 凹槽
+      */
+      ctx.fillStyle = '#6d7d86';
+      if (positive) {
+        ctx.fillRect(x, baseY - subH, w, subH);
+        ctx.fillRect(cL, baseY - subH - resistH, cR - cL, resistH);
+      } else {
+        ctx.fillRect(x, baseY - subH, w, subH);
+        ctx.fillRect(x, baseY - subH - resistH, cL - x, resistH);
+        ctx.fillRect(cR, baseY - subH - resistH, x + w - cR, resistH);
+      }
+
+      // 用箭頭把「凸」「凹」再標一次
+      ctx.strokeStyle = positive ? '#ffd68a' : '#8ae0ff';
+      ctx.lineWidth = 2;
+      const mid = (cL + cR) / 2;
+      const tipY = positive ? baseY - subH - resistH - 4 : baseY - subH + 3;
+      const tailY = positive ? tipY - 11 : tipY + 11;
+      ctx.beginPath();
+      ctx.moveTo(mid, tailY);
+      ctx.lineTo(mid, tipY);
+      ctx.moveTo(mid - 4, tipY + (positive ? 4 : -4));
+      ctx.lineTo(mid, tipY);
+      ctx.lineTo(mid + 4, tipY + (positive ? 4 : -4));
+      ctx.stroke();
+
+      ctx.restore();
+      return;
+    }
 
     // 矽基板
     ctx.fillStyle = '#5c6b74';
-    ctx.fillRect(x, baseY, w, 8);
+    ctx.fillRect(x, baseY - subH, w, subH);
 
     if (kind === 'expose') {
-      // 光罩（中間有開口）
-      ctx.fillStyle = CHROME_COLOR;
-      ctx.fillRect(x, y + 2, gapL - x, 6);
-      ctx.fillRect(gapR, y + 2, x + w - gapR, 6);
-      ctx.strokeStyle = 'rgba(190, 226, 240, 0.5)';
+      // 光罩：中間一塊鉻（不透光），兩側是透明玻璃
+      ctx.strokeStyle = 'rgba(190, 226, 240, 0.45)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(x, y + 2, w, 6);
+      ctx.strokeRect(x, y, w, 7);
+      ctx.fillStyle = CHROME_COLOR;
+      ctx.fillRect(cL, y, cR - cL, 7);
+      ctx.strokeStyle = 'rgba(190, 226, 240, 0.8)';
+      ctx.strokeRect(cL, y, cR - cL, 7);
 
-      // UV 只從開口穿過
+      // UV 只從鉻的兩側穿過去
       ctx.strokeStyle = '#c49eff';
       ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) {
-        const lx = gapL + ((i + 0.5) / 3) * (gapR - gapL);
-        ctx.beginPath();
-        ctx.moveTo(lx, y + 10);
-        ctx.lineTo(lx, resistTop - 2);
-        ctx.stroke();
+      ctx.beginPath();
+      for (const [a, b] of [
+        [x, cL],
+        [cR, x + w],
+      ]) {
+        for (let i = 0; i < 2; i++) {
+          const lx = a + ((i + 0.5) / 2) * (b - a);
+          ctx.moveTo(lx, y + 10);
+          ctx.lineTo(lx, resistTop - 2);
+        }
       }
+      ctx.stroke();
 
-      // 完整的光阻層，照到光的那段標成亮色
+      // 整片光阻，兩側被光照到的部分標成亮色
       ctx.fillStyle = RESIST_COLOR;
       ctx.fillRect(x, resistTop, w, resistH);
-      ctx.fillStyle = positive ? 'rgba(216, 232, 138, 0.9)' : 'rgba(94, 233, 150, 0.55)';
-      ctx.fillRect(gapL, resistTop, gapR - gapL, resistH);
+      ctx.fillStyle = positive ? 'rgba(216, 232, 138, 0.9)' : 'rgba(94, 233, 150, 0.6)';
+      ctx.fillRect(x, resistTop, cL - x, resistH);
+      ctx.fillRect(cR, resistTop, x + w - cR, resistH);
     } else {
-      // 顯影後：正光阻挖掉曝光區，負光阻只留曝光區
+      // 顯影後：正光阻留中間（鉻下方），負光阻留兩側（曝光區）
       ctx.fillStyle = RESIST_COLOR;
       if (positive) {
-        ctx.fillRect(x, resistTop, gapL - x, resistH);
-        ctx.fillRect(gapR, resistTop, x + w - gapR, resistH);
+        ctx.fillRect(cL, resistTop, cR - cL, resistH);
       } else {
-        ctx.fillRect(gapL, resistTop, gapR - gapL, resistH);
+        ctx.fillRect(x, resistTop, cL - x, resistH);
+        ctx.fillRect(cR, resistTop, x + w - cR, resistH);
       }
     }
 
@@ -935,7 +1009,7 @@ export class Stage3Litho extends BaseStage {
         return {
           kind: 'choice',
           title: '第三步 · 正負光阻選擇',
-          note: '把手移到卡片上捏一下即可選擇。\n正光阻：曝光區斷鏈變得可溶，顯影時被洗掉，圖案與光罩相同。\n負光阻：曝光區交聯硬化留下來，圖案與光罩相反。',
+          note: '把手移到卡片上捏一下即可選擇。你畫的圖案就是光罩上那塊鉻，它會擋住 UV。\n正光阻：曝光區（鉻的兩側）斷鏈變可溶被洗掉，鉻下方的光阻留著保護 → 你畫的圖案最後**凸起**。\n負光阻：曝光區交聯硬化留下，鉻下方的光阻反而被洗掉 → 你畫的圖案最後**凹陷**。',
           options: [
             { id: 'positive', label: '正型光阻', sub: 'POSITIVE', color: '#d8e88a' },
             { id: 'negative', label: '負型光阻', sub: 'NEGATIVE', color: '#5ee996' },
