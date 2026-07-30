@@ -1,0 +1,69 @@
+/** 檢查腳本的共用小工具：結果收集與輸出格式。 */
+
+export class Report {
+  constructor(title) {
+    this.title = title;
+    this.rows = [];
+    this.failed = 0;
+  }
+
+  /** 記一筆檢查結果。errs 為空陣列＝通過。 */
+  add(label, errs, detail = '') {
+    const ok = errs.length === 0;
+    if (!ok) this.failed += 1;
+    this.rows.push({ label, errs, detail, ok });
+  }
+
+  print() {
+    console.log(`\n── ${this.title} ──`);
+    for (const r of this.rows) {
+      console.log(`  ${r.ok ? '✓' : '✗'} ${r.label}${r.detail ? `  ${r.detail}` : ''}`);
+      for (const e of r.errs) console.log(`      → ${e}`);
+    }
+    return this.failed;
+  }
+}
+
+/** 專案原始碼的絕對路徑（檢查腳本 import 真正的模組時用）。 */
+export const SRC = new URL('../../src/', import.meta.url).pathname;
+
+/**
+ * 常見筆電瀏覽器的可視區域，以及 index.html / style.css 在該尺寸下的實際版面值。
+ * 斷點必須跟 style.css 的 media query 保持一致。
+ */
+export const SCREENS = [
+  { name: '1920x1080 外接螢幕', w: 1920, h: 1010 },
+  { name: '1512x982  MBP 14"', w: 1512, h: 870 },
+  { name: '1440x900  Air 13"', w: 1440, h: 790 },
+  { name: '1366x768  Win 筆電', w: 1366, h: 700 },
+  { name: '1280x800  小筆電', w: 1280, h: 730 },
+];
+
+/** 依視窗尺寸推出鏡頭視窗（canvas）的尺寸與場景可用範圍。 */
+export function viewport({ w: ww, h: wh }) {
+  const headerH = wh <= 740 ? 54 : wh <= 860 ? 62 : 72;
+  const flowH = wh <= 740 ? 42 : wh <= 860 ? 50 : 58;
+  const pad = ww <= 1180 ? 10 : ww <= 1420 ? 14 : 18;
+  const sidebar = ww <= 1180 ? 196 : ww <= 1420 ? 226 : 260;
+  const rightPanel = ww <= 1180 ? 236 : ww <= 1420 ? 268 : 300;
+  const panelSceneW = ww <= 1180 ? 262 : ww <= 1420 ? 292 : 324;
+
+  const width = ww - sidebar - rightPanel - pad * 2;
+  const height = wh - headerH - flowH - pad * 2;
+  const deskTop = height * 0.74;
+  const groundY = deskTop + height * 0.26 * 0.44;
+
+  // 與各關卡的 sceneBounds() 相同的算法
+  const left = Math.min(16 + panelSceneW + 26, width * 0.52);
+  const right = width - 14;
+  return {
+    width,
+    height,
+    groundY,
+    scene: { left, right, w: Math.max(180, right - left) },
+  };
+}
+
+export function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v));
+}
