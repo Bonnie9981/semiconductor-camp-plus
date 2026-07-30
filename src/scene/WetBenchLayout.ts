@@ -37,6 +37,8 @@ export interface WetBenchLayout {
   shelf: {
     /** 瓶底 y（＝層板高度）。 */
     y: number;
+    /** 這一排的右界。可能比 scene.right 小，用來讓開右上角的卡片。 */
+    right: number;
     /** 單一瓶身寬度。 */
     w: number;
     /** 瓶身高度。 */
@@ -67,11 +69,24 @@ export function wetBenchLayout(opts: {
   groundY: number;
   /** 檯面上有幾瓶藥液。 */
   bottleCount: number;
+  /**
+   * 上方帶狀 HTML（子步驟列 / AR 提示）的下緣，由 UIManager.sceneOverlay() 量出來。
+   * 不給就退回 height × 0.2 的估值。
+   */
+  overlayTop?: number;
+  /**
+   * 右上角手勢參考卡的左緣與下緣（沒有卡片時 cardLeft = Infinity）。
+   * 層板那一排如果落在卡片的高度範圍內，就要提早結束，不然最右邊的瓶子會被蓋住。
+   */
+  cardLeft?: number;
+  cardBottom?: number;
 }): WetBenchLayout {
   const { scene, height, groundY, bottleCount } = opts;
+  const cardLeft = opts.cardLeft ?? Number.POSITIVE_INFINITY;
+  const cardBottom = opts.cardBottom ?? 0;
 
-  // 可用的垂直帶：上方要讓開子步驟列與 AR 提示橫幅
-  const bandTop = height * 0.2;
+  // 可用的垂直帶：上緣是量出來的，不是猜的比例
+  const bandTop = Math.max(opts.overlayTop ?? height * 0.2, 8) + 8;
   const bandH = Math.max(160, groundY - bandTop);
 
   // 燒杯最多吃掉這段帶狀空間的 46%，剩下的留給藥瓶與名稱
@@ -97,7 +112,15 @@ export function wetBenchLayout(opts: {
     先用「橫向排得下」算出瓶寬上界，據此保留足夠空隙，再用剩下的高度收斂瓶寬——
     後者只會讓瓶寬變小、名稱變矮，所以空隙一定夠，不會反過來壓到燒杯。
   */
-  const wByWidth = clamp((scene.w / bottleCount) * 0.74, 30, 70);
+  /*
+    層板那一排的右界：如果瓶子的高度範圍會撞到右上角的手勢參考卡，
+    就在卡片左邊收尾。瓶子稍微擠一點，總比最右邊兩瓶被蓋掉好。
+    （矮視窗上 CSS 會直接把卡片隱藏，那時 cardLeft = Infinity，這裡不生效。）
+  */
+  const shelfRight = bandTop < cardBottom ? Math.min(scene.right, cardLeft - 10) : scene.right;
+  const shelfW = Math.max(160, shelfRight - scene.left);
+
+  const wByWidth = clamp((shelfW / bottleCount) * 0.74, 30, 70);
   const labelExtent = wByWidth * 0.24 + LABEL_TEXT_H;
   const shelfY = beakerTop - LABEL_GAP - labelExtent;
 
@@ -110,6 +133,7 @@ export function wetBenchLayout(opts: {
     beaker,
     shelf: {
       y: shelfY,
+      right: shelfRight,
       w,
       bottleH: w * 1.7,
       plankY: shelfY + w * 0.2,

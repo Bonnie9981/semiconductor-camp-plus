@@ -329,16 +329,55 @@ export class Stage1RCA extends BaseStage {
     // 燒杯、藥瓶層板、廢液桶、晶圓架全部由 wetBenchLayout() 一起分配同一段
     // 垂直空間，元素才不會在矮視窗上互相壓到（見該檔的說明）。
     const scene = this.sceneBounds(frame);
+    // 疊在 canvas 上的 HTML 位置是量出來的（見 UIManager.sceneOverlay()），
+    // 道具才不會被卡片蓋住
+    const overlay = frame.ui.sceneOverlay();
     const bench = wetBenchLayout({
       scene,
       height,
       groundY,
       bottleCount: recipe.pool.length,
+      overlayTop: overlay.top,
+      cardLeft: overlay.cardLeft,
+      cardBottom: overlay.cardBottom,
     });
     const benchGeo: BeakerGeometry = bench.beaker;
     const drainGeo: DrainGeometry = bench.drain;
     const waferR = bench.waferStand.r;
-    const shelf: ShelfLayout = { scene, y: bench.shelf.y, w: bench.shelf.w };
+    const shelf: ShelfLayout = {
+      scene: { ...scene, right: bench.shelf.right, w: bench.shelf.right - scene.left },
+      y: bench.shelf.y,
+      w: bench.shelf.w,
+    };
+
+    // 回報道具位置給 scripts/checks/browser.mjs（正式遊戲不讀這個欄位）
+    this.propBoxes = [
+      {
+        label: '調配杯',
+        x: benchGeo.cx - benchGeo.width / 2,
+        y: benchGeo.top,
+        w: benchGeo.width,
+        h: benchGeo.height,
+      },
+      ...recipe.pool.map((id, i) => {
+        const bx = this.bottleRest(i, recipe.pool.length, shelf).x;
+        return {
+          label: `${solution(id).name}瓶`,
+          x: bx - shelf.w / 2,
+          y: bench.shelf.y - bench.shelf.bottleH,
+          // 名稱掛在瓶底下方，一起算進去
+          h: bench.shelf.bottleH + bench.shelf.labelBottom - bench.shelf.y,
+          w: shelf.w,
+        };
+      }),
+      {
+        label: '待清洗晶圓',
+        x: bench.waferStand.cx - waferR,
+        y: bench.waferStand.cy - waferR * 0.3,
+        w: waferR * 2,
+        h: waferR * 0.6,
+      },
+    ];
 
     // 調配杯目前的位置與傾角（可能被拿在手上、或正在倒廢液）
     const { geo, tilt } = this.beakerTransform(benchGeo, drainGeo, dt);

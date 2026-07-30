@@ -310,6 +310,40 @@ function syncStageView(): void {
 
 new ResizeObserver(syncStageView).observe(viewportSlot);
 window.addEventListener('resize', syncStageView);
+// 證書預覽與上方帶狀元素的位置都是量出來的，視窗一變就要重算
+window.addEventListener('resize', () => {
+  ui.syncCertificateSize();
+  ui.flushBands(true);
+});
+
+/*
+  --hud-reserve 決定互動面板的下緣停在哪裡。它原本是每個高度級距寫死的數字，
+  但左下角卡片群（截面圖 / 已繪製圖形）的實際高度會隨字級、關卡、
+  哪些卡片顯示而變 —— 寫死就一定有幾 px 的誤差，面板下緣就疊到卡片上。
+  改成量 .vp-bottom 的真實高度寫回 CSS 變數，誤差歸零。
+*/
+function syncHudReserve(): void {
+  const bottom = document.querySelector<HTMLElement>('.vp-bottom');
+  if (!bottom) return;
+  const h = bottom.getBoundingClientRect().height;
+  // 卡片可能全部隱藏（height 0），這時仍留一點呼吸空間
+  document.documentElement.style.setProperty('--hud-reserve', `${Math.max(24, Math.round(h) + 16)}px`);
+}
+new ResizeObserver(syncHudReserve).observe(
+  requireEl<HTMLElement>('viewport-slot').querySelector('.vp-bottom') ??
+    requireEl<HTMLElement>('viewport-slot'),
+);
+syncHudReserve();
+
+/*
+  版面探測鉤子。scripts/checks/browser.mjs 開真 Chrome 量 HUD 卡片的位置，
+  但 canvas 上的道具是畫出來的、DOM 上看不到 —— 所以由關卡把座標講出來。
+  只是讀取當前幀已經算好的值，沒有任何副作用。
+*/
+interface LayoutProbeWindow extends Window {
+  __layoutProbe?: () => unknown;
+}
+(window as LayoutProbeWindow).__layoutProbe = () => stages.current.propBoxes;
 
 // 載入時先偵測螢幕大小：太小就直接告訴玩家怎麼處理，而不是畫出壞掉的版面
 watchViewport(
@@ -345,7 +379,15 @@ function loop(now: number): void {
   // 2) 桌面層：桌子 + Chuck + 晶圓 + 已畫的圖形
   desk.renderBase();
 
-  // 3) 關卡邏輯（Modal 開啟時暫停互動，避免在看結算時繼續畫線）
+  /*
+    3) 上方帶狀元素（鏡頭設定列 / 子步驟列 / AR 提示 / 面板起點）依序重排。
+       必須在關卡 onFrame 之前 —— 關卡要用 sceneOverlay() 量它們的位置來決定
+       道具畫在哪，量到舊值就會有一幀的錯位。
+       內容沒變時 flushBands() 立即返回，不會每幀 reflow。
+  */
+  ui.flushBands();
+
+  // 4) 關卡邏輯（Modal 開啟時暫停互動，避免在看結算時繼續畫線）
   if (!ui.isModalOpen()) {
     stages.current.onFrame({
       ui,

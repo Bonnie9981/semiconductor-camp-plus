@@ -55,6 +55,20 @@ export interface SuccessModalData {
   showExports: boolean;
 }
 
+/** 疊在 canvas 上的 HTML 覆蓋物位置（canvas 座標）。見 UIManager.sceneOverlay()。 */
+export interface SceneOverlay {
+  /** 左側互動面板的右緣；沒有面板時 0。 */
+  left: number;
+  /** 上方帶狀元素（子步驟列 / AR 提示）的下緣。 */
+  top: number;
+  /** 右上角卡片的左緣；沒有卡片時 Infinity。 */
+  cardLeft: number;
+  /** 右上角卡片的下緣；沒有卡片時 0。 */
+  cardBottom: number;
+  /** 左下角卡片群的上緣。 */
+  bottomTop: number;
+}
+
 export class UIManager {
   private readonly cb: UICallbacks;
   private readonly cache = new Map<string, string>();
@@ -100,6 +114,9 @@ export class UIManager {
   // 關卡內互動
   private readonly substepStrip = el<HTMLElement>('substep-strip');
   private readonly stagePanel = el<HTMLElement>('stage-panel');
+  private readonly viewportSlot = el<HTMLElement>('viewport-slot');
+  /** 上方帶狀元素的位置需不需要重算。見 flushBands()。 */
+  private bandsDirty = true;
   private readonly stageAction = el<HTMLButtonElement>('btn-stage-action');
   private readonly devComplete = el<HTMLButtonElement>('btn-dev-complete');
   private readonly sectionCard = el<HTMLElement>('hud-cross-section');
@@ -188,6 +205,80 @@ export class UIManager {
   panelInset(): number {
     if (this.stagePanel.classList.contains('hidden')) return 0;
     return this.stagePanel.offsetLeft + this.stagePanel.offsetWidth;
+  }
+
+  /**
+   * 依序把上方三條帶狀元素疊起來：鏡頭設定列 → 子步驟列 → AR 提示 → 互動面板。
+   *
+   * 這幾個的 top 原本是每個高度級距寫死的數字（56/50/44、94/86/76、146/132/116）。
+   * 問題是它們的**高度會變** —— 字級隨級距改、子步驟數量各關不同、
+   * 提示文字長了會換行。寫死的結果就是矮視窗上子步驟列壓在鏡頭設定列上面。
+   *
+   * 改成量前一條的下緣，寫進 CSS 變數給下一條用。
+   * 每一步都在寫入之後才讀下一個，所以讀到的都是重排後的新值。
+   *
+   * 只有內容或視窗變動時才跑（bandsDirty），不是每幀 —— 這裡會觸發 reflow。
+   */
+  flushBands(force = false): void {
+    if (!this.bandsDirty && !force) return;
+    this.bandsDirty = false;
+
+    const slotTop = this.viewportSlot.getBoundingClientRect().top;
+    const css = document.documentElement.style;
+    const bottomOf = (node: HTMLElement | null, fallback: number): number => {
+      if (!node || node.classList.contains('hidden')) return fallback;
+      const r = node.getBoundingClientRect();
+      return r.height > 0 ? r.bottom - slotTop : fallback;
+    };
+
+    const chips = bottomOf(this.viewportSlot.querySelector<HTMLElement>('.vp-top-left'), 0);
+    css.setProperty('--substep-top', `${Math.round(chips + 8)}px`);
+
+    const strip = bottomOf(this.substepStrip, chips);
+    css.setProperty('--ar-hint-top', `${Math.round(strip + 8)}px`);
+
+    const hint = bottomOf(this.arHint, strip);
+    css.setProperty('--panel-top', `${Math.round(hint + 10)}px`);
+  }
+
+  /**
+   * 疊在 canvas 上的 HTML 覆蓋物，換算成 **canvas 座標**。
+   *
+   * 為什麼要量：畫面上有兩套座標系統 —— CSS 的 HUD 卡片與 canvas 上畫出來的
+   * 道具。CSS 那一層會隨視窗大小、字體、關卡不同而變，關卡不可能猜得到。
+   * 猜的結果就是矮視窗上「手勢參考卡把最右邊兩個藥瓶蓋掉」、
+   * 「AR 提示壓在瓶口上」—— 而且型別檢查與純數值檢查都抓不到。
+   *
+   * 所以沿用 panelInset() 已經證明可行的做法：**問 DOM，不要算**。
+   */
+  sceneOverlay(): SceneOverlay {
+    const slot = this.viewportSlot.getBoundingClientRect();
+    /** 元素相對 canvas 左上角的框；元素不存在或隱藏時回 null。 */
+    const box = (node: HTMLElement | null): DOMRect | null => {
+      if (!node || node.classList.contains('hidden')) return null;
+      const r = node.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    };
+
+    // 上方帶狀元素：子步驟列與 AR 提示。取兩者較低的下緣。
+    let top = 0;
+    for (const node of [this.substepStrip, this.arHint]) {
+      const r = box(node);
+      if (r) top = Math.max(top, r.bottom - slot.top);
+    }
+
+    // 右上角的手勢參考卡（矮視窗上會被 CSS 隱藏，那時就沒有這個限制）
+    const card = box(document.querySelector<HTMLElement>('.gesture-ref'));
+    // 左下角的截面圖等卡片
+    const bottom = box(document.querySelector<HTMLElement>('.vp-bottom'));
+
+    return {
+      left: this.panelInset(),
+      top,
+      cardLeft: card ? card.left - slot.left : Number.POSITIVE_INFINITY,
+      cardBottom: card ? card.bottom - slot.top : 0,
+      bottomTop: bottom ? bottom.top - slot.top : slot.height,
+    };
   }
 
   // ─────────────────────────────── 事件綁定 ────────────────────────────────
@@ -921,6 +1012,42 @@ export class UIManager {
       ctx.drawImage(image, 0, 0, this.certCanvas.width, this.certCanvas.height);
     }
     this.openModal(this.modalCert);
+    // 要先顯示才量得到高度
+    this.syncCertificateSize();
+  }
+
+  /**
+   * 讓證書預覽**整張**落在畫面內。
+   *
+   * 原本 canvas 是 width:100%，在 940px 寬的視窗裡撐成約 825×583px。
+   * 16:10 的 Mac 非全螢幕時可視高度只剩約 500px，證書就被 modal 的捲軸
+   * 截掉，玩家只看到上面 40%（而「再玩一次」也看不到）。
+   *
+   * 這裡量「除了證書以外的東西」佔掉多少高度，剩下的給證書用。
+   * 純 CSS 做不到的原因寫在 style.css 的 .cert-frame 註解裡。
+   */
+  syncCertificateSize(): void {
+    const frame = this.modalCert.querySelector<HTMLElement>('.cert-frame');
+    if (!frame || this.modalCert.classList.contains('hidden')) return;
+
+    /*
+      兩趟量測，不去加總 padding / gap / 子元素高度 ——
+      那樣會漏掉子元素自己的 margin（實測差 21px），而且每加一個元素就要改。
+
+        第一趟：把證書那一格壓成 0，量 modal 剩下多高 → 這就是「其他東西」的成本
+        第二趟：可用高度 = 94vh − 成本，寫回去
+
+      這樣不管 modal 裡以後多了什麼，算出來的都是對的。
+    */
+    frame.style.height = '0px';
+    const chrome = this.modalCert.getBoundingClientRect().height;
+
+    // 上限直接讀 CSS 的 max-height（各高度級距不同），
+    // 不要在 JS 裡再寫一個比例 —— 兩邊各寫一份就一定會不同步
+    const maxH = parseFloat(getComputedStyle(this.modalCert).maxHeight);
+    const limit = Number.isFinite(maxH) ? maxH : window.innerHeight * 0.94;
+
+    frame.style.height = `${Math.max(120, Math.round(limit - chrome))}px`;
   }
 
   isCertificateOpen(): boolean {
@@ -947,6 +1074,8 @@ export class UIManager {
   private setText(node: HTMLElement, value: string): void {
     if (node.textContent === value) return;
     node.textContent = value;
+    // 文字長度改變會影響上方帶狀元素的高度，下一幀要重排一次
+    this.bandsDirty = true;
   }
 }
 

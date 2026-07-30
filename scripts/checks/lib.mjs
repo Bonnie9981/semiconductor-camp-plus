@@ -50,21 +50,22 @@ export const SCREENS = [
 export const TOO_SMALL_SCREENS = [
   { name: '1024x768  投影機', w: 1024, h: 768 },
   { name: '1280x1024@125%', w: 1024, h: 819 },
-  { name: '1366x768  高度不足', w: 1366, h: 560 },
+  { name: '1440x440  高度不足', w: 1440, h: 440 },
 ];
 
 /** 互動面板在 CSS 上的 top 與底部保留高度（跟 style.css 的斷點一致）。 */
 export function panelMetrics(wh) {
   return {
-    top: wh <= 740 ? 116 : wh <= 860 ? 132 : 146,
-    hudReserve: wh <= 740 ? 158 : wh <= 860 ? 176 : 190,
+    top: wh <= 540 ? 88 : wh <= 660 ? 104 : wh <= 740 ? 116 : wh <= 860 ? 132 : 146,
+    // --hud-reserve 現在由 main.ts 量 .vp-bottom 寫回來，這裡取各級距的近似值
+    hudReserve: wh <= 540 ? 118 : wh <= 660 ? 138 : wh <= 740 ? 158 : wh <= 860 ? 176 : 190,
   };
 }
 
 /** 依視窗尺寸推出鏡頭視窗（canvas）的尺寸與場景可用範圍。 */
 export function viewport({ w: ww, h: wh }) {
-  const headerH = wh <= 740 ? 54 : wh <= 860 ? 62 : 72;
-  const flowH = wh <= 740 ? 42 : wh <= 860 ? 50 : 58;
+  const headerH = wh <= 540 ? 42 : wh <= 660 ? 48 : wh <= 740 ? 54 : wh <= 860 ? 62 : 72;
+  const flowH = wh <= 540 ? 0 : wh <= 660 ? 38 : wh <= 740 ? 42 : wh <= 860 ? 50 : 58;
   const pad = ww <= 1280 ? 10 : ww <= 1420 ? 14 : 18;
   const sidebar = ww <= 1180 ? 172 : ww <= 1280 ? 196 : ww <= 1420 ? 226 : 260;
   const rightPanel = ww <= 1180 ? 210 : ww <= 1280 ? 236 : ww <= 1420 ? 268 : 300;

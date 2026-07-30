@@ -554,7 +554,7 @@ body {
 */
 .ar-hint {
   position: absolute;
-  top: 94px;
+  top: var(--ar-hint-top, 94px);
   left: 16px;
   right: 200px;
   margin: 0 auto;
@@ -1047,7 +1047,9 @@ body {
    ========================================================================== */
 .substep-strip {
   position: absolute;
-  top: 56px;
+  /* top 由 UIManager.flushBands() 量出來寫進 --substep-top；
+     這裡的預設值只是第一幀還沒量到時的暫代值 */
+  top: var(--substep-top, 56px);
   left: 16px;
   right: 200px;
   display: flex;
@@ -1114,15 +1116,24 @@ body {
    ========================================================================== */
 /*
   互動面板固定在左上，不再垂直置中——置中時面板下緣會伸到藥瓶那一排的高度，
-  把最左邊的瓶子蓋掉。top 從 AR 提示橫幅下方開始，max-height 則預留左下角
-  截面圖 HUD 的空間（見 --hud-reserve）。
+  把最左邊的瓶子蓋掉。
+
+  用 top + bottom 而不是 top + max-height：--hud-reserve 是由 JS 量
+  .vp-bottom 的實際高度寫回來的（見 main.ts 的 syncHudReserve），
+  所以面板下緣一定剛好停在左下角卡片群上方，不會像寫死的 max-height
+  那樣差幾 px 就疊上去。
+
+  overflow-y: auto 是矮視窗的保險：16:10 的 Mac 開著書籤列時面板只剩約
+  100px 高，內容一定放不下。可以捲總比被裁掉看不到好。
 */
 .stage-panel {
   position: absolute;
   left: 16px;
-  top: 146px;
+  top: var(--panel-top, 146px);
+  bottom: var(--hud-reserve);
   width: var(--panel-scene-w);
-  max-height: calc(100% - 146px - var(--hud-reserve));
+  /* 捲動的是裡面的 .sp-note / .sp-body，不是面板本身 */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1133,14 +1144,40 @@ body {
   backdrop-filter: blur(8px);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
   animation: fade-up 0.22s ease-out;
-  overflow: hidden;
+}
+/* 面板內的捲軸要細一點、不要搶視覺 */
+.sp-note::-webkit-scrollbar,
+.sp-body::-webkit-scrollbar {
+  width: 6px;
+}
+.sp-note::-webkit-scrollbar-thumb,
+.sp-body::-webkit-scrollbar-thumb {
+  background: oklch(0.45 0.05 190 / 0.6);
+  border-radius: 3px;
+}
+/*
+  面板矮到裝不下時（16:10 的 Mac 只剩約 135px），要捲動的是**說明文字**，
+  不是整個面板。
+
+  一開始是讓整個面板捲、標題與按鈕用 position: sticky 釘住 —— 但那樣
+  按鈕底下會露出還沒捲完的文字，看起來像被切掉。改成標題與按鈕留在
+  正常流程（所以一定看得到），中間的說明自己捲，版面就乾淨了。
+*/
+.sp-confirm {
+  flex: none;
 }
 .sp-title {
+  flex: none;
   font-size: 17.5px;
   font-weight: 700;
   color: var(--text);
 }
 .sp-note {
+  /* 面板高度不足時由這一段吸收：自己捲，標題與按鈕不動 */
+  flex: 1 1 auto;
+  min-height: 2.6em;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-3);
@@ -1148,6 +1185,10 @@ body {
   white-space: pre-line;
 }
 .sp-body {
+  /* 與 .sp-note 一起吸收多餘高度：兩段都能縮、都能捲，
+     標題與操作鈕才永遠留得住 */
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1377,18 +1418,11 @@ body {
     --flow-h: 50px;
     --hud-reserve: 176px;
   }
-  .substep-strip {
-    top: 50px;
-  }
   .ar-hint {
-    top: 86px;
     font-size: 13.5px;
     padding: 8px 17px;
   }
-  .stage-panel {
-    top: 132px;
-    max-height: calc(100% - 132px - var(--hud-reserve));
-  }
+
 }
 
 @media (max-height: 740px) {
@@ -1397,21 +1431,15 @@ body {
     --flow-h: 42px;
     --hud-reserve: 158px;
   }
-  .substep-strip {
-    top: 44px;
-  }
   .substep {
     padding: 4px 8px;
     font-size: 11px;
   }
   .ar-hint {
-    top: 76px;
     font-size: 12.5px;
     padding: 6px 15px;
   }
   .stage-panel {
-    top: 116px;
-    max-height: calc(100% - 116px - var(--hud-reserve));
     gap: 8px;
     padding: 11px;
   }
@@ -1430,12 +1458,41 @@ body {
 /* ==========================================================================
    結業證書
    ========================================================================== */
+/*
+  證書預覽必須「整張都看得到」。
+
+  原本 #cert-canvas 是 width:100%; height:auto —— 在 940px 寬的視窗裡
+  會撐成約 860×608px。矮視窗（16:10 的 Mac 約 500px 高）上 max-height:88vh
+  只有 440px，證書就被 modal 的捲軸截掉，玩家只看到上面 40%。
+
+  改法：整個 modal 用 flex 直排，把**剩下的空間**全部給 .cert-frame
+  （flex:1 + min-height:0，缺了 min-height:0 的話 flex 子元素不會縮小），
+  canvas 再用 max-width/max-height 各 100% 等比縮進去。
+  這樣不論視窗多矮，看到的都是完整的一張證書，只是變小。
+*/
 .modal-cert {
   max-width: 940px;
   width: min(94vw, 940px);
+  max-height: 94vh;
+  /* 內容自己會縮，不需要外層捲動 —— 捲動就是「看不到全部」的來源 */
+  overflow: hidden;
 }
 .cert-frame {
-  margin: 14px 0 4px;
+  margin: 12px 0 2px;
+  /*
+    高度由 JS 寫進 inline style（見 UIManager.syncCertificateSize）。
+
+    為什麼不能純 CSS：modal 是 shrink-to-fit 的，所以「剩下的空間」是 0，
+    flex 分不到高度；而 canvas 的 max-height: 100% 又需要一個**確定的**
+    父高度才算得出來 —— 兩邊互相等待。用量出來的值直接給 height 就解開了：
+    可用高度 = 94vh − 標題 / 說明 / 按鈕列 / padding / gap 的實際高度。
+  */
+  flex: 0 0 auto;
+  min-height: 100px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--r-lg);
   overflow: hidden;
   border: 1px solid oklch(0.4 0.05 190 / 0.5);
@@ -1443,8 +1500,67 @@ body {
 }
 #cert-canvas {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+/*
+  矮視窗上證書可用的高度 = 94vh − 其他東西。所以要讓證書大一點，
+  唯一的辦法是把「其他東西」變小。優先順序是：
+  說明文字（可以不看）→ kicker → 標題字級 → 按鈕列高度 → padding。
+  證書本身是這一頁的主角，最後才輪到它讓步。
+*/
+@media (max-height: 760px) {
+  .modal-cert {
+    padding: 14px 20px;
+    gap: 7px;
+    max-height: 97vh;
+  }
+  .modal-cert .modal-kicker,
+  .modal-cert .modal-desc {
+    display: none;
+  }
+  .modal-cert .modal-title {
+    font-size: 20px;
+  }
+  .cert-frame {
+    margin: 6px 0 2px;
+  }
+  /* 下載鈕與「再玩一次」併成一列，省掉一整行的高度 */
+  .cert-actions {
+    gap: 7px;
+  }
+  .cert-actions .btn {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+  /* 用 .modal-cert 前綴提高特異性 —— .btn-play-again 的基礎規則排在本檔後面，
+     同特異性時會贏，所以不能只寫 .btn-play-again */
+  .modal-cert .btn-play-again {
+    padding: 9px 22px;
+    margin-top: 6px;
+    font-size: 16.5px;
+    gap: 8px;
+  }
+}
+@media (max-height: 600px) {
+  .modal-cert {
+    padding: 10px 16px;
+    gap: 5px;
+  }
+  .modal-cert .modal-title {
+    font-size: 17px;
+  }
+  .cert-actions .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .modal-cert .btn-play-again {
+    padding: 7px 18px;
+    margin-top: 3px;
+    font-size: 15px;
+  }
 }
 .cert-actions {
   flex-wrap: wrap;
@@ -1675,4 +1791,164 @@ body {
 }
 .timer-card.is-finished .timer-value {
   color: var(--accent-bright);
+}
+
+/* ==========================================================================
+   矮視窗（≤ 660px / ≤ 540px 可視高度）
+   --------------------------------------------------------------------------
+   16:10 的 Mac（2560×1600 → 1440×900）非全螢幕、又開著書籤列時，
+   可視高度只剩約 500px —— 這是很常見的機器，不是邊緣案例。
+
+   16:9 與 16:10 的差別其實不在寬高比本身，而在**可用高度**：
+   同樣 1440 寬，16:9 的 Windows 筆電通常有 640~900px，
+   16:10 的 Mac 扣掉瀏覽器介面後可能只剩 500px。所以這裡用高度分級。
+
+   矮視窗上要讓出垂直空間，做法是「拿掉重複的東西」而不是等比縮小：
+     · 手勢參考卡隱藏 —— 右側面板的「手部狀態」已經有同樣的資訊，
+       而它浮在 canvas 右上角，會把最右邊兩個藥瓶蓋掉
+     · 上方三條帶狀元素（子步驟列 / AR 提示 / 面板起點）再往上收
+     · 截面圖卡片變矮，讓 --hud-reserve 跟著變小、面板拿回高度
+   ========================================================================== */
+@media (max-height: 660px) {
+  :root {
+    --header-h: 48px;
+    --flow-h: 38px;
+  }
+  /*
+    右欄刻意不捲動（「行動」按鈕要固定看得到），所以矮視窗上必須真的塞得下。
+    做法還是「拿掉重複的」：關卡說明在左側面板也有、狀態列的內容 Header 也有。
+  */
+  #right-panel {
+    gap: 8px;
+    padding: 12px;
+  }
+  #right-panel .panel-desc {
+    display: none;
+  }
+  #right-panel .block-scroll {
+    min-height: 0;
+  }
+  .panel-title {
+    font-size: 17px;
+  }
+  .instructions {
+    font-size: 12.5px;
+  }
+  .hand-icon {
+    font-size: 26px;
+  }
+  #sidebar {
+    gap: 6px;
+    padding: 12px 10px;
+  }
+  /* 資訊與右側面板的「手部狀態」重複，而它會蓋住最右邊的藥瓶 */
+  .gesture-ref {
+    display: none;
+  }
+  .ar-hint {
+    font-size: 12px;
+    padding: 5px 13px;
+  }
+  .section-canvas {
+    height: 84px;
+  }
+  .preview-canvas {
+    width: 76px;
+    height: 76px;
+  }
+  /* 面板高度被壓縮，字距收緊讓一次看得到的內容變多（而不是全靠捲動） */
+  .stage-panel {
+    gap: 6px;
+    padding: 9px 11px;
+  }
+  .sp-title {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  /* 極端情況下說明只留一行，其餘靠捲 —— 操作鈕不能被擠掉 */
+  .sp-note {
+    min-height: 1.4em;
+  }
+  /*
+    操作鈕最多會有兩顆（例如「送去浸泡」+「倒掉」），
+    原本一顆 54px、兩顆就吃掉 108px —— 面板總共才 133px。
+    矮視窗上收成 34px 一顆，仍然遠大於好按的下限。
+  */
+  .stage-panel .sp-confirm {
+    padding: 7px 12px;
+    font-size: 13.5px;
+  }
+  .sp-title {
+    font-size: 15px;
+  }
+  .sp-note {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .brand-title {
+    font-size: 17px;
+  }
+  .brand-sub {
+    display: none;
+  }
+}
+
+@media (max-height: 540px) {
+  :root {
+    --header-h: 42px;
+    --flow-h: 0px;
+  }
+  /* 狀態列的「已完成 N / 5」與 Header 的進度條重複，最矮的時候先犧牲 */
+  #right-panel .status-foot {
+    display: none;
+  }
+  #right-panel {
+    gap: 6px;
+    padding: 10px;
+  }
+  .panel-title {
+    font-size: 15.5px;
+  }
+  .instructions {
+    font-size: 12px;
+  }
+  /* 下方那條關卡流程帶與左側的關卡清單重複，最矮的時候先犧牲它 */
+  #stage-flow {
+    display: none;
+  }
+  .substep {
+    padding: 3px 7px;
+    font-size: 10.5px;
+  }
+  .ar-hint {
+    font-size: 11.5px;
+    padding: 4px 11px;
+  }
+  /* 下方 HUD 變矮 → --hud-reserve 跟著變小 → 互動面板拿回高度 */
+  .section-canvas {
+    height: 56px;
+  }
+  .preview-canvas {
+    width: 52px;
+    height: 52px;
+  }
+  .hud-card {
+    padding: 5px 7px;
+  }
+  .hud-head,
+  .gr-head {
+    font-size: 9.5px;
+    margin-bottom: 3px;
+  }
+  .stage-panel {
+    gap: 5px;
+    padding: 8px 10px;
+  }
+  .stage-panel .sp-confirm {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .sp-title {
+    font-size: 13.5px;
+  }
 }

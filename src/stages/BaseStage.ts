@@ -25,6 +25,20 @@ import type {
  * StageManager 只依賴這個介面，因此新增關卡完全不需要改動 StageManager 或 main.ts
  * 以外的任何檔案（見 README「擴充開發指南」）。
  */
+/**
+ * canvas 上一個道具的外框（canvas 座標）。
+ * 只有 scripts/checks/browser.mjs 會讀它 —— 那支檢查要知道 HTML 的 HUD 卡片
+ * 有沒有蓋住畫在 canvas 上的東西，而 CSS 與 canvas 是兩套座標系統，
+ * 只能由關卡自己把「我把道具畫在哪裡」講出來。
+ */
+export interface PropBox {
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export abstract class BaseStage {
   /** 存進 results 的 key，例如 'rca-clean'。 */
   abstract readonly id: string;
@@ -40,6 +54,12 @@ export abstract class BaseStage {
   abstract readonly instructions: InstructionStep[];
   /** 右側主要行動按鈕的文字，例如「完成清洗」。 */
   abstract readonly primaryLabel: string;
+
+  /**
+   * 這一幀畫在 canvas 上的重要道具的位置。預設空陣列。
+   * 關卡覆寫它，`npm run check:browser` 就能驗「HUD 卡片有沒有蓋住道具」。
+   */
+  propBoxes: PropBox[] = [];
 
   /** 關卡內的子步驟；空陣列代表這一關是單一步驟。 */
   readonly substeps: readonly SubStep[] = [];
