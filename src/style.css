@@ -1633,3 +1633,35 @@ body {
   color: oklch(0.92 0.14 90);
   background: oklch(0.3 0.08 90 / 0.6);
 }
+
+
+/* ==========================================================================
+   左側面板的計時器
+   ========================================================================== */
+.timer-card {
+  padding: 10px 12px 8px;
+  border-radius: var(--r-lg);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+.timer-head {
+  font-size: 10.5px;
+  color: var(--text-5);
+  margin-bottom: 2px;
+}
+.timer-value {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+/* 全部完成後定格，並染成主色表示「這就是你的成績」 */
+.timer-card.is-finished {
+  border-color: var(--accent);
+  background: oklch(0.24 0.05 190 / 0.5);
+}
+.timer-card.is-finished .timer-value {
+  color: var(--accent-bright);
+}

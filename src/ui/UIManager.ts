@@ -2,6 +2,7 @@ import { HAND_CONNECTIONS, INDEX_TIP, THUMB_TIP } from '../core/GestureDetector'
 import type { CameraStatus, FacingMode } from '../core/CameraManager';
 import type { StageManager } from '../core/StageManager';
 import type { HandFrame, InstructionStep, PanelSpec, SubStep } from '../core/types';
+import { formatElapsed } from '../utils/format';
 
 /**
  * UIManager —— 所有 HTML UI（#ui-layer, z-index:10）的唯一操作入口。
@@ -65,6 +66,8 @@ export class UIManager {
 
   // Sidebar
   private readonly stepList = el<HTMLElement>('step-list');
+  private readonly timerCard = document.querySelector<HTMLElement>('.timer-card')!;
+  private readonly timerValue = el<HTMLElement>('timer-value');
   private readonly hintText = el<HTMLElement>('hint-text');
 
   // Viewport HUD
@@ -156,6 +159,19 @@ export class UIManager {
     }
     this.stageAction.textContent = label;
     this.stageAction.classList.remove('hidden');
+  }
+
+  /**
+   * 左側面板的計時器。
+   * 主迴圈每幀呼叫，但 setText() 會比對舊值，所以實際上每秒才動一次 DOM。
+   * finished 為 true 時定格並染成主色 —— 那就是玩家的成績。
+   */
+  setElapsed(ms: number, finished: boolean): void {
+    this.setText(this.timerValue, formatElapsed(ms));
+    if (this.cache.get('timerFinished') !== String(finished)) {
+      this.cache.set('timerFinished', String(finished));
+      this.timerCard.classList.toggle('is-finished', finished);
+    }
   }
 
   /** 截面圖 HUD 的 canvas，交給 CrossSection 直接畫。 */

@@ -25,6 +25,8 @@ export interface CertificateData {
   etch: string;
   /** 完成時間。 */
   date: Date;
+  /** 走完整條製程花了多久（已格式化，例如 12:34）。 */
+  elapsed: string;
   /** 流水序號。 */
   serial: string;
 }
@@ -216,13 +218,14 @@ export function composeCertificate(data: CertificateData): HTMLCanvasElement {
   const colR = waferX;
   const colMid = (colL + colR) / 2;
   const rows: [string, string][] = [
+    ['總花費時間', data.elapsed],
     ['沉積方式', data.method],
     ['光阻類型', data.tone],
     ['蝕刻方式', data.etch],
   ];
   // 值可用的最大寬度 = 中線到晶圓左緣，再留 20px 餘裕
   const valueMax = colR - (colMid + 14) - 20;
-  let ry = rowY + 74;
+  let ry = rowY + 52;
   rows.forEach(([k, v]) => {
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(168, 192, 204, 0.85)';

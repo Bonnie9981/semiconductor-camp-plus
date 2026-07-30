@@ -14,6 +14,7 @@ import { CrossSection } from './ui/CrossSection';
 import { UIManager } from './ui/UIManager';
 import { VirtualDesk } from './ui/VirtualDesk';
 import { Exporter } from './utils/Exporter';
+import { formatElapsed } from './utils/format';
 import {
   canvasToPdf,
   capturePhoto,
@@ -157,6 +158,8 @@ stages.subscribe((event) => {
       ui.showFail(event.reason);
       break;
     case 'allComplete':
+      // 先把時間定格，證書上印的才是實際的製程時間（不含後面的延遲與看證書的時間）
+      finishedMs = performance.now() - startedAt;
       /*
         刻意延遲。玩家是用捏合按下「完成蝕刻」的，手往往還停在原處；
         證書一瞬間跳出來，同一次捏合的殘留判定就可能直接打到「再玩一次」。
@@ -173,6 +176,7 @@ stages.subscribe((event) => {
 function resetEverything(): void {
   desk.clear();
   wafer.reset();
+  resetTimer();
   lastPhoto = null;
   serial = null;
   certificate = null;
@@ -201,6 +205,23 @@ function openClearModal(stage: BaseStage): void {
   });
 }
 
+// ──────────────────────────────── 計時器 ──────────────────────────────────
+// 從進入遊戲開始算，五道製程全部完成時定格。顯示在左側面板，
+// 並印在結業證書上當成玩家的成績。
+
+let startedAt = performance.now();
+/** 全部完成時的定格值；null = 還在跑。 */
+let finishedMs: number | null = null;
+
+function elapsedMs(): number {
+  return finishedMs ?? performance.now() - startedAt;
+}
+
+function resetTimer(): void {
+  startedAt = performance.now();
+  finishedMs = null;
+}
+
 // ─────────────────────────────── 結業證書 ─────────────────────────────────
 
 let certificate: HTMLCanvasElement | null = null;
@@ -219,6 +240,7 @@ function openCertificate(recapture: boolean): void {
     tone: litho?.tone === 'negative' ? '負型光阻' : '正型光阻',
     etch: etch?.etchMethod === 'wet' ? '濕式蝕刻 · 側向' : '乾式蝕刻 · 鉛直',
     date,
+    elapsed: formatElapsed(elapsedMs()),
     serial: serial ?? (serial = makeSerial(date)),
   };
   lastPhoto = data.photo;
@@ -345,6 +367,7 @@ function loop(now: number): void {
   // 5) UI：截面圖 + 右上角手勢參考 + 主要按鈕可用狀態
   if (stages.current.usesCrossSection) crossSection.render(wafer, elapsed);
   ui.renderGestureRef(hand);
+  ui.setElapsed(elapsedMs(), finishedMs !== null);
 
   const done = stages.isCurrentDone();
   const canComplete = stages.current.canComplete();
