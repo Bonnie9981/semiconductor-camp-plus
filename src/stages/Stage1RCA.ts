@@ -144,7 +144,7 @@ export class Stage1RCA extends BaseStage {
   readonly shortTitle = 'RCA 清洗';
   readonly description =
     '晶圓進廠時表面有微粒、原生氧化層與金屬離子。親手配出三種清洗液把它們洗掉，最後甩乾。';
-  readonly hint = '先加去離子水！沒有水墊底就把兩種藥液混在一起會突沸。配錯了要整杯倒進廢液桶重來。';
+  readonly hint = '先加去離子水！沒有水墊底就把兩種不同的藥液混在一起會突沸。配錯了要整杯倒進廢液桶重來。';
   readonly primaryLabel = '完成清洗';
   readonly usesCrossSection = true;
 
@@ -157,7 +157,7 @@ export class Stage1RCA extends BaseStage {
 
   readonly instructions: InstructionStep[] = [
     { glyph: '🤏', title: '捏起藥瓶', desc: '瓶子下方亮起光暈就代表抓得到，捏合即可拿起來。' },
-    { glyph: '💧', title: '先倒去離子水', desc: '杯子裡沒有水就倒濃藥液會突沸噴濺 —— 整杯報廢重配。' },
+    { glyph: '💧', title: '先倒去離子水', desc: '沒有水墊底就讓兩種不同的藥液相遇會突沸 —— 整杯報廢重配。' },
     { glyph: '🫗', title: '倒進調配杯', desc: '移到杯口上方瓶身會自動傾倒，每停留 0.8 秒進 1 份。' },
     { glyph: '💧', title: '送去浸泡', desc: '配方正確才會通過；配錯會鎖住，要整杯倒掉重來。' },
     { glyph: '🌀', title: '夾進乾燥機', desc: '最後一步捏合抓起晶圓，放進滾筒後按 START 甩乾。' },
@@ -649,8 +649,9 @@ export class Stage1RCA extends BaseStage {
   }
 
   /**
-   * 突沸：在沒有去離子水的狀態下，讓第二種藥液碰到第一種。
+   * 突沸：在沒有去離子水的狀態下，讓兩種**不同**的藥液相遇。
    * 兩種濃藥液直接相遇是劇烈放熱反應，沒有水吸熱，界面瞬間到達沸點把液體噴出來。
+   * 同一瓶多倒幾份不會觸發 —— 沒有不同的東西可以反應。
    * 懲罰是整杯報廢 —— 跟真實實驗室一樣，這種事發生了就是重配。
    */
   private triggerBoom(id: string): void {
@@ -875,7 +876,7 @@ export class Stage1RCA extends BaseStage {
       return;
     }
     if (this.phase === 'boom') {
-      ui.setArHint('💥 突沸！整杯報廢 —— 沒有水墊底就不能混兩種藥液', true);
+      ui.setArHint('💥 突沸！整杯報廢 —— 沒有水墊底就不能混兩種不同的藥液', true);
       ui.setHandState('💥', '突沸', 'RUNAWAY REACTION', false);
       return;
     }
@@ -1113,7 +1114,7 @@ export class Stage1RCA extends BaseStage {
     return {
       kind: 'pour',
       title: recipe.title,
-      note: `${recipe.note}\n目標配方：${target}\n⚠ 安全規則：沒有去離子水墊底時，**不可以把兩種藥液混在一起**（會突沸）。習慣上先加水。`,
+      note: `${recipe.note}\n目標配方：${target}\n⚠ 安全規則：沒有去離子水墊底時，**不可以把兩種不同的藥液混在一起**（會突沸）。習慣上先加水。`,
       error: this.error ?? undefined,
       rows: this.mix,
       confirmLabel: '送去浸泡',
