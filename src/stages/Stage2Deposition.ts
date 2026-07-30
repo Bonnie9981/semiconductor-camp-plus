@@ -832,6 +832,30 @@ export class Stage2Deposition extends BaseStage {
     return this.subsFinished && this.ctx?.wafer.hasLayer('metal') === true;
   }
 
+  /** 強制完成：把該長的膜直接長出來，後面的關卡才有東西可以蝕刻。 */
+  override devComplete(): void {
+    const wafer = this.ctx.wafer;
+    if (this.method === null) this.method = 'pvd';
+    if (this.method === 'cvd' && !wafer.hasLayer('oxide')) {
+      wafer.addLayer({
+        kind: 'oxide',
+        label: FILM.oxide.label,
+        thickness: FILM.oxide.thickness,
+        color: FILM.oxide.color,
+        patterned: false,
+      });
+    }
+    if (!wafer.hasLayer('metal')) {
+      wafer.addLayer({
+        kind: 'metal',
+        label: FILM.metal.label,
+        thickness: FILM.metal.thickness,
+        color: FILM.metal.color,
+        patterned: false,
+      });
+    }
+  }
+
   override buildResult(): StageResult {
     return {
       method: this.method,

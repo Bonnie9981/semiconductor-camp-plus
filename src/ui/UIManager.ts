@@ -38,6 +38,8 @@ export interface UICallbacks {
   onPlayAgain: () => void;
   /** 開發者模式開關（開啟後可任意跳關）。 */
   onDevMode: (enabled: boolean) => void;
+  /** 開發者模式：把目前這一關直接標記為已完成。 */
+  onForceComplete: () => void;
   onRetry: () => void;
   onExit: () => void;
   /** 視窗內的主要行動按鈕（完成本關 / 下一步）。 */
@@ -96,6 +98,7 @@ export class UIManager {
   private readonly substepStrip = el<HTMLElement>('substep-strip');
   private readonly stagePanel = el<HTMLElement>('stage-panel');
   private readonly stageAction = el<HTMLButtonElement>('btn-stage-action');
+  private readonly devComplete = el<HTMLButtonElement>('btn-dev-complete');
   private readonly sectionCard = el<HTMLElement>('hud-cross-section');
   private readonly sectionCanvas = el<HTMLCanvasElement>('cross-section-canvas');
 
@@ -232,7 +235,13 @@ export class UIManager {
     el<HTMLInputElement>('set-mirror').addEventListener('change', () => this.cb.onToggleMirror());
     el<HTMLInputElement>('set-devmode').addEventListener('change', (e) => {
       this.devMode = (e.target as HTMLInputElement).checked;
+      this.devComplete.classList.toggle('hidden', !this.devMode);
       this.cb.onDevMode(this.devMode);
+    });
+    this.devComplete.addEventListener('click', () => {
+      this.cb.onForceComplete();
+      // 關掉設定視窗，才看得到剛剛被標記完成的效果
+      this.closeModal();
     });
     el<HTMLInputElement>('set-pen-width').addEventListener('input', (e) => {
       this.cb.onPenWidth(Number((e.target as HTMLInputElement).value));

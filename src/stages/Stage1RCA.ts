@@ -1134,6 +1134,15 @@ export class Stage1RCA extends BaseStage {
     return this.subsFinished && this.ctx?.wafer.isClean === true;
   }
 
+  /** 強制完成：直接把四項污染歸零，晶圓視為已洗淨。 */
+  override devComplete(): void {
+    const c = this.ctx.wafer.contamination;
+    c.particles = 0;
+    c.oxide = 0;
+    c.ions = 0;
+    c.water = 0;
+  }
+
   override buildResult(): StageResult {
     return {
       cleaned: true,

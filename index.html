@@ -304,13 +304,22 @@
             <span>Pinch 靈敏度（越大越好捏）</span>
             <input id="set-pinch" type="range" min="30" max="90" step="5" value="55" />
           </label>
-          <label class="setting-row setting-row-dev">
-            <span>
+          <!--
+            這一列刻意用 div 而不是 label：label 裡面放按鈕的話，
+            點按鈕會連帶觸發 label 而把 checkbox 一起切掉。
+          -->
+          <div class="setting-row setting-row-dev">
+            <label for="set-devmode">
               開發者模式
               <small>開啟後可任意點選左側任一關卡跳關，方便測試</small>
-            </span>
-            <input id="set-devmode" type="checkbox" />
-          </label>
+            </label>
+            <div class="dev-controls">
+              <button id="btn-dev-complete" data-pinch="1" class="chip chip-dev hidden" type="button">
+                ⚡ 標記本關完成
+              </button>
+              <input id="set-devmode" type="checkbox" />
+            </div>
+          </div>
           <div class="modal-actions">
             <button id="btn-settings-close" class="btn btn-primary" type="button">關閉</button>
           </div>

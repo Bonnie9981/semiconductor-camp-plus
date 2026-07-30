@@ -153,6 +153,18 @@ export class StageManager {
     if (this.doneCount === this.total) this.emit({ type: 'allComplete' });
   }
 
+  /**
+   * 開發者模式的強制完成：不檢查 canComplete()，直接把目前這關標記為 done。
+   * 先讓關卡透過 devComplete() 把它對晶圓該做的事補上，
+   * 後面的關卡與最終的證書才不會拿到一片空白的晶圓。
+   */
+  forceCompleteCurrent(): void {
+    if (this.status[this.index] === 'done') return;
+    const stage = this.current;
+    stage.devComplete();
+    this.completeCurrent(stage.buildResult());
+  }
+
   /** 前進到下一關（需目前關卡已 done）。 */
   advance(): boolean {
     if (!this.isCurrentDone() || !this.hasNext()) return false;

@@ -876,6 +876,15 @@ export class Stage5Etch extends DipStageBase {
     return this.subsFinished && this.ctx?.wafer.hasLayer('resist') === false;
   }
 
+  /** 強制完成：依目前選的方式蝕刻，再把光阻剝掉。 */
+  override devComplete(): void {
+    const wafer = this.ctx.wafer;
+    this.ensureResist();
+    if (this.method === null) this.method = 'dry';
+    wafer.etch(this.method === 'wet' ? 1 : 0);
+    wafer.removeLayer('resist');
+  }
+
   override buildResult(): StageResult {
     return { etchMethod: this.method, undercut: this.ctx.wafer.undercut };
   }

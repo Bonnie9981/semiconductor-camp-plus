@@ -95,6 +95,11 @@ const ui = new UIManager({
   onExportPDF: () => void downloadCertificatePdf(),
   onRetakePhoto: () => openCertificate(true),
   onPlayAgain: () => resetEverything(),
+  onForceComplete: () => {
+    // 已經完成就直接前進，方便連按快速走完整條流程
+    if (stages.isCurrentDone()) stages.advance();
+    else stages.forceCompleteCurrent();
+  },
   onDevMode: (enabled) => {
     // 開關狀態存在 UIManager（isDevMode()），這裡只負責重繪關卡列與提示
     ui.syncStages(stages);

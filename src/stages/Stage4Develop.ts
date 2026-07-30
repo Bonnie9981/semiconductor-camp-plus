@@ -210,6 +210,12 @@ export class Stage4Develop extends DipStageBase {
     return this.subsFinished;
   }
 
+  /** 強制完成：直接依 exposedMask 與光阻類型算出顯影結果。 */
+  override devComplete(): void {
+    this.ctx.wafer.develop();
+    this.picked = this.picked ?? this.answer;
+  }
+
   override buildResult(): StageResult {
     return { developer: this.picked, tone: this.ctx.wafer.resistTone };
   }

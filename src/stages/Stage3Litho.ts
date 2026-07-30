@@ -1067,6 +1067,23 @@ export class Stage3Litho extends BaseStage {
     return this.subsFinished && this.ctx?.wafer.hasLayer('resist') === true;
   }
 
+  /**
+   * 強制完成：補上光阻層，並把目前畫布上的圖案轉成曝光遮罩。
+   * 什麼都沒畫時給一組條紋，第四關的顯影才看得出圖案。
+   */
+  override devComplete(): void {
+    this.applyResistLayer();
+    const wafer = this.ctx.wafer;
+    if (this.ctx.desk.coverage() > 0) {
+      this.writeExposedMask();
+    } else {
+      for (let i = 0; i < SECTION_CELLS; i++) {
+        wafer.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
+      }
+    }
+    wafer.resistTone = this.tone;
+  }
+
   override buildResult(): StageResult {
     return {
       tone: this.tone,
