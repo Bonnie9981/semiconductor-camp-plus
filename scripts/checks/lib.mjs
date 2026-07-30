@@ -28,17 +28,38 @@ export class Report {
 export const SRC = new URL('../../src/', import.meta.url).pathname;
 
 /**
- * 常見筆電瀏覽器的可視區域，以及 index.html / style.css 在該尺寸下的實際版面值。
+ * 要驗證的可視區域尺寸，以及 index.html / style.css 在該尺寸下的實際版面值。
  * 斷點必須跟 style.css 的 media query 保持一致。
+ *
+ * 特別包含 Windows 顯示縮放 125% 的組合（1920→1536、1440→1152）——
+ * 那是「寬度大到不觸發寬度斷點、但高度很小」的情況，
+ * 曾經因為沒被涵蓋而讓藥瓶名稱壓到燒杯。
  */
 export const SCREENS = [
   { name: '1920x1080 外接螢幕', w: 1920, h: 1010 },
+  { name: '1536x752  1920@125%', w: 1536, h: 752 },
   { name: '1512x982  MBP 14"', w: 1512, h: 870 },
   { name: '1440x900  Air 13"', w: 1440, h: 790 },
   { name: '1366x768  Win 筆電', w: 1366, h: 700 },
   { name: '1280x800  小筆電', w: 1280, h: 730 },
+  { name: '1152x648  1440@125%', w: 1152, h: 610 },
+  { name: '1100x600  支援下限', w: 1100, h: 600 },
 ];
 
+/** 低於 MIN_VIEWPORT 的尺寸：不驗版面，改驗「有跳出放大視窗的提示」。 */
+export const TOO_SMALL_SCREENS = [
+  { name: '1024x768  投影機', w: 1024, h: 768 },
+  { name: '1280x1024@125%', w: 1024, h: 819 },
+  { name: '1366x768  高度不足', w: 1366, h: 560 },
+];
+
+/** 互動面板在 CSS 上的 top 與底部保留高度（跟 style.css 的斷點一致）。 */
+export function panelMetrics(wh) {
+  return {
+    top: wh <= 740 ? 116 : wh <= 860 ? 132 : 146,
+    hudReserve: wh <= 740 ? 158 : wh <= 860 ? 176 : 190,
+  };
+}
 
 /** 依視窗尺寸推出鏡頭視窗（canvas）的尺寸與場景可用範圍。 */
 export function viewport({ w: ww, h: wh }) {
