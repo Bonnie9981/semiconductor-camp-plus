@@ -71,6 +71,21 @@
       </div>
     </div>
 
+    <!-- 視窗太小時的提示。畫面硬畫出來會是壞的，不如直接告訴玩家怎麼處理。 -->
+    <div id="viewport-warning" class="viewport-warning hidden">
+      <div class="vw-card">
+        <div class="vw-icon">🖥️</div>
+        <h2 class="vw-title">請放大瀏覽器視窗</h2>
+        <p class="vw-detail mono" id="viewport-warning-detail"></p>
+        <ul class="vw-tips">
+          <li><b>按 F11</b>（Mac：<b>⌃⌘F</b>）進入全螢幕</li>
+          <li>Windows：<b>設定 › 系統 › 顯示器 › 縮放</b> 調成 <b>100%</b></li>
+          <li>瀏覽器縮放按 <b>Ctrl/⌘ + 0</b> 回到 100%</li>
+        </ul>
+        <p class="vw-note">視窗夠大後這個提示會自動消失。</p>
+      </div>
+    </div>
+
     <div id="ui-layer">
       <!-- ───────────────────────────── Header ───────────────────────────── -->
       <header id="app-header">

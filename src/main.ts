@@ -11,6 +11,7 @@ import { Stage4Develop } from './stages/Stage4Develop';
 import { Stage5Etch } from './stages/Stage5Etch';
 import type { BaseStage } from './stages/BaseStage';
 import { CrossSection } from './ui/CrossSection';
+import { watchViewport } from './core/Viewport';
 import { UIManager } from './ui/UIManager';
 import { VirtualDesk } from './ui/VirtualDesk';
 import { Exporter } from './utils/Exporter';
@@ -309,6 +310,12 @@ function syncStageView(): void {
 
 new ResizeObserver(syncStageView).observe(viewportSlot);
 window.addEventListener('resize', syncStageView);
+
+// 載入時先偵測螢幕大小：太小就直接告訴玩家怎麼處理，而不是畫出壞掉的版面
+watchViewport(
+  requireEl<HTMLElement>('viewport-warning'),
+  requireEl<HTMLElement>('viewport-warning-detail'),
+);
 window.addEventListener('orientationchange', syncStageView);
 
 // ─────────────────────────────── 主迴圈 ───────────────────────────────────
