@@ -10,13 +10,15 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check": "node --import ./scripts/checks/register.mjs scripts/checks/run.mjs",
-    "verify": "npm run typecheck && npm run check"
+    "verify": "npm run typecheck && npm run check && npm run check:browser",
+    "check:browser": "node scripts/checks/browser.mjs"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "0.3.1675466862",
     "@mediapipe/hands": "0.4.1675469240"
   },
   "devDependencies": {
+    "playwright": "^1.62.0",
     "typescript": "~5.6.3",
     "vite": "^8.1.5"
   }

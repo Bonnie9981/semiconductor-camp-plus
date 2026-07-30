@@ -86,7 +86,9 @@ npm run dev     # → http://localhost:5173
 | `npm run build` | 型別檢查 + 產出 `dist/` |
 | `npm run preview` | 預覽 build 結果 |
 | `npm run typecheck` | 只跑 `tsc --noEmit` |
-| `npm run check` | 自動化檢查：晶圓狀態機、STL 幾何、版面、證書 PDF |
+| `npm run check` | 自動化檢查：晶圓狀態機、蝕刻藥液規則、STL 幾何、版面、證書 PDF |
+| `npm run check:browser` | **開真的 Chrome** 量版面：HUD 卡片有沒有互相壓到、有沒有蓋住 canvas 上的道具、證書整張看不看得到 |
+| `npm run verify` | 以上全部（typecheck + check + check:browser） |
 | `npm run verify` | `typecheck` + `check`，送出前跑這個 |
 
 ---
@@ -232,7 +234,21 @@ const right = width - 14;
 | 1366×768 Windows 筆電 | `max-height: 740px` → 再壓一次，字級與間距同步縮小 |
 | 1536×864 / 1152×720（Windows 顯示縮放 125%） | `max-width: 1280px` → 側欄 196/236px |
 | < 1180px 寬 | 最窄一級：側欄 172/210px |
-| < 1100×600 | **不硬畫**，蓋上「請放大視窗」提示（見下） |
+| **≤ 660px 高**（16:10 的 Mac 非全螢幕） | 隱藏手勢參考卡、右欄關卡說明、壓縮上方帶狀元素 |
+| **≤ 540px 高** | 再隱藏底部關卡流程列與右欄狀態列 |
+| < 1100×460 | **不硬畫**，蓋上「請放大視窗」提示（見下） |
+
+#### 16:9 與 16:10 的差別不在寬高比，在可用高度
+
+同樣 1440 寬，16:9 的 Windows 筆電通常有 640~900px 可視高度，
+而 16:10 的 Mac（2560×1600 → 1440×900）非全螢幕、又開著書籤列時只剩約 **500px**。
+所以斷點是照**高度**分的，不是照寬高比。矮視窗上讓出空間的原則是
+**拿掉重複的資訊**，而不是等比縮小所有東西：
+
+* 手勢參考卡 → 右欄的「手部狀態」已經有同樣資訊，而它浮在 canvas 右上角會蓋住藥瓶
+* 右欄的關卡說明 → 左側互動面板也有
+* 底部關卡流程列 → 左側關卡清單也有
+* 右欄狀態列的「已完成 N / 5」→ Header 的進度條也有
 
 ⚠️ **三段寬度級距的值必須由寬到窄遞減**（260/300 → 226/268 → 196/236 → 172/210）。
 後面的 media query 會覆寫前面的，曾經因為新增的 ≤1280 級距比舊的 ≤1180 窄，
@@ -255,13 +271,37 @@ RCA 檯面原本燒杯與藥瓶層板**各自獨立**算高度：燒杯吃 `heig
 `npm run check` 能直接 import 真正的計算，對整個尺寸矩陣驗證元素有沒有重疊——
 版面錯誤靠型別檢查抓不到，只能算給它看。
 
+但純計算只看得到 canvas 上的道具。畫面上還有一整層 **HTML 的 HUD 卡片**
+疊在 canvas 上面，那一層完全由 CSS 決定，數值模型看不到 ——
+所以「手勢參考卡把最右邊兩個藥瓶蓋掉」「子步驟列壓在鏡頭設定列上」
+這類 bug 一路溜過去，直到使用者截圖才發現。
+`npm run check:browser` 補上這一塊：真的開 Chrome、真的載入頁面，
+量每個 HUD 元素的 `getBoundingClientRect()`，再問頁面裡的關卡
+（`window.__layoutProbe`）道具畫在哪，然後檢查兩者相不相交。
+
 同一類的反解也用在腔體氣閥：半徑不是估一個比例，而是從「兩顆排得下」反解出
 `r ≤ (ctrlSpan − 34) / 4`，控制欄一短旋鈕就自動變小。
+
+#### 上方帶狀元素靠量測疊起來，不寫死 top
+
+鏡頭設定列 → 子步驟列 → AR 提示 → 互動面板，四層由上往下排。
+它們的 `top` 原本是每個高度級距寫死的數字（56/50/44、94/86/76…），
+但**高度會變** —— 字級隨級距改、子步驟數量各關不同、提示文字長了會換行。
+結果就是矮視窗上子步驟列直接壓在鏡頭設定列上面。
+
+現在由 `UIManager.flushBands()` 量前一條的下緣、寫進 CSS 變數給下一條用
+（`--substep-top` / `--ar-hint-top` / `--panel-top`）。同樣地
+`--hud-reserve` 是量 `.vp-bottom` 的實際高度寫回來的，
+互動面板的下緣就不會差幾 px 疊到截面圖卡片上。
+
+canvas 上的關卡也用同一份量測：`UIManager.sceneOverlay()` 把這些 HTML 的位置
+換算成 canvas 座標交給關卡，所以藥瓶不會被手勢參考卡蓋住、機台不會頂到提示帶。
+這是 `panelInset()` 早就在做的事的一般化 —— **問 DOM，不要算**。
 
 #### 低於下限：載入時就偵測並說明
 
 `core/Viewport.ts` 的 `checkViewport()` 在載入時與每次 resize 檢查可視區域，
-低於 `MIN_VIEWPORT`（1100×600）就蓋上 `#viewport-warning`，
+低於 `MIN_VIEWPORT`（1100×460，實測值）就蓋上 `#viewport-warning`，
 告訴玩家按 F11 全螢幕、把 Windows 顯示縮放調回 100%、或 `Ctrl/⌘ + 0` 重設瀏覽器縮放。
 尺寸恢復會自動收掉提示，不用重新整理。
 
@@ -559,7 +599,9 @@ z-index 70）。刻意不用 `window.confirm` —— 原生對話框沒辦法用
 ## 自動化檢查
 
 ```bash
-npm run check      # 只跑檢查
+npm run check          # 純計算的檢查（快）
+npm run check:browser  # 開 Chrome 量真實版面（需要系統已安裝 Google Chrome）
+npm run verify         # 全部
 npm run verify     # typecheck + check（送出前跑這個）
 ```
 
