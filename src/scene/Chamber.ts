@@ -157,7 +157,13 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
 
   // 兩顆閥門平均分佈在控制欄內；半徑同時受欄寬與欄高限制，
   // 否則機台一變矮，旋鈕就會疊到大按鈕上。
-  const valveR = clamp(Math.min(panelW * 0.24, ctrlSpan * 0.17), 14, 28);
+  /*
+    旋鈕半徑由「排得下」反解，而不是估一個比例。
+    兩顆旋鈕的圓心間距 = ctrlSpan − 2r − 14，要求它 ≥ 2r + 16（兩圓不相碰再留 16），
+    解出 r ≤ (ctrlSpan − 34) / 4（多留 4px 免得剛好卡在臨界）。
+    矮視窗上控制欄一短，旋鈕就會自動變小。
+  */
+  const valveR = clamp(Math.min(panelW * 0.24, (ctrlSpan - 34) / 4), 10, 28);
   const valves = [
     { cx: panelCX, cy: ctrlTop + valveR + 14, r: valveR },
     { cx: panelCX, cy: ctrlBottom - valveR, r: valveR },

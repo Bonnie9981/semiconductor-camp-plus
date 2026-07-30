@@ -2,8 +2,8 @@ import type { Point, StageFrame } from '../core/types';
 import {
   dipPoint,
   drawTankBench,
+  tankBenchGeometry,
   tankRects,
-  type TankBenchGeometry,
   type TankBenchState,
   type TankRect,
   type TankSpec,
@@ -90,15 +90,9 @@ export abstract class DipStageBase extends BaseStage {
     const { height } = desk.size;
     const scene = this.sceneBounds(frame);
 
-    const geo: TankBenchGeometry = {
-      left: scene.left,
-      right: scene.right,
-      baseY: groundY - 6,
-      height: clamp(Math.min(height * 0.24, scene.w * 0.3), 96, 170),
-    };
+    // 幾何全部交給 tankBenchGeometry()，scripts/checks 驗的就是同一份計算
+    const { geo, waferR, rest } = tankBenchGeometry({ scene, height, groundY });
     const rects = tankRects(geo, round.tanks);
-    const waferR = clamp(Math.min(rects[0].w * 0.34, geo.height * 0.34), 34, 74);
-    const rest: Point = { x: scene.left + scene.w / 2, y: groundY + waferR * WAFER_SQUASH + 34 };
 
     if (this.wrongTimer > 0) this.wrongTimer -= dt;
     else this.wrongIndex = -1;

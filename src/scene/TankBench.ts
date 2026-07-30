@@ -63,6 +63,53 @@ export interface TankBenchState {
   wrongIndex: number;
 }
 
+/**
+ * 依場景範圍推出整排藥液槽的幾何。
+ *
+ * 槽名與化學式是掛在槽底**下方**的，所以整排要往上退 TANK_LABEL_H，
+ * 名稱才不會跟下面待命的晶圓疊在一起。抽成純函式讓 scripts/checks 驗得到。
+ */
+export const TANK_LABEL_H = 52;
+
+export function tankBenchGeometry(opts: {
+  scene: { left: number; right: number; w: number };
+  height: number;
+  groundY: number;
+}): { geo: TankBenchGeometry; waferR: number; rest: Point; labelBottom: number } {
+  const { scene, height, groundY } = opts;
+  const geo: TankBenchGeometry = {
+    left: scene.left,
+    right: scene.right,
+    baseY: groundY - TANK_LABEL_H,
+    height: clamp(Math.min(height * 0.24, scene.w * 0.3), 96, 170),
+  };
+  const first = tankRects(geo, [{ id: 'di' }, { id: 'di' }, { id: 'di' }, { id: 'di' }])[0];
+  const waferR = clamp(Math.min(first.w * 0.34, geo.height * 0.34), 34, 74);
+
+  // 標籤：名稱一行 + 化學式一行，字級跟槽寬走（與 drawTankBench 一致）
+  const nameFont = clamp(first.w * 0.15, 14, 20);
+  const formulaFont = clamp(first.w * 0.11, 12, 15);
+  const labelBottom = geo.baseY + 10 + nameFont + 4 + formulaFont;
+
+  /*
+    待命晶圓擺在標籤下方。矮視窗上 groundY 之下的空間很薄，
+    所以位置要同時滿足兩邊：不壓到槽名、也不掉出畫面下緣（下方還有 20px 的字）。
+  */
+  const restRY = waferR * WAFER_SQUASH;
+  const restY = clamp(
+    groundY + restRY + 34,
+    labelBottom + restRY + 6,
+    height - restRY - 22,
+  );
+
+  return {
+    geo,
+    waferR,
+    rest: { x: scene.left + scene.w / 2, y: restY },
+    labelBottom,
+  };
+}
+
 export function tankRects(geo: TankBenchGeometry, tanks: readonly TankSpec[]): TankRect[] {
   const n = tanks.length;
   const gap = Math.max(10, (geo.right - geo.left) * 0.025);
