@@ -223,27 +223,41 @@ export function composeCertificate(data: CertificateData): HTMLCanvasElement {
     ['光阻類型', data.tone],
     ['蝕刻方式', data.etch],
   ];
-  // 值可用的最大寬度 = 中線到晶圓左緣，再留 20px 餘裕
-  const valueMax = colR - (colMid + 14) - 20;
+  /*
+    每一列排成「標籤　值」一整行，置中在中欄上。
+
+    原本是標籤右對齊、值左對齊、以中線為界 —— 那是表格的排法。
+    證書是正式文件，整份的文字都置中比較整齊，所以這裡改成把
+    「標籤 + 值」當成一個整體置中。
+
+    字級仍然由「排得下」反推：整行寬度不能超過中欄，
+    否則「化學氣相沉積（PECVD）」會伸出去壓到右邊的晶圓。
+  */
+  const rowMax = colR - colL - 24;
   let ry = rowY + 52;
   rows.forEach(([k, v]) => {
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(168, 192, 204, 0.85)';
-    ctx.font = `600 25px ${sans}`;
-    ctx.fillText(k, colMid - 14, ry);
-
-    // 字級由「排得下」反推。之前寫死 25px，「化學氣相沉積（PECVD）」
-    // 就會伸出中欄壓到右邊的晶圓。
+    const gap = 18;
     let vFont = 25;
-    do {
+    let kW = 0;
+    let vW = 0;
+    for (;;) {
+      ctx.font = `600 ${Math.round(vFont * 0.92)}px ${sans}`;
+      kW = ctx.measureText(k).width;
       ctx.font = `700 ${vFont}px ${sans}`;
-      if (ctx.measureText(v).width <= valueMax) break;
+      vW = ctx.measureText(v).width;
+      if (kW + gap + vW <= rowMax || vFont <= 15) break;
       vFont -= 1;
-    } while (vFont > 15);
+    }
 
+    const startX = colMid - (kW + gap + vW) / 2;
     ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(168, 192, 204, 0.85)';
+    ctx.font = `600 ${Math.round(vFont * 0.92)}px ${sans}`;
+    ctx.fillText(k, startX, ry);
+
     ctx.fillStyle = '#f2f8fa';
-    ctx.fillText(v, colMid + 14, ry);
+    ctx.font = `700 ${vFont}px ${sans}`;
+    ctx.fillText(v, startX + kW + gap, ry);
     ry += 52;
   });
 
@@ -259,22 +273,25 @@ export function composeCertificate(data: CertificateData): HTMLCanvasElement {
   const d = data.date;
   const dateStr = `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
 
-  ctx.textAlign = 'left';
+  /*
+    頁尾原本是左右兩端對齊（日期在左、機構名在右）。
+    改成置中的一疊，整份證書的文字就沒有一處是靠邊的。
+  */
+  const footCX = CERT_W / 2;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillStyle = 'rgba(190, 212, 222, 0.85)';
-  ctx.font = `500 26px ${sans}`;
-  ctx.fillText(`完成日期　${dateStr}`, 130, footY + 30);
-  ctx.font = `500 22px ${mono}`;
-  ctx.fillStyle = 'rgba(150, 178, 190, 0.75)';
-  ctx.fillText(`SERIAL  ${data.serial}`, 130, footY + 74);
 
-  ctx.textAlign = 'right';
   ctx.fillStyle = '#5ee9df';
-  ctx.font = `700 34px ${sans}`;
-  ctx.fillText('半導體製程沉浸式模擬', CERT_W - 130, footY + 26);
-  ctx.fillStyle = 'rgba(150, 178, 190, 0.7)';
-  ctx.font = `500 22px ${mono}`;
-  ctx.fillText('SEMICONDUCTOR PROCESS SIMULATOR', CERT_W - 130, footY + 72);
+  ctx.font = `700 32px ${sans}`;
+  ctx.fillText('半導體製程沉浸式模擬', footCX, footY + 24);
+
+  ctx.fillStyle = 'rgba(190, 212, 222, 0.85)';
+  ctx.font = `500 25px ${sans}`;
+  ctx.fillText(`完成日期　${dateStr}`, footCX, footY + 70);
+
+  ctx.fillStyle = 'rgba(150, 178, 190, 0.72)';
+  ctx.font = `500 21px ${mono}`;
+  ctx.fillText(`SERIAL ${data.serial}  ·  SEMICONDUCTOR PROCESS SIMULATOR`, footCX, footY + 112);
 
   return c;
 }
