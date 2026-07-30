@@ -12,6 +12,7 @@ import { Report, SRC } from './lib.mjs';
 
 const { WaferState, SECTION_CELLS } = await import(`${SRC}core/WaferState.ts`);
 const { isUnsafePour } = await import(`${SRC}data/solutions.ts`);
+const { formatElapsed } = await import(`${SRC}utils/format.ts`);
 
 const report = new Report('晶圓狀態機（真實 WaferState）');
 
@@ -22,12 +23,16 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
     ['di', [], false, '空杯倒水'],
     ['hf', [], false, '空杯倒單一藥液 —— 沒有東西可以反應'],
     ['h2o2', [], false, '空杯倒雙氧水 —— 同上'],
+    ['hf', ['hf'], false, '同一瓶多倒一份 —— 沒有不同的東西可以反應'],
+    ['h2o2', ['h2o2'], false, '同上（雙氧水）'],
+    ['nh4oh', ['nh4oh'], false, '同上（氨水）'],
     ['di', ['h2o2'], false, '往藥液裡補水 —— 這是正確的補救方向'],
     ['h2o2', ['di'], false, '水已墊底'],
     ['hcl', ['di', 'nh4oh'], false, '水已墊底，後續順序不限'],
     ['h2o2', ['nh4oh'], true, '乾的狀態下讓雙氧水碰到鹼 —— 突沸'],
     ['nh4oh', ['h2o2'], true, '反過來也一樣 —— 突沸'],
-    ['hcl', ['hf'], true, '兩種酸乾混 —— 突沸'],
+    ['hcl', ['hf'], true, '兩種不同的酸乾混 —— 突沸'],
+    ['h2o2', ['hf'], true, '同一瓶倒完之後，再倒不同的藥液 —— 突沸'],
     ['h2o2', ['di', 'nh4oh', 'hcl'], false, '只要有水，混幾種都安全'],
   ];
   for (const [pouring, current, expectUnsafe, label] of cases) {
@@ -37,6 +42,26 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
       got === expectUnsafe ? [] : [`預期 ${expectUnsafe}，得到 ${got}`],
       label,
     );
+  }
+}
+
+// ── ⓵ 計時器的格式化 ──
+{
+  const cases = [
+    [0, '00:00'],
+    [999, '00:00'],
+    [1000, '00:01'],
+    [59_000, '00:59'],
+    [60_000, '01:00'],
+    [12 * 60_000 + 34_000, '12:34'],
+    [59 * 60_000 + 59_000, '59:59'],
+    [3_600_000, '1:00:00'],
+    [3_600_000 + 5 * 60_000 + 7_000, '1:05:07'],
+    [-500, '00:00'],
+  ];
+  for (const [ms, expect] of cases) {
+    const got = formatElapsed(ms);
+    report.add(`formatElapsed(${ms})`, got === expect ? [] : [`預期 ${expect}，得到 ${got}`], got);
   }
 }
 
