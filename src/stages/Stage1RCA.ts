@@ -15,6 +15,7 @@ import { bottleMouth, drawBottle, drawPourStream, type BottleVisual } from '../s
 import { drainMouth, drawDrain, type DrainGeometry } from '../scene/Drain';
 import { Explosion } from '../scene/Explosion';
 import { SpinDryer, type DryerGeometry, type DryerPhase } from '../scene/SpinDryer';
+import { wetBenchLayout } from '../scene/WetBenchLayout';
 import { BaseStage } from './BaseStage';
 
 /**
@@ -325,28 +326,19 @@ export class Stage1RCA extends BaseStage {
     this.splash = Math.max(0, this.splash - dt * 3);
 
     // ── 幾何佈局 ──
+    // 燒杯、藥瓶層板、廢液桶、晶圓架全部由 wetBenchLayout() 一起分配同一段
+    // 垂直空間，元素才不會在矮視窗上互相壓到（見該檔的說明）。
     const scene = this.sceneBounds(frame);
-    const bh = clamp(Math.min(height * 0.29, scene.w * 0.46), 110, 196);
-    const benchGeo: BeakerGeometry = {
-      cx: scene.left + scene.w * 0.26,
-      top: groundY - bh,
-      width: bh * 0.76,
-      height: bh,
-    };
-    const drainW = clamp(scene.w * 0.13, 46, 78);
-    const drainGeo: DrainGeometry = {
-      cx: scene.right - drainW * 0.55,
-      baseY: groundY,
-      width: drainW,
-    };
-    const waferR = benchGeo.width * 0.34;
-
-    // 藥瓶：尺寸依可用寬度算，但設下限，小螢幕上也要看得清標籤
-    const shelf: ShelfLayout = {
+    const bench = wetBenchLayout({
       scene,
-      y: benchGeo.top - clamp(height * 0.045, 14, 40),
-      w: clamp((scene.w / recipe.pool.length) * 0.74, 38, 70),
-    };
+      height,
+      groundY,
+      bottleCount: recipe.pool.length,
+    });
+    const benchGeo: BeakerGeometry = bench.beaker;
+    const drainGeo: DrainGeometry = bench.drain;
+    const waferR = bench.waferStand.r;
+    const shelf: ShelfLayout = { scene, y: bench.shelf.y, w: bench.shelf.w };
 
     // 調配杯目前的位置與傾角（可能被拿在手上、或正在倒廢液）
     const { geo, tilt } = this.beakerTransform(benchGeo, drainGeo, dt);
@@ -398,12 +390,7 @@ export class Stage1RCA extends BaseStage {
 
     // 等待中的晶圓（還沒輪到它下水），擺在調配杯左邊的載盤上
     if (this.waferDip < 0) {
-      const standX = clamp(
-        benchGeo.cx - benchGeo.width * 0.5 - waferR - 26,
-        scene.left + waferR + 8,
-        benchGeo.cx,
-      );
-      this.drawWaferStand(ctx, standX, groundY, waferR, wafer.surfaceColor(), time);
+      this.drawWaferStand(ctx, bench.waferStand.cx, groundY, waferR, wafer.surfaceColor(), time);
     }
 
     this.beaker.render(
