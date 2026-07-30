@@ -55,6 +55,22 @@
     -->
     <canvas id="hand-canvas"></canvas>
 
+    <!--
+      確認框：獨立於 #modal-root，z-index 70（在所有遊戲 UI 之上，
+      只有純視覺的 #hand-canvas 比它高，這樣按的時候還看得到自己的手）。
+    -->
+    <div id="confirm-root" class="confirm-root hidden">
+      <div class="confirm-backdrop"></div>
+      <div class="confirm-box">
+        <div id="confirm-title" class="confirm-title">確定要重新開始嗎？</div>
+        <p id="confirm-text" class="confirm-text"></p>
+        <div class="confirm-actions">
+          <button id="btn-confirm-cancel" data-pinch="1" class="btn btn-ghost" type="button">取消</button>
+          <button id="btn-confirm-ok" data-pinch="1" class="btn btn-danger" type="button">確定</button>
+        </div>
+      </div>
+    </div>
+
     <div id="ui-layer">
       <!-- ───────────────────────────── Header ───────────────────────────── -->
       <header id="app-header">
@@ -286,7 +302,14 @@
           </label>
           <label class="setting-row">
             <span>Pinch 靈敏度（越大越好捏）</span>
-            <input id="set-pinch" type="range" min="30" max="90" step="5" value="50" />
+            <input id="set-pinch" type="range" min="30" max="90" step="5" value="55" />
+          </label>
+          <label class="setting-row setting-row-dev">
+            <span>
+              開發者模式
+              <small>開啟後可任意點選左側任一關卡跳關，方便測試</small>
+            </span>
+            <input id="set-devmode" type="checkbox" />
           </label>
           <div class="modal-actions">
             <button id="btn-settings-close" class="btn btn-primary" type="button">關閉</button>

@@ -36,6 +36,8 @@ export interface UICallbacks {
   onRetakePhoto: () => void;
   /** 證書畫面的「再玩一次」：整場重置回第一關。 */
   onPlayAgain: () => void;
+  /** 開發者模式開關（開啟後可任意跳關）。 */
+  onDevMode: (enabled: boolean) => void;
   onRetry: () => void;
   onExit: () => void;
   /** 視窗內的主要行動按鈕（完成本關 / 下一步）。 */
@@ -106,6 +108,9 @@ export class UIManager {
   private readonly modalFail = el<HTMLElement>('modal-fail');
   private readonly modalHelp = el<HTMLElement>('modal-help');
   private readonly modalCert = el<HTMLElement>('modal-cert');
+  private readonly confirmRoot = el<HTMLElement>('confirm-root');
+  private readonly confirmTitle = el<HTMLElement>('confirm-title');
+  private readonly confirmText = el<HTMLElement>('confirm-text');
   private readonly certCanvas = el<HTMLCanvasElement>('cert-canvas');
   private readonly modalSettings = el<HTMLElement>('modal-settings');
   private readonly successTitle = el<HTMLElement>('success-title');
@@ -185,15 +190,35 @@ export class UIManager {
       this.closeModal();
       this.cb.onRetry();
     });
-    el<HTMLButtonElement>('btn-exit').addEventListener('click', () => this.cb.onExit());
+    el<HTMLButtonElement>('btn-exit').addEventListener('click', () => {
+      this.confirm({
+        title: '要結束目前進度嗎？',
+        text: '所有關卡會回到第一關，晶圓成品也會被清除。',
+        onOk: () => this.cb.onExit(),
+      });
+    });
 
     el<HTMLButtonElement>('btn-cert-pdf').addEventListener('click', () => this.cb.onExportPDF());
     el<HTMLButtonElement>('btn-cert-png').addEventListener('click', () => this.cb.onExportPNG());
     el<HTMLButtonElement>('btn-cert-stl').addEventListener('click', () => this.cb.onExportSTL());
     el<HTMLButtonElement>('btn-cert-retake').addEventListener('click', () => this.cb.onRetakePhoto());
+    // 「再玩一次」要先確認，避免玩家還在看證書就被誤觸而重置整場
     el<HTMLButtonElement>('btn-cert-close').addEventListener('click', () => {
-      this.closeModal();
-      this.cb.onPlayAgain();
+      this.confirm({
+        title: '要再玩一次嗎？',
+        text: '目前的晶圓成品與證書會被清除，關卡回到第一關。記得先把想留的檔案下載下來。',
+        onOk: () => {
+          this.closeModal();
+          this.cb.onPlayAgain();
+        },
+      });
+    });
+
+    el<HTMLButtonElement>('btn-confirm-cancel').addEventListener('click', () => this.closeConfirm());
+    el<HTMLButtonElement>('btn-confirm-ok').addEventListener('click', () => {
+      const ok = this.confirmOk;
+      this.closeConfirm();
+      ok?.();
     });
 
     el<HTMLButtonElement>('btn-help').addEventListener('click', () => this.openModal(this.modalHelp));
@@ -205,6 +230,10 @@ export class UIManager {
       this.cb.onToggleSkeleton((e.target as HTMLInputElement).checked);
     });
     el<HTMLInputElement>('set-mirror').addEventListener('change', () => this.cb.onToggleMirror());
+    el<HTMLInputElement>('set-devmode').addEventListener('change', (e) => {
+      this.devMode = (e.target as HTMLInputElement).checked;
+      this.cb.onDevMode(this.devMode);
+    });
     el<HTMLInputElement>('set-pen-width').addEventListener('input', (e) => {
       this.cb.onPenWidth(Number((e.target as HTMLInputElement).value));
     });
@@ -221,7 +250,10 @@ export class UIManager {
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeModal();
+      if (e.key !== 'Escape') return;
+      // 確認框在最上層，Esc 先關它
+      if (this.isConfirmOpen()) this.closeConfirm();
+      else this.closeModal();
     });
   }
 
@@ -282,7 +314,11 @@ export class UIManager {
         body.append(name, st);
 
         li.append(badge, body);
-        if (status !== 'locked') li.addEventListener('click', () => this.cb.onSelectStage(i));
+        // 開發者模式下連未解鎖的關卡也能點，方便測試時跳關
+        if (status !== 'locked' || this.devMode) {
+          li.addEventListener('click', () => this.cb.onSelectStage(i));
+          if (status === 'locked') li.classList.add('is-dev-unlocked');
+        }
         return li;
       }),
     );
@@ -302,7 +338,10 @@ export class UIManager {
         status === 'done' ? 'is-done' : ''
       } ${status === 'locked' ? 'is-locked' : ''}`;
       node.innerHTML = `<span class="flow-index">0${i + 1}</span><span>${s.shortTitle}</span>`;
-      if (status !== 'locked') node.addEventListener('click', () => this.cb.onSelectStage(i));
+      if (status !== 'locked' || this.devMode) {
+        node.addEventListener('click', () => this.cb.onSelectStage(i));
+        if (status === 'locked') node.classList.add('is-dev-unlocked');
+      }
       flowNodes.push(node);
     });
     this.stageFlow.replaceChildren(...flowNodes);
@@ -813,6 +852,40 @@ export class UIManager {
   showFail(reason: string): void {
     this.setText(this.failReason, reason);
     this.openModal(this.modalFail);
+  }
+
+  // ─────────────────────────────── 確認框 ─────────────────────────────────
+
+  private confirmOk: (() => void) | null = null;
+
+  /**
+   * 置中的確認框，z-index 70 —— 高於所有遊戲 UI 與 Modal。
+   * 破壞性操作（重置整場）走這裡，不用 window.confirm，因為原生對話框
+   * 沒辦法用捏合手勢按。
+   */
+  confirm(opts: { title: string; text: string; onOk: () => void }): void {
+    this.setText(this.confirmTitle, opts.title);
+    this.setText(this.confirmText, opts.text);
+    this.confirmOk = opts.onOk;
+    this.confirmRoot.classList.remove('hidden');
+  }
+
+  closeConfirm(): void {
+    this.confirmRoot.classList.add('hidden');
+    this.confirmOk = null;
+  }
+
+  isConfirmOpen(): boolean {
+    return !this.confirmRoot.classList.contains('hidden');
+  }
+
+  // ───────────────────────────── 開發者模式 ───────────────────────────────
+
+  private devMode = false;
+
+  /** 開啟時，左側步驟列與底部流程列的所有關卡都可以點（含未解鎖的）。 */
+  isDevMode(): boolean {
+    return this.devMode;
   }
 
   /** 顯示結業證書。傳入已排版好的 canvas，這裡只負責縮放顯示。 */

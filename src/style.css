@@ -172,7 +172,9 @@ body {
 /* 手部骨架層：固定定位、疊在所有 UI 之上（含 Modal），但完全不吃事件。 */
 #hand-canvas {
   position: fixed;
-  z-index: 60;
+  /* 高於確認框（70），這樣連按確認框時都看得到自己的手；
+     它是純視覺、pointer-events:none，不會擋任何點擊。 */
+  z-index: 80;
   pointer-events: none;
 }
 
@@ -1534,4 +1536,80 @@ body {
 }
 .btn-play-again:active {
   transform: translateY(0);
+}
+
+
+/* ==========================================================================
+   確認框
+   ========================================================================== */
+.confirm-root {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+}
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 11, 0.72);
+  backdrop-filter: blur(6px);
+}
+.confirm-box {
+  position: relative;
+  width: min(90vw, 520px);
+  padding: 34px 36px 30px;
+  border-radius: var(--r-2xl);
+  background: var(--surface-2);
+  border: 1px solid oklch(0.45 0.06 190 / 0.6);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  animation: fade-up 0.18s ease-out;
+}
+.confirm-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+}
+.confirm-text {
+  margin-top: 12px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+.confirm-actions {
+  margin-top: 26px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.confirm-actions .btn {
+  min-width: 148px;
+}
+
+/* 設定裡的開發者模式那一列 */
+.setting-row-dev span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.setting-row-dev small {
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+
+/* 開發者模式下被解鎖的關卡：用虛線框標出「這是測試用的跳關」 */
+.step-row.is-dev-unlocked,
+.flow-node.is-dev-unlocked {
+  cursor: pointer;
+  opacity: 0.85;
+  outline: 1px dashed oklch(0.7 0.14 90 / 0.7);
+  outline-offset: 2px;
+}
+.step-row.is-dev-unlocked:hover,
+.flow-node.is-dev-unlocked:hover {
+  opacity: 1;
+  outline-color: oklch(0.8 0.16 90);
 }

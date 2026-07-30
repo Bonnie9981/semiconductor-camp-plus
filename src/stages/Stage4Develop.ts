@@ -25,6 +25,8 @@ import { DipStageBase, type DipRound } from './DipStageBase';
  */
 
 const DEVELOPER_COLOR = '#8ad4c4';
+/** 光阻層的顏色，與第三關一致。 */
+const DEVELOPER_RESIST_COLOR = '#2f7d5b';
 
 export class Stage4Develop extends DipStageBase {
   readonly id = 'develop';
@@ -56,6 +58,16 @@ export class Stage4Develop extends DipStageBase {
     super.onEnter(ctx);
     ctx.desk.setWaferVisible(false);
     ctx.desk.setDeskLabel('DEVELOP BENCH · 顯影檯');
+    // 開發者模式直接跳關進來時晶圓上還沒有光阻，補一層才顯影得出東西
+    if (!ctx.wafer.hasLayer('resist')) {
+      ctx.wafer.addLayer({
+        kind: 'resist',
+        label: '光阻層',
+        thickness: 0.45,
+        color: DEVELOPER_RESIST_COLOR,
+        patterned: false,
+      });
+    }
     this.resetSub();
     this.onSubEnter(0);
   }

@@ -48,12 +48,13 @@ const handCtx = handCanvas.getContext('2d')!;
 // ────────────────────────────── 模組建立 ──────────────────────────────────
 
 const stages = new StageManager();
-const gesture = new GestureDetector({ pinchOn: 0.05 });
+// pinchOn 的預設值要跟 index.html 的 #set-pinch slider 初始值一致（55 → 0.055）
+const gesture = new GestureDetector({ pinchOn: 0.055 });
 /** 整條製程共用的同一片晶圓：每一關都在改它的層堆疊與污染狀態。 */
 const wafer = new WaferState();
 
 const ui = new UIManager({
-  onSelectStage: (index) => stages.goTo(index),
+  onSelectStage: (index) => stages.goTo(index, ui.isDevMode()),
   onPrimary: () => handlePrimary(),
   onNext: () => stages.advance(),
   onContinue: () => stages.advance(),
@@ -76,25 +77,40 @@ const ui = new UIManager({
     showSkeleton = visible;
   },
   onExportPNG: () => Exporter.downloadPNG(desk.composeWaferImage(1024), 'wafer-pattern.png'),
-  onExportSTL: () =>
-    Exporter.downloadSTL(desk.getPatternCanvas(), 'wafer-pattern.stl', {
-      resolution: 120,
-      waferRadiusMm: 100,
-      baseThicknessMm: 1.5,
-      patternHeightMm: 1.2,
-    }),
+  onExportSTL: () => {
+    // 正光阻：光阻留在畫到的地方 → 那些地方被保護 → 圖案凸起
+    // 負光阻：光阻留在沒畫到的地方 → 畫到的地方被蝕掉 → 圖案凹陷
+    const negative = wafer.resistTone === 'negative';
+    Exporter.downloadSTL(
+      desk.getPatternCanvas(),
+      `wafer-${negative ? 'negative-recessed' : 'positive-raised'}.stl`,
+      {
+        waferRadiusMm: 100,
+        baseThicknessMm: 1.5,
+        patternHeightMm: 1.2,
+        invert: negative,
+      },
+    );
+  },
   onExportPDF: () => void downloadCertificatePdf(),
   onRetakePhoto: () => openCertificate(true),
   onPlayAgain: () => resetEverything(),
+  onDevMode: (enabled) => {
+    // 開關狀態存在 UIManager（isDevMode()），這裡只負責重繪關卡列與提示
+    ui.syncStages(stages);
+    ui.setHint(
+      enabled
+        ? '🛠️ 開發者模式已開啟 —— 左側任一關卡都可以直接點選跳關。'
+        : stages.current.hint,
+    );
+  },
   onStageAction: () => {
     if (stages.isCurrentDone()) stages.advance();
     else handlePrimary();
   },
   onRetry: () => stages.restartCurrent(),
-  onExit: () => {
-    if (!window.confirm('要結束目前進度並回到第一關嗎？')) return;
-    resetEverything();
-  },
+  // 確認已由 UIManager 的自訂確認框處理（原生 confirm 沒辦法用捏合手勢按）
+  onExit: () => resetEverything(),
 });
 
 const desk = new VirtualDesk(deskCanvas, ui.getPreviewCanvas());
@@ -136,7 +152,14 @@ stages.subscribe((event) => {
       ui.showFail(event.reason);
       break;
     case 'allComplete':
-      openCertificate(true);
+      /*
+        刻意延遲。玩家是用捏合按下「完成蝕刻」的，手往往還停在原處；
+        證書一瞬間跳出來，同一次捏合的殘留判定就可能直接打到「再玩一次」。
+        先顯示一段收尾提示，1.6 秒後才開證書。
+      */
+      ui.setArHint('🎉 五道製程全部完成 — 正在產生結業證書…', true);
+      ui.setStageAction(null);
+      window.setTimeout(() => openCertificate(true), 1600);
       break;
   }
 });

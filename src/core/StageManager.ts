@@ -116,11 +116,18 @@ export class StageManager {
     this.emit({ type: 'change', index: this.index, stage: this.current });
   }
 
-  /** 跳到指定關卡；locked 的關卡不允許跳入。 */
-  goTo(index: number): boolean {
+  /**
+   * 跳到指定關卡。
+   * locked 的關卡預設不允許跳入；`force` 為 true 時無視鎖定並順手解鎖，
+   * 供開發者模式測試用。
+   */
+  goTo(index: number, force = false): boolean {
     if (index < 0 || index >= this.total) return false;
     if (index === this.index) return true;
-    if (this.status[index] === 'locked') return false;
+    if (this.status[index] === 'locked') {
+      if (!force) return false;
+      this.status[index] = 'active';
+    }
 
     this.current.onExit();
     this.index = index;
