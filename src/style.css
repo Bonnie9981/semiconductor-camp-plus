@@ -1337,7 +1337,10 @@ body {
   }
 }
 
-@media (max-width: 1180px) {
+/* 1440 開了 125% 顯示縮放（→1152）會落在這一級。寬度看起來還夠，
+   但左右三欄加起來會把中間的場景擠到藥液槽排不下，所以側欄要再瘦一次。
+   注意各級距的值必須**由寬到窄遞減** —— 後面的 media query 會覆寫前面的。 */
+@media (max-width: 1280px) {
   :root {
     --sidebar-w: 196px;
     --panel-w: 236px;
@@ -1356,6 +1359,14 @@ body {
   .substep {
     padding: 4px 8px;
     font-size: 11px;
+  }
+}
+
+@media (max-width: 1180px) {
+  :root {
+    --sidebar-w: 172px;
+    --panel-w: 210px;
+    --panel-scene-w: 234px;
   }
 }
 

@@ -39,14 +39,15 @@ export const SCREENS = [
   { name: '1280x800  小筆電', w: 1280, h: 730 },
 ];
 
+
 /** 依視窗尺寸推出鏡頭視窗（canvas）的尺寸與場景可用範圍。 */
 export function viewport({ w: ww, h: wh }) {
   const headerH = wh <= 740 ? 54 : wh <= 860 ? 62 : 72;
   const flowH = wh <= 740 ? 42 : wh <= 860 ? 50 : 58;
-  const pad = ww <= 1180 ? 10 : ww <= 1420 ? 14 : 18;
-  const sidebar = ww <= 1180 ? 196 : ww <= 1420 ? 226 : 260;
-  const rightPanel = ww <= 1180 ? 236 : ww <= 1420 ? 268 : 300;
-  const panelSceneW = ww <= 1180 ? 262 : ww <= 1420 ? 292 : 324;
+  const pad = ww <= 1280 ? 10 : ww <= 1420 ? 14 : 18;
+  const sidebar = ww <= 1180 ? 172 : ww <= 1280 ? 196 : ww <= 1420 ? 226 : 260;
+  const rightPanel = ww <= 1180 ? 210 : ww <= 1280 ? 236 : ww <= 1420 ? 268 : 300;
+  const panelSceneW = ww <= 1180 ? 234 : ww <= 1280 ? 262 : ww <= 1420 ? 292 : 324;
 
   const width = ww - sidebar - rightPanel - pad * 2;
   const height = wh - headerH - flowH - pad * 2;
