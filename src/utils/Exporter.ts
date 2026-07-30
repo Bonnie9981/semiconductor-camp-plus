@@ -39,14 +39,18 @@ export interface STLOptions {
   patternHeightMm?: number;
   /** alpha 大於此值視為「有畫到」。 */
   alphaThreshold?: number;
-  /** true 時反轉圖案（有畫的地方凹下去）—— 為未來的負光阻預留。 */
+  /**
+   * 反轉圖案高度。
+   *   false（正光阻）—— 光阻留在畫到的地方 → 那些地方被保護 → **圖案凸起**
+   *   true （負光阻）—— 光阻留在沒畫到的地方 → 畫到的地方被蝕掉 → **圖案凹陷**
+   */
   invert?: boolean;
   /** Pattern 取樣解析度（與網格密度無關，只影響圖案邊緣的精細度）。 */
   sampleSize?: number;
 }
 
 const STL_DEFAULTS: Required<STLOptions> = {
-  resolution: 120,
+  resolution: 160,
   waferRadiusMm: 100,
   baseThicknessMm: 1.5,
   patternHeightMm: 1.2,
@@ -160,12 +164,20 @@ export class Exporter {
       }
     }
 
-    // 外緣一圈側牆，把頂面與底面封起來
+    /*
+      外緣一圈側牆，把頂面與底面封起來。
+
+      繞序必須讓法線朝**外**（+r̂）。之前寫成 (a@0, a@z, b@z)，
+      叉積算出來是 ẑ × θ̂ = −r̂ —— 整圈側牆的法線朝內，與頂／底面方向相反。
+      網格雖然仍然封閉（每條邊都用兩次），但定向不一致，
+      散度定理算出來的帶號體積會是負的，切片軟體因此不把它當成實心體。
+      改成 (a@0, b@0, b@z) 之後 θ̂ × ẑ = +r̂，方向就對了。
+    */
     for (let s = 0; s < sectors; s++) {
       const a = idx(rings, s);
       const b = idx(rings, s + 1);
-      push(vx[a], vy[a], 0, vx[a], vy[a], vz[a], vx[b], vy[b], vz[b]);
-      push(vx[a], vy[a], 0, vx[b], vy[b], vz[b], vx[b], vy[b], 0);
+      push(vx[a], vy[a], 0, vx[b], vy[b], 0, vx[b], vy[b], vz[b]);
+      push(vx[a], vy[a], 0, vx[b], vy[b], vz[b], vx[a], vy[a], vz[a]);
     }
 
     return Exporter.encodeBinarySTL(tris);
@@ -177,7 +189,7 @@ export class Exporter {
     const buffer = new ArrayBuffer(84 + count * 50);
     const view = new DataView(buffer);
 
-    const header = 'semiconductor-camp wafer pattern (heightfield extrusion)';
+    const header = 'semiconductor process simulator - wafer (polar heightfield)';
     for (let i = 0; i < Math.min(header.length, 79); i++) {
       view.setUint8(i, header.charCodeAt(i));
     }
