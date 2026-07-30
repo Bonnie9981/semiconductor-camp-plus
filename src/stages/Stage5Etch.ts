@@ -16,6 +16,7 @@ import {
   type ChamberGeometry,
   type ChamberLayout,
 } from '../scene/Chamber';
+import { machineBox, machineHeight } from '../scene/MachineFit';
 import { DepositionField, type FieldConfig } from '../scene/Particles';
 import { DipStageBase, type DipRound } from './DipStageBase';
 
@@ -215,19 +216,23 @@ export class Stage5Etch extends DipStageBase {
   private frameMachine(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { height } = desk.size;
     const wafer = this.ctx.wafer;
     const scene = this.sceneBounds(frame);
     const dry = this.isDry();
 
-    const cw = scene.w * 0.98;
-    const ch = clamp(Math.min(cw * 0.72, groundY - height * 0.19), 200, 430);
-    const geo: ChamberGeometry = {
-      x: scene.left + (scene.w - cw) / 2,
-      y: groundY - 16 - ch,
-      w: cw,
-      h: ch,
-    };
+    // 上界用量出來的覆蓋物下緣，機台才不會在矮視窗上頂到提示帶；
+    // maxAspect 則避免超寬超矮的視窗把機台拉成細長條
+    const geo: ChamberGeometry = machineBox({
+      scene,
+      widthRatio: 0.98,
+      ratio: 0.72,
+      groundY,
+      bandTop: frame.ui.sceneOverlay().top + 8,
+      gap: 16,
+      min: 200,
+      max: 430,
+      maxAspect: 2.4,
+    });
     const layout = chamberLayout(geo, 'cvd');
     const waferR = layout.wafer.r * 0.9;
     const rest: Point = {
@@ -460,13 +465,19 @@ export class Stage5Etch extends DipStageBase {
   private frameChoose(frame: StageFrame, groundY: number): void {
     const { ui, desk, time, hand } = frame;
     const ctx = desk.context;
-    const { height } = desk.size;
     const wafer = this.ctx.wafer;
     const scene = this.sceneBounds(frame);
 
     const gap = Math.max(16, scene.w * 0.05);
     const cw = (scene.w - gap) / 2;
-    const chH = Math.min(cw * 0.86, groundY - height * 0.22);
+    const chH = machineHeight({
+      width: cw,
+      ratio: 0.86,
+      groundY,
+      bandTop: frame.ui.sceneOverlay().top + 8,
+      min: 150,
+      max: 430,
+    });
     const top = groundY - 30 - chH;
 
     const stations: { id: 'dry' | 'wet'; x: number; title: string; sub: string; color: string }[] = [

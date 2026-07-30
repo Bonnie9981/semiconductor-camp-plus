@@ -103,6 +103,15 @@ const PANEL_RATIO = 0.27;
  */
 const NAMEPLATE_H = 22;
 const STATUS_H = 22;
+/**
+ * 機台矮到一定程度時，上下那幾條固定高度的列（名牌、狀態列、腔門列）
+ * 會把腔室內部壓到幾乎沒有 —— 晶圓因此小到看不清。
+ * 這幾列的內容其實可以縮：門把小一點、狀態文字小一點都還讀得到，
+ * 但晶圓太小就沒得玩了。所以矮機台上優先把空間讓給腔室內部。
+ */
+const SHORT_CHAMBER_H = 300;
+/** 門把下方那行狀態文字（「腔門已關閉」等）需要的高度。 */
+const DOOR_TEXT_H = 22;
 /** 門把（半徑最大 20）+ 下方狀態文字，需要 18 + 20 + 6 + 14 ≈ 58，取 62 留餘裕。 */
 const DOOR_ROW_H = 62;
 
@@ -111,18 +120,33 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
   const pad = Math.max(8, geo.w * 0.028);
   const innerW = geo.w - panelW - pad * 2;
 
+  // 矮機台上把固定列收窄，空間讓給腔室內部（見 SHORT_CHAMBER_H）
+  const short = geo.h < SHORT_CHAMBER_H;
+  const nameplateH = short ? 17 : NAMEPLATE_H;
+  const statusH = short ? 16 : STATUS_H;
+  /*
+    腔門那一列的高度不是一個常數，而是由它要裝的東西反推：
+    門把（半徑跟機台寬度走）+ 下方一行狀態文字。寫死 44px 的話，
+    寬機台的門把較大，文字就會溢出機台底部。
+  */
+  const handleR = clamp(geo.w * 0.035, short ? 11 : 13, 20);
+  const handleDrop = short ? 13 : 18;
+  const doorRowH = short
+    ? Math.ceil(handleDrop + handleR + DOOR_TEXT_H)
+    : DOOR_ROW_H;
+
   const statusBar = {
     x: geo.x + pad,
-    y: geo.y + 8 + NAMEPLATE_H + 4,
+    y: geo.y + (short ? 6 : 8) + nameplateH + 4,
     w: innerW,
     h: 9,
   };
 
   const interior = {
     x: geo.x + pad,
-    y: statusBar.y + STATUS_H,
+    y: statusBar.y + statusH,
     w: innerW,
-    h: geo.h - (statusBar.y - geo.y) - STATUS_H - DOOR_ROW_H,
+    h: geo.h - (statusBar.y - geo.y) - statusH - doorRowH,
   };
 
   const waferR = Math.min(interior.w * 0.34, interior.h * 0.34);
@@ -140,12 +164,13 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
   const buttonR = clamp(Math.min(panelW * 0.32, geo.h * 0.14), 26, 44);
   const button = {
     cx: panelCX,
-    cy: geo.y + geo.h - pad - buttonR - 18,
+    // 矮機台上把大按鈕往下靠，控制欄（拉桿與氣閥）才拿得回垂直空間
+    cy: geo.y + geo.h - pad - buttonR - (short ? 10 : 18),
     r: buttonR,
   };
 
-  const ctrlTop = statusBar.y + STATUS_H + 16;
-  const ctrlBottom = button.cy - buttonR - 24;
+  const ctrlTop = statusBar.y + statusH + (short ? 10 : 16);
+  const ctrlBottom = button.cy - buttonR - (short ? 14 : 24);
   const ctrlSpan = Math.max(40, ctrlBottom - ctrlTop);
 
   const lever = {
@@ -155,24 +180,35 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
     halfW: clamp(panelW * 0.22, 14, 24),
   };
 
-  // 兩顆閥門平均分佈在控制欄內；半徑同時受欄寬與欄高限制，
-  // 否則機台一變矮，旋鈕就會疊到大按鈕上。
   /*
-    旋鈕半徑由「排得下」反解，而不是估一個比例。
-    兩顆旋鈕的圓心間距 = ctrlSpan − 2r − 14，要求它 ≥ 2r + 16（兩圓不相碰再留 16），
-    解出 r ≤ (ctrlSpan − 34) / 4（多留 4px 免得剛好卡在臨界）。
-    矮視窗上控制欄一短，旋鈕就會自動變小。
-  */
-  const valveR = clamp(Math.min(panelW * 0.24, (ctrlSpan - 34) / 4), 10, 28);
-  const valves = [
-    { cx: panelCX, cy: ctrlTop + valveR + 14, r: valveR },
-    { cx: panelCX, cy: ctrlBottom - valveR, r: valveR },
-  ];
+    兩顆氣閥的擺法會依控制欄的形狀切換 —— 這是矮視窗的關鍵。
 
-  const handleR = clamp(geo.w * 0.035, 13, 20);
+    直立（預設）  半徑由「排得下」反解：圓心間距 = ctrlSpan − 2r − 14，
+                  要求 ≥ 2r + 16，解出 r ≤ (ctrlSpan − 34) / 4。
+    並排          控制欄一矮，上式解出的 r 會掉到 10px 以下、旋鈕小到轉不動
+                  （甚至還是排不下）。這時改成左右並排：吃的是欄**寬**，
+                  跟欄高無關，旋鈕就能保持能操作的大小。
+
+    也就是說矮視窗上不是把旋鈕縮小到不能用，而是改變排列方式。
+  */
+  const stackedR = Math.min(panelW * 0.24, (ctrlSpan - 34) / 4);
+  const sideBySideR = Math.min(panelW * 0.22, (panelW - 24) / 4, ctrlSpan * 0.4);
+  const stacked = stackedR >= 14;
+
+  const valveR = clamp(stacked ? stackedR : sideBySideR, 9, 28);
+  const valves = stacked
+    ? [
+        { cx: panelCX, cy: ctrlTop + valveR + 14, r: valveR },
+        { cx: panelCX, cy: ctrlBottom - valveR, r: valveR },
+      ]
+    : [
+        { cx: panelCX - valveR - 5, cy: ctrlBottom - valveR - 2, r: valveR },
+        { cx: panelCX + valveR + 5, cy: ctrlBottom - valveR - 2, r: valveR },
+      ];
+
   const doorHandle = {
     cx: interior.x + interior.w - handleR - 6,
-    cy: interior.y + interior.h + 18,
+    cy: interior.y + interior.h + handleDrop,
     r: handleR,
   };
 

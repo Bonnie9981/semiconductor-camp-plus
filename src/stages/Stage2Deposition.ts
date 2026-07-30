@@ -17,6 +17,7 @@ import {
   type ChamberLayout,
   type ChamberState,
 } from '../scene/Chamber';
+import { machineBox } from '../scene/MachineFit';
 import { DepositionField, type FieldConfig } from '../scene/Particles';
 import { BaseStage } from './BaseStage';
 
@@ -343,19 +344,21 @@ export class Stage2Deposition extends BaseStage {
   private frameRun(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { height } = desk.size;
     const scene = this.sceneBounds(frame);
 
-    // 滿版腔體：晶圓要「完整呈現」，所以盡量把垂直空間用滿
-    const cw = scene.w * 0.98;
-    const chMax = groundY - height * 0.19;
-    const ch = clamp(Math.min(cw * 0.72, chMax), 200, 430);
-    const geo: ChamberGeometry = {
-      x: scene.left + (scene.w - cw) / 2,
-      y: groundY - 16 - ch,
-      w: cw,
-      h: ch,
-    };
+    // 滿版腔體：晶圓要「完整呈現」，所以盡量把垂直空間用滿。
+    // 上界量 DOM、長寬比設上限，矮視窗上才不會頂到提示帶或被拉成細長條。
+    const geo: ChamberGeometry = machineBox({
+      scene,
+      widthRatio: 0.98,
+      ratio: 0.72,
+      groundY,
+      bandTop: frame.ui.sceneOverlay().top + 8,
+      gap: 16,
+      min: 200,
+      max: 430,
+      maxAspect: 2.4,
+    });
     const layout = chamberLayout(geo, this.runKind);
 
     this.updateControls(hand, layout);

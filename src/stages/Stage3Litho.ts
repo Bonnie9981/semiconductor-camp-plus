@@ -15,6 +15,7 @@ import {
   type AlignerGeometry,
 } from '../scene/Aligner';
 import { pointInCircle } from '../scene/Chamber';
+import { machineBox, machineHeight } from '../scene/MachineFit';
 import { BaseStage } from './BaseStage';
 
 /**
@@ -383,14 +384,14 @@ export class Stage3Litho extends BaseStage {
     const { ui, desk, time, hand } = frame;
     const ctx = desk.context;
     const scene = this.sceneBounds(frame);
-    const { height } = desk.size;
 
     const gap = Math.max(16, scene.w * 0.04);
     const cw = (scene.w - gap) / 2;
     // 卡片做成「高瘦」而不是接近正方形 —— 三列剖面示意圖需要垂直空間，
     // 小螢幕上用 w*1.02 會讓每列只剩不到 30px，第一列的標籤還會壓到標題。
-    const chH = Math.min(cw * 1.32, groundY - height * 0.19);
-    const top = (height * 0.19 + groundY) / 2 - chH / 2;
+    const bandTop = frame.ui.sceneOverlay().top + 8;
+    const chH = machineHeight({ width: cw, ratio: 1.32, groundY, bandTop, min: 150, max: 520 });
+    const top = (bandTop + groundY) / 2 - chH / 2;
 
     const cards: { id: 'positive' | 'negative'; x: number }[] = [
       { id: 'positive', x: scene.left },
@@ -644,17 +645,21 @@ export class Stage3Litho extends BaseStage {
   private frameExpose(frame: StageFrame, groundY: number): void {
     const { ui, desk, dt, time, hand } = frame;
     const ctx = desk.context;
-    const { height } = desk.size;
     const scene = this.sceneBounds(frame);
 
-    const aw = scene.w * 0.98;
-    const ah = clamp(Math.min(aw * 0.72, groundY - height * 0.19), 220, 440);
-    const geo: AlignerGeometry = {
-      x: scene.left + (scene.w - aw) / 2,
-      y: groundY - 16 - ah,
-      w: aw,
-      h: ah,
-    };
+    // 曝光機的內部（光罩 / UV 燈管 / 晶圓台）疊得很密，長寬比一失控就會互撞，
+    // 所以 maxAspect 訂得比腔體更嚴。
+    const geo: AlignerGeometry = machineBox({
+      scene,
+      widthRatio: 0.98,
+      ratio: 0.72,
+      groundY,
+      bandTop: frame.ui.sceneOverlay().top + 8,
+      gap: 16,
+      min: 220,
+      max: 440,
+      maxAspect: 2.1,
+    });
     const L = alignerLayout(geo);
 
     const maskCenter = {

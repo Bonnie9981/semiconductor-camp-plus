@@ -13,6 +13,7 @@ const { chamberLayout } = await import(`${SRC}scene/Chamber.ts`);
 const { alignerLayout, ALIGN_TOLERANCE } = await import(`${SRC}scene/Aligner.ts`);
 const { wetBenchLayout } = await import(`${SRC}scene/WetBenchLayout.ts`);
 const { checkViewport, MIN_VIEWPORT } = await import(`${SRC}core/Viewport.ts`);
+const { machineBox } = await import(`${SRC}scene/MachineFit.ts`);
 const { tankBenchGeometry } = await import(`${SRC}scene/TankBench.ts`);
 
 const report = new Report('版面（真實 chamberLayout / alignerLayout）');
@@ -20,6 +21,16 @@ const report = new Report('版面（真實 chamberLayout / alignerLayout）');
 for (const screen of SCREENS) {
   const vp = viewport(screen);
   const { scene, groundY, height } = vp;
+
+  /*
+    上方帶狀 HTML 的下緣。遊戲裡是量 DOM（UIManager.sceneOverlay()），
+    這裡沒有 DOM，用各高度級距的 CSS 值推算：AR 提示的 top + 它的高度。
+    真正的重疊由 scripts/checks/browser.mjs 開 Chrome 驗。
+  */
+  const bandTop =
+    (screen.h <= 540 ? 56 : screen.h <= 660 ? 68 : screen.h <= 740 ? 76 : screen.h <= 860 ? 86 : 94) +
+    (screen.h <= 660 ? 26 : screen.h <= 740 ? 30 : 40) +
+    8;
 
   // ── 互動面板（HTML）本身要有可用高度 ──
   {
@@ -75,7 +86,7 @@ for (const screen of SCREENS) {
     }
     const waferBottom = T.rest.y + T.waferR * 0.3 + 20;
     if (waferBottom > height) errs.push(`待命晶圓超出畫面下緣 ${(waferBottom - height).toFixed(0)}px`);
-    if (T.geo.baseY - T.geo.height < height * 0.2) errs.push('藥液槽頂端壓到上方提示帶');
+    if (T.geo.baseY - T.geo.height < bandTop - 1) errs.push('藥液槽頂端壓到上方提示帶');
     report.add(
       `${screen.name}  藥液槽`,
       errs,
@@ -85,9 +96,17 @@ for (const screen of SCREENS) {
 
   // ── 沉積 / 蝕刻腔體（與 Stage2、Stage5 相同的算法） ──
   {
-    const cw = scene.w * 0.98;
-    const ch = clamp(Math.min(cw * 0.72, groundY - height * 0.19), 200, 430);
-    const geo = { x: scene.left + (scene.w - cw) / 2, y: groundY - 16 - ch, w: cw, h: ch };
+    const geo = machineBox({
+      scene,
+      widthRatio: 0.98,
+      ratio: 0.72,
+      groundY,
+      bandTop,
+      gap: 16,
+      min: 200,
+      max: 430,
+      maxAspect: 2.4,
+    });
     const L = chamberLayout(geo, 'cvd');
 
     const errs = [];
@@ -98,29 +117,41 @@ for (const screen of SCREENS) {
       errs.push(`功率拉桿太短 ${(L.lever.bottom - L.lever.top).toFixed(0)}px`);
     }
     const [v0, v1] = L.valves;
-    if (v1.cy - v0.cy < v0.r + v1.r + 16) {
-      errs.push(`兩顆氣閥太近，間距 ${(v1.cy - v0.cy).toFixed(0)}px`);
+    // 兩顆氣閥可能直立也可能並排（矮機台會自動切換），所以驗「圓心距離」
+    // 而不是只驗垂直間距 —— 這樣兩種排法用同一條規則。
+    const gap = Math.hypot(v1.cx - v0.cx, v1.cy - v0.cy) - v0.r - v1.r;
+    if (gap < 8) errs.push(`兩顆氣閥太近，邊緣只差 ${gap.toFixed(0)}px`);
+    if (v0.r < 11) errs.push(`氣閥太小 r=${v0.r.toFixed(0)}，轉不動`);
+    if (Math.max(v0.cy + v0.r, v1.cy + v1.r) > L.button.cy - L.button.r - 6) {
+      errs.push('氣閥疊到大按鈕');
     }
-    if (v1.cy + v1.r > L.button.cy - L.button.r - 6) errs.push('氣閥疊到大按鈕');
     // 門把 + 下方狀態文字必須留在機台裡
     const doorTextBottom = L.doorHandle.cy + L.doorHandle.r + 6 + 14;
     if (doorTextBottom > geo.y + geo.h) {
       errs.push(`腔門狀態文字溢出機台 ${(doorTextBottom - geo.y - geo.h).toFixed(0)}px`);
     }
-    if (geo.y < height * 0.16) errs.push(`機台頂端過高，會壓到上方的提示帶`);
+    if (geo.y < bandTop - 1) errs.push(`機台頂端壓到上方提示帶 ${(bandTop - geo.y).toFixed(0)}px`);
 
     report.add(
       `${screen.name}  腔體`,
       errs,
-      `${cw.toFixed(0)}×${ch.toFixed(0)} 晶圓r ${L.wafer.r.toFixed(0)} 鈕r ${L.button.r.toFixed(0)}`,
+      `${geo.w.toFixed(0)}×${geo.h.toFixed(0)} 晶圓r ${L.wafer.r.toFixed(0)} 鈕r ${L.button.r.toFixed(0)}`,
     );
   }
 
   // ── 光罩對準曝光機（與 Stage3 相同的算法） ──
   {
-    const aw = scene.w * 0.98;
-    const ah = clamp(Math.min(aw * 0.72, groundY - height * 0.19), 220, 440);
-    const geo = { x: scene.left + (scene.w - aw) / 2, y: groundY - 16 - ah, w: aw, h: ah };
+    const geo = machineBox({
+      scene,
+      widthRatio: 0.98,
+      ratio: 0.72,
+      groundY,
+      bandTop,
+      gap: 16,
+      min: 220,
+      max: 440,
+      maxAspect: 2.1,
+    });
     const L = alignerLayout(geo);
 
     const errs = [];
@@ -138,7 +169,7 @@ for (const screen of SCREENS) {
     report.add(
       `${screen.name}  曝光機`,
       errs,
-      `${aw.toFixed(0)}×${ah.toFixed(0)} 晶圓r ${L.wafer.r.toFixed(0)} 鈕r ${L.button.r.toFixed(0)}`,
+      `${geo.w.toFixed(0)}×${geo.h.toFixed(0)} 晶圓r ${L.wafer.r.toFixed(0)} 鈕r ${L.button.r.toFixed(0)}`,
     );
   }
 }

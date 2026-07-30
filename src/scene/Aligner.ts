@@ -70,27 +70,56 @@ const PANEL_RATIO = 0.24;
 /** 對準容差（px）。 */
 export const ALIGN_TOLERANCE = 14;
 
+/** 低於這個高度就進入「矮機台」模式，把固定列收窄讓給晶圓。 */
+const SHORT_ALIGNER_H = 300;
+
 export function alignerLayout(geo: AlignerGeometry): AlignerLayout {
   const panelW = geo.w * PANEL_RATIO;
   const pad = Math.max(10, geo.w * 0.025);
   const innerW = geo.w - panelW - pad * 2;
   const innerX = geo.x + pad;
 
-  const lampH = Math.max(20, geo.h * 0.1);
-  const lamp = { x: innerX + innerW * 0.1, y: geo.y + pad + 16, w: innerW * 0.8, h: lampH };
+  /*
+    矮機台（矮視窗）上要把固定成本擠出來給晶圓與光罩，做法跟 Chamber 一樣：
+    UV 燈管變薄、燈管與頂緣的距離縮短、晶圓下方的預留變少。
+    這幾樣縮了還看得懂，但晶圓一小就沒得玩，光罩也會撞上燈管。
+  */
+  const short = geo.h < SHORT_ALIGNER_H;
+  const lampH = Math.max(short ? 12 : 20, geo.h * (short ? 0.07 : 0.1));
+  const lampDrop = short ? 6 : 16;
+  const waferFloor = short ? 18 : 30;
+  const maskGap = short ? 10 : 18;
 
-  // 晶圓放在下方，光罩懸在它上面；兩者中心對齊。
-  // 半徑同時受寬與高限制——光罩要疊在晶圓上方，太大就會撞到 UV 燈管。
-  const waferR = Math.min(innerW * 0.34, geo.h * 0.225);
+  const lamp = { x: innerX + innerW * 0.1, y: geo.y + pad + lampDrop, w: innerW * 0.8, h: lampH };
+
+  /*
+    晶圓半徑不再用「geo.h × 固定比例」猜，而是由**實際剩下的垂直空間反解**：
+
+      燈管下緣 ── 間隙 16 ── 光罩(1.5r) ── 間隙 maskGap ── 晶圓(0.6r) ── 底部預留
+
+    光罩上緣 = geo.y + geo.h − pad − waferFloor − maskGap − r×(0.3 + 0.3 + 1.53)
+    要求它 ≥ 燈管下緣 + 16 = geo.y + pad + lampDrop + lampH + 16
+    解出 r ≤ (geo.h − 2×pad − waferFloor − maskGap − lampDrop − lampH − 16) / 2.13
+    （上下各有一個 pad，兩個都要扣）
+
+    這樣光罩就不可能撞到燈管 —— 那是幾何上被排除的，不是靠參數調出來的。
+    除數用 2.2 而不是 2.13，多留一點餘裕免得卡在臨界。
+  */
+  const vSpace = geo.h - pad * 2 - lampDrop - lampH - 16 - maskGap - waferFloor;
+  // 高機台仍受 geo.h × 0.225 限制（維持原本的視覺比例）；
+  // 矮機台上那個上限只會讓晶圓小到看不清，交給上面的反解值決定就好。
+  const waferR = short
+    ? Math.min(innerW * 0.34, vSpace / 2.2)
+    : Math.min(innerW * 0.34, geo.h * 0.225, vSpace / 2.2);
   const wafer = {
     cx: innerX + innerW / 2,
-    cy: geo.y + geo.h - pad - 30 - waferR * WAFER_SQUASH,
+    cy: geo.y + geo.h - pad - waferFloor - waferR * WAFER_SQUASH,
     r: waferR,
   };
 
   const maskR = waferR * 1.02;
   const mask = { w: maskR * 2.5, h: maskR * 1.5, r: maskR };
-  const maskHome = { x: wafer.cx, y: wafer.cy - waferR * WAFER_SQUASH - mask.h * 0.5 - 18 };
+  const maskHome = { x: wafer.cx, y: wafer.cy - waferR * WAFER_SQUASH - mask.h * 0.5 - maskGap };
 
   const panelCX = geo.x + geo.w - panelW + panelW / 2;
   const buttonR = clamp(Math.min(panelW * 0.36, geo.h * 0.15), 26, 44);
