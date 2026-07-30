@@ -112,6 +112,29 @@ export const SOLUTIONS: Record<string, Solution> = {
   },
 };
 
+/**
+ * 配液安全規則：**沒有去離子水墊底時，不可以把兩種藥液混在一起**。
+ *
+ * 濃酸、濃鹼與雙氧水彼此混合是劇烈放熱反應。有水墊在底下時，
+ * 水的高熱容量能吸收熱量、對流也帶得走；沒有水的話，
+ * 兩種濃藥液的界面局部瞬間到達沸點就會**突沸**，
+ * 把高溫強腐蝕的液體整團噴出來。
+ *
+ * 注意「危險」的條件不是「水沒有第一個倒」——
+ * 空杯裡只放一種藥液沒有東西可以反應，並不危險。
+ * 真正的危險是**在乾的狀態下讓第二種藥液碰到第一種**。
+ *
+ * 刻意做成純函式，scripts/checks 才能直接驗證。
+ */
+export function isUnsafePour(pouringId: string, currentIds: readonly string[]): boolean {
+  // 加水永遠安全
+  if (pouringId === 'di') return false;
+  // 空杯：只有一種藥液，沒有東西可以反應
+  if (currentIds.length === 0) return false;
+  // 杯子裡已經有東西了 —— 只要沒有水墊底，就是兩種濃藥液直接相遇
+  return !currentIds.includes('di');
+}
+
 export function solution(id: string): Solution {
   const s = SOLUTIONS[id];
   if (!s) throw new Error(`solutions.ts: 找不到藥液 '${id}'`);

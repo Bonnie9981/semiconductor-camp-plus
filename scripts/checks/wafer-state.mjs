@@ -11,8 +11,34 @@
 import { Report, SRC } from './lib.mjs';
 
 const { WaferState, SECTION_CELLS } = await import(`${SRC}core/WaferState.ts`);
+const { isUnsafePour } = await import(`${SRC}data/solutions.ts`);
 
 const report = new Report('晶圓狀態機（真實 WaferState）');
+
+// ── ⓿ 配液安全規則：沒有水墊底時不可以混合兩種藥液 ──
+{
+  const cases = [
+    // [要倒的, 杯子裡已有的, 應該是否危險, 說明]
+    ['di', [], false, '空杯倒水'],
+    ['hf', [], false, '空杯倒單一藥液 —— 沒有東西可以反應'],
+    ['h2o2', [], false, '空杯倒雙氧水 —— 同上'],
+    ['di', ['h2o2'], false, '往藥液裡補水 —— 這是正確的補救方向'],
+    ['h2o2', ['di'], false, '水已墊底'],
+    ['hcl', ['di', 'nh4oh'], false, '水已墊底，後續順序不限'],
+    ['h2o2', ['nh4oh'], true, '乾的狀態下讓雙氧水碰到鹼 —— 突沸'],
+    ['nh4oh', ['h2o2'], true, '反過來也一樣 —— 突沸'],
+    ['hcl', ['hf'], true, '兩種酸乾混 —— 突沸'],
+    ['h2o2', ['di', 'nh4oh', 'hcl'], false, '只要有水，混幾種都安全'],
+  ];
+  for (const [pouring, current, expectUnsafe, label] of cases) {
+    const got = isUnsafePour(pouring, current);
+    report.add(
+      `isUnsafePour('${pouring}', [${current.join(',')}])`,
+      got === expectUnsafe ? [] : [`預期 ${expectUnsafe}，得到 ${got}`],
+      label,
+    );
+  }
+}
 
 // ── ① develop()：正負光阻的結果必須互補 ──
 {
