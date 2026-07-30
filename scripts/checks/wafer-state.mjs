@@ -194,16 +194,17 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
     expect(`去光阻 檯面有 ${id}`, ids(s0).includes(id), ids(s0).join(', '));
   }
 
-  // NMP 路線的第二輪：只能用去離子水，而且丙酮不可以是答案
-  // （丙酮路線根本走不到這一輪，答案是水才對得起「NMP 必須沖掉」）
+  // 第二輪：丙酮與 NMP 兩條路線都要走到這裡，而且只能用去離子水
   const s1 = stripRound(1);
-  expect('NMP 路線 第二輪只收去離子水',
+  expect('沖洗 只收去離子水',
     s1.answers.length === 1 && s1.answers[0] === 'di',
     `answers=${s1.answers.join('/')}`);
-  expect('NMP 路線 第二輪拒絕丙酮', !s1.answers.includes('acetone'), '光阻已剝乾淨');
+  expect('沖洗 拒絕再泡溶劑',
+    !s1.answers.includes('acetone') && !s1.answers.includes('nmp'),
+    '溶劑已經泡過了');
 
   // 錯誤提示必須每個「非答案」的槽都講得出理由（不能只丟一句預設值）
-  for (const [name, round] of [['濕蝕刻', wet], ['去光阻', s0], ['NMP 沖水', s1]]) {
+  for (const [name, round] of [['濕蝕刻', wet], ['去光阻', s0], ['沖洗', s1]]) {
     const wrong = ids(round).filter((id) => !round.answers.includes(id));
     const vague = wrong.filter((id) => {
       const h = round.wrongHint(id);

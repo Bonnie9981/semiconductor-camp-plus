@@ -76,7 +76,7 @@ export class Stage5Etch extends DipStageBase {
   readonly substeps: readonly SubStep[] = [
     { id: 'descum', title: '氧氣電漿清潔', desc: 'O₂ 電漿掃掉光阻殘渣，讓目標材料完全裸露' },
     { id: 'etch', title: '蝕刻選擇', desc: '乾式＝鉛直蝕刻；濕式＝側向蝕刻' },
-    { id: 'strip', title: '去光阻', desc: '二選一：丙酮單獨剝除，或 NMP 剝除後再用去離子水沖淨' },
+    { id: 'strip', title: '去光阻', desc: '丙酮或 NMP 二選一剝除，再用去離子水沖淨殘留溶劑' },
   ];
 
   readonly instructions: InstructionStep[] = [
@@ -90,7 +90,7 @@ export class Stage5Etch extends DipStageBase {
   private phase: Phase = 'descum-load';
   private method: 'dry' | 'wet' | null = null;
   private timer = 0;
-  /** 去光阻的第幾輪：0 選溶劑 → 1 沖水（只有 NMP 路線會走到）。 */
+  /** 去光阻的第幾輪：0 選溶劑剝除 → 1 去離子水沖洗。 */
   private stripStep = 0;
   /** 玩家在去光阻那一步選了哪條路線；null = 還沒選。 */
   private stripSolvent: 'acetone' | 'nmp' | null = null;
@@ -684,18 +684,13 @@ export class Stage5Etch extends DipStageBase {
     if (done) {
       if (this.stripStep === 0) {
         wafer.removeLayer('resist');
-        // 選了哪一種溶劑決定還有沒有下一輪：
-        // 丙酮揮發掉就結束，NMP 不揮發、一定要用去離子水沖掉
+        // 記下用了哪一種溶劑（顯示用），但兩條路線都要接水洗
         this.stripSolvent = this.pickedId === 'nmp' ? 'nmp' : 'acetone';
-        if (this.stripSolvent === 'acetone') {
-          this.nextSub();
-          return;
-        }
         this.stripStep = 1;
         this.resetDip();
         return;
       }
-      // stripStep === 1：NMP 路線的水洗做完了
+      // stripStep === 1：水洗做完，這一關結束
       this.nextSub();
       return;
     }
@@ -756,8 +751,8 @@ export class Stage5Etch extends DipStageBase {
           this.phase === 'wet'
             ? '選出吃得動目標材料的藥液。氫氟酸系（HF）溶二氧化矽、PAN 溶金屬鋁 —— 兩者都是真正在用的濕蝕刻液，挑一個。'
             : this.stripStep === 1
-              ? 'NMP 沸點 202°C、不會自己揮發，一定有一層留在晶圓上。它與水完全互溶，用去離子水沖掉。'
-              : '光阻的任務結束了，用有機溶劑整層剝掉。兩條路線二選一：\n· 丙酮 —— 揮發快，泡完直接乾，**不要再沖水**（水會把溶解的光阻沉積回表面留下水痕）\n· NMP —— 不揮發、殘留少，但泡完**必須**用去離子水沖淨',
+              ? `表面現在是「溶了光阻的${this.stripSolvent === 'nmp' ? 'NMP' : '丙酮'}」。不沖掉的話溶劑一乾，溶解的光阻就會重新沉積回來 —— 兩種溶劑都與水互溶，用去離子水沖淨。`
+              : '光阻的任務結束了，用有機溶劑整層剝掉。挑一種：\n· 丙酮 —— 揮發快、便宜，實驗室最常用，但殘留較多\n· NMP —— 業界標準，閃點高、可加溫、殘留少\n剝完兩者都還要用去離子水沖洗。',
         error: this.error ?? undefined,
         label: '沒有鏡頭？直接放入正確的槽',
         enabled: true,
@@ -919,33 +914,33 @@ export function wetEtchRound(): DipRound {
 }
 
 /**
- * 去光阻與清洗。兩條路線**二選一**，不是三步依序做：
+ * 去光阻與清洗。剝離溶劑**二選一**，但兩條路線都要接去離子水沖洗：
  *
- *   丙酮路線   丙酮 ─▶ 完成（**不接去離子水**）
- *              丙酮揮發極快，泡完直接乾掉。這時候沖水反而有害 ——
- *              水把還沒帶走的溶解光阻重新沉積回表面，留下水痕與條紋。
- *              要接的話得接 IPA，不是水。所以這條路線就在丙酮結束。
+ *   丙酮 ─┐
+ *         ├─▶ 去離子水 ─▶ 完成
+ *   NMP  ─┘
  *
- *   NMP 路線   NMP ─▶ 去離子水 ─▶ 完成
- *              NMP 沸點高（202°C）、不揮發，泡完一定有一層留在晶圓上；
- *              它與水完全互溶，所以用去離子水就沖得掉。
- *              這條**必須**接水洗，否則殘留的 NMP 就留在表面。
+ *   丙酮   揮發快、便宜，是實驗室最常用的剝離溶劑，但殘留較多。
+ *   NMP    半導體業界標準。閃點遠高於丙酮、可加溫操作、殘留少，
+ *          沸點 202°C 不會自己揮發。
  *
- * 兩條都是業界實際做法：丙酮快而粗、NMP 慢而乾淨。
- * 挑哪一條由玩家決定，但選了之後後續步驟就被決定了 ——
- * 這正是這一步要教的：溶劑的物性決定了它需不需要水洗。
+ * 為什麼兩者都要沖水：溶劑把光阻溶進去之後，晶圓表面留下的是
+ * 「溶了光阻的溶劑」。不沖掉的話溶劑一乾，溶解的光阻就會重新沉積回表面。
+ * 兩種溶劑都與水互溶，所以去離子水都沖得掉。
+ *
+ * 挑哪一種溶劑由玩家決定（這是真的有取捨的選擇），但水洗那一步跑不掉。
  */
 export function stripRound(step: number): DipRound {
-  // 第二輪只有 NMP 路線才會走到，此時唯一的正解是去離子水
+  // 第二輪：不管前面泡的是丙酮還是 NMP，都要用去離子水把殘留的溶劑沖掉
   if (step === 1) {
     return {
       tanks: [{ id: 'di' }, { id: 'acetone' }, { id: 'nmp' }, { id: 'hno3' }],
       answers: ['di'],
       seconds: 3.5,
-      actionLabel: '沖淨 NMP',
+      actionLabel: '沖洗',
       wrongHint: (id) => {
-        if (id === 'nmp') return 'NMP 已經泡過了。它不揮發，現在要做的是把留在表面的 NMP 沖掉。';
-        if (id === 'acetone') return '光阻已經剝乾淨了。再泡丙酮只是多一種溶劑要洗，沒有幫助。';
+        if (id === 'nmp' || id === 'acetone')
+          return '溶劑已經泡過了。現在要做的是把「溶了光阻的溶劑」沖掉，不然它一乾，溶解的光阻就會重新沉積回表面。';
         return '酸會侵蝕晶圓。這一步只需要去離子水。';
       },
     };
