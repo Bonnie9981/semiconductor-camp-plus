@@ -8,6 +8,7 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  base: './',
   build: {
     // MediaPipe 的 wasm 與 tflite 已放在 public/mediapipe/，
     // Vite 會原樣複製，不需要（也不應該）進 bundle。

@@ -30,7 +30,7 @@ export type FacingMode = 'user' | 'environment';
 export type CameraStatus = 'idle' | 'loading' | 'live' | 'error';
 
 /** 資產根目錄。改成 CDN 也可以：`https://cdn.jsdelivr.net/npm/@mediapipe`。 */
-const MP_BASE = '/mediapipe';
+const MP_BASE = './mediapipe';
 
 type HandsCtor = new (config?: HandsConfig) => HandsSolution;
 type CameraCtor = new (video: HTMLVideoElement, options: CameraOptions) => CameraSolution;
