@@ -119,7 +119,7 @@ export class Stage4Develop extends DipStageBase {
         { id: 'acetone' },
         { id: 'di' },
       ],
-      answer: this.answer,
+      answers: [this.answer],
       seconds: 5,
       actionLabel: '顯影',
       wrongHint: (id) => {
@@ -154,7 +154,7 @@ export class Stage4Develop extends DipStageBase {
 
     // 泡下去就代表試劑選對了，把「選擇」那一步標記完成
     if (this.dipIndex >= 0 && this.currentSub.id === 'reagent') {
-      this.picked = round.answer;
+      this.picked = round.answers[0];
       this.nextSub();
     }
 
@@ -176,7 +176,7 @@ export class Stage4Develop extends DipStageBase {
       return {
         kind: 'action',
         title: '顯影反應',
-        note: `${solution(round.answer).name}正在溶解該溶的光阻。左右晃動手就是攪拌 —— 帶走溶解物、讓新鮮藥液接觸表面，反應會快一倍。`,
+        note: `${solution(round.answers[0]).name}正在溶解該溶的光阻。左右晃動手就是攪拌 —— 帶走溶解物、讓新鮮藥液接觸表面，反應會快一倍。`,
         label: `顯影中… ${Math.round(this.reactT * 100)}%`,
         enabled: false,
         onClick: () => {},
@@ -196,7 +196,9 @@ export class Stage4Develop extends DipStageBase {
       enabled: true,
       onClick: () => {
         // 備援：直接開始顯影
-        this.dipIndex = round.tanks.findIndex((t) => t.id === round.answer);
+        const idx = round.tanks.findIndex((t) => t.id === round.answers[0]);
+        this.dipIndex = idx;
+        this.pickedId = round.tanks[idx].id;
         this.dipDepth = 0;
         this.reactT = 0;
         this.error = null;

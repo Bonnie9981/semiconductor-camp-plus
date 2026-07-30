@@ -52,7 +52,7 @@ export const SOLUTIONS: Record<string, Solution> = {
     name: '氫氟酸',
     formula: 'HF',
     color: '#6fd9ad',
-    role: '唯一能溶解二氧化矽的酸，用來剝除氧化層。',
+    role: '唯一能溶解二氧化矽的酸（生成可溶的 H₂SiF₆）。RCA 用它剝原生氧化層，也是最經典的濕蝕刻液。',
   },
   hno3: {
     id: 'hno3',
@@ -66,14 +66,18 @@ export const SOLUTIONS: Record<string, Solution> = {
     name: '丙酮',
     formula: 'CH₃COCH₃',
     color: '#cfd6da',
-    role: '早期的光阻剝離溶劑。揮發快、閃點低，已被 NMP 取代。',
+    role:
+      '光阻剝離溶劑。揮發極快，泡完直接乾掉，所以**後面不接水洗** —— ' +
+      '沖水會把溶解的光阻重新沉積回表面留下水痕。要接的話接 IPA。',
   },
   nmp: {
     id: 'nmp',
     name: 'NMP',
     formula: 'C₅H₉NO',
     color: '#9fb4c0',
-    role: '半導體業界標準的光阻剝離液。閃點遠高於丙酮，可加溫操作且殘留少。',
+    role:
+      '半導體業界標準的光阻剝離液。閃點遠高於丙酮、可加溫操作、殘留少，' +
+      '但沸點 202°C 不會自己揮發，所以**後面必須用去離子水沖淨**（與水完全互溶）。',
   },
   koh: {
     id: 'koh',

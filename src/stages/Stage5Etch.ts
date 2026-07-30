@@ -7,6 +7,7 @@ import type {
   StageResult,
   SubStep,
 } from '../core/types';
+import { solution } from '../data/solutions';
 import { drawFlatWafer, WAFER_SQUASH } from '../scene/Beaker';
 import {
   chamberLayout,
@@ -74,7 +75,7 @@ export class Stage5Etch extends DipStageBase {
   readonly substeps: readonly SubStep[] = [
     { id: 'descum', title: '氧氣電漿清潔', desc: 'O₂ 電漿掃掉光阻殘渣，讓目標材料完全裸露' },
     { id: 'etch', title: '蝕刻選擇', desc: '乾式＝鉛直蝕刻；濕式＝側向蝕刻' },
-    { id: 'strip', title: '去光阻與清洗', desc: '丙酮 → NMP → 去離子水，三步依序完成' },
+    { id: 'strip', title: '去光阻', desc: '二選一：丙酮單獨剝除，或 NMP 剝除後再用去離子水沖淨' },
   ];
 
   readonly instructions: InstructionStep[] = [
@@ -88,8 +89,10 @@ export class Stage5Etch extends DipStageBase {
   private phase: Phase = 'descum-load';
   private method: 'dry' | 'wet' | null = null;
   private timer = 0;
-  /** 去光阻的第幾輪：0 丙酮 → 1 NMP → 2 去離子水。 */
+  /** 去光阻的第幾輪：0 選溶劑 → 1 沖水（只有 NMP 路線會走到）。 */
   private stripStep = 0;
+  /** 玩家在去光阻那一步選了哪條路線；null = 還沒選。 */
+  private stripSolvent: 'acetone' | 'nmp' | null = null;
 
   // ── 機台狀態（descum 與乾蝕刻共用） ──
   private door = 1;
@@ -164,6 +167,7 @@ export class Stage5Etch extends DipStageBase {
     else {
       this.phase = 'strip';
       this.stripStep = 0;
+      this.stripSolvent = null;
     }
   }
 
@@ -638,72 +642,11 @@ export class Stage5Etch extends DipStageBase {
 
   // ─────────────────── 濕式蝕刻 / 去光阻：拖進正確的槽 ──────────────────────
 
-  /**
-   * 濕式蝕刻。這時候晶圓最上層是金屬鋁（PVD 直接鍍，CVD 也在氧化層上補鍍了一層），
-   * 所以正解是鋁專用的 PAN 蝕刻液（磷酸 : 醋酸 : 硝酸 : 水 ≈ 80:15:3:2）。
-   */
-  private wetRound(): DipRound {
-    return {
-      tanks: [{ id: 'pan' }, { id: 'hf' }, { id: 'hno3' }, { id: 'boe' }],
-      answer: 'pan',
-      seconds: 6,
-      actionLabel: '蝕刻',
-      wrongHint: (id) => {
-        if (id === 'hf') return '氫氟酸是蝕刻二氧化矽用的，對金屬鋁幾乎沒有作用，還會把下層的氧化矽一起吃掉。';
-        if (id === 'hno3') return '單獨的硝酸只會讓鋁表面鈍化（長出緻密的氧化鋁保護層），反而蝕不動。它必須跟磷酸搭配才有用。';
-        if (id === 'boe') return 'BOE 是加了緩衝劑的氫氟酸，同樣是給二氧化矽用的，對鋁無效。';
-        return '這不是蝕刻液。';
-      },
-    };
-  }
 
-  /**
-   * 去光阻與清洗，依製程規格分成三步：
-   *   ① 丙酮       先用揮發性溶劑把大部分光阻溶掉（**不可用去離子水** —— 光阻不溶於水）
-   *   ② NMP        再用高沸點剝離液把殘膜與殘渣徹底去除
-   *   ③ 去離子水   最後沖掉殘留的有機溶劑
-   * 順序不能顛倒：先水洗只會讓光阻更難剝，殘渣也會留在表面。
-   */
-  private stripRounds(): DipRound[] {
-    return [
-      {
-        tanks: [{ id: 'acetone' }, { id: 'di' }, { id: 'tmah' }, { id: 'hf' }],
-        answer: 'acetone',
-        seconds: 4.5,
-        actionLabel: '溶解光阻',
-        wrongHint: (id) => {
-          if (id === 'di') return '光阻不溶於水 —— 這一步**不可以用去離子水**，先水洗只會讓光阻更難剝除。';
-          if (id === 'tmah') return 'TMAH 是顯影液，只溶得掉曝光後改性的光阻，剝不掉整層。';
-          return '氫氟酸會把你辛苦蝕出來的圖案連同下層材料一起吃掉。';
-        },
-      },
-      {
-        tanks: [{ id: 'nmp' }, { id: 'acetone' }, { id: 'di' }, { id: 'pan' }],
-        answer: 'nmp',
-        seconds: 4.5,
-        actionLabel: '剝除殘膜',
-        wrongHint: (id) => {
-          if (id === 'acetone') return '丙酮剛剛用過了。它揮發太快，留下的殘渣要靠高沸點的 NMP 才清得掉。';
-          if (id === 'di') return '還沒剝乾淨就沖水，殘渣會直接留在表面。';
-          return 'PAN 是鋁蝕刻液，會把你剛做好的金屬圖案吃掉。';
-        },
-      },
-      {
-        tanks: [{ id: 'di' }, { id: 'acetone' }, { id: 'nmp' }, { id: 'hno3' }],
-        answer: 'di',
-        seconds: 3.5,
-        actionLabel: '清洗',
-        wrongHint: (id) => {
-          if (id === 'acetone' || id === 'nmp') return '光阻已經剝乾淨了，這一步要用超純水把殘留的有機溶劑沖掉。';
-          return '酸會侵蝕晶圓。最後一道只需要去離子水。';
-        },
-      },
-    ];
-  }
 
   private frameWet(frame: StageFrame, groundY: number): void {
     const wafer = this.ctx.wafer;
-    const round = this.wetRound();
+    const round = wetEtchRound();
     const done = this.runDip(frame, groundY, round, {
       waferColor: wafer.surfaceColor(),
       filmColor: RESIST_COLOR,
@@ -719,8 +662,7 @@ export class Stage5Etch extends DipStageBase {
 
   private frameStrip(frame: StageFrame, groundY: number): void {
     const wafer = this.ctx.wafer;
-    const rounds = this.stripRounds();
-    const round = rounds[this.stripStep];
+    const round = stripRound(this.stripStep);
 
     const done = this.runDip(frame, groundY, round, {
       waferColor: wafer.surfaceColor(),
@@ -729,14 +671,21 @@ export class Stage5Etch extends DipStageBase {
     });
 
     if (done) {
-      // 丙酮那一輪結束就把光阻層移掉，後兩輪是清洗殘膜與殘留溶劑
-      if (this.stripStep === 0) wafer.removeLayer('resist');
-      this.stripStep += 1;
-      if (this.stripStep >= rounds.length) {
-        this.nextSub();
+      if (this.stripStep === 0) {
+        wafer.removeLayer('resist');
+        // 選了哪一種溶劑決定還有沒有下一輪：
+        // 丙酮揮發掉就結束，NMP 不揮發、一定要用去離子水沖掉
+        this.stripSolvent = this.pickedId === 'nmp' ? 'nmp' : 'acetone';
+        if (this.stripSolvent === 'acetone') {
+          this.nextSub();
+          return;
+        }
+        this.stripStep = 1;
+        this.resetDip();
         return;
       }
-      this.resetDip();
+      // stripStep === 1：NMP 路線的水洗做完了
+      this.nextSub();
       return;
     }
     this.dipHints(frame, round);
@@ -777,12 +726,13 @@ export class Stage5Etch extends DipStageBase {
     }
 
     if (this.phase === 'wet' || this.phase === 'strip') {
-      const round = this.phase === 'wet' ? this.wetRound() : this.stripRounds()[this.stripStep];
+      const round = this.phase === 'wet' ? wetEtchRound() : stripRound(this.stripStep);
       if (this.dipIndex >= 0) {
         return {
           kind: 'action',
-          title: this.phase === 'wet' ? '濕式蝕刻中' : '去光阻與清洗',
-          note: '左右晃動手就是攪拌，能帶走反應產物、讓新鮮藥液接觸表面。',
+          title: this.phase === 'wet' ? '濕式蝕刻中' : '去光阻',
+          // 選了什麼就說明那一瓶在做什麼 —— 兩條路線都合法，玩家要知道自己選了哪一條
+          note: `${this.pickedId ? `${solution(this.pickedId).name}：${solution(this.pickedId).role}\n` : ''}左右晃動手就是攪拌，能帶走反應產物、讓新鮮藥液接觸表面。`,
           label: `${round.actionLabel}中… ${Math.round(this.reactT * 100)}%`,
           enabled: false,
           onClick: () => {},
@@ -790,16 +740,22 @@ export class Stage5Etch extends DipStageBase {
       }
       return {
         kind: 'action',
-        title: this.phase === 'wet' ? '第二步 · 濕式蝕刻' : '第三步 · 去光阻與清洗',
+        title: this.phase === 'wet' ? '第二步 · 濕式蝕刻' : '第三步 · 去光阻',
         note:
           this.phase === 'wet'
-            ? '選出能蝕刻最上層材料的藥液。蝕刻液要「吃得動目標材料、但吃不動光阻」，選錯不是沒反應就是把光阻也毀掉。'
-            : '圖案已經刻進材料裡，光阻的任務結束了。用有機溶劑把它整層剝掉，再以去離子水沖乾淨。',
+            ? '選出吃得動目標材料的藥液。氫氟酸系（HF）溶二氧化矽、PAN 溶金屬鋁 —— 兩者都是真正在用的濕蝕刻液，挑一個。'
+            : this.stripStep === 1
+              ? 'NMP 沸點 202°C、不會自己揮發，一定有一層留在晶圓上。它與水完全互溶，用去離子水沖掉。'
+              : '光阻的任務結束了，用有機溶劑整層剝掉。兩條路線二選一：\n· 丙酮 —— 揮發快，泡完直接乾，**不要再沖水**（水會把溶解的光阻沉積回表面留下水痕）\n· NMP —— 不揮發、殘留少，但泡完**必須**用去離子水沖淨',
         error: this.error ?? undefined,
         label: '沒有鏡頭？直接放入正確的槽',
         enabled: true,
         onClick: () => {
-          this.dipIndex = round.tanks.findIndex((t) => t.id === round.answer);
+          // 沒有鏡頭的替代路徑。pickedId 一定要一起設，
+          // 否則去光阻的路線分支與「你選了什麼」的說明都會拿到 null。
+          const idx = round.tanks.findIndex((t) => t.id === round.answers[0]);
+          this.dipIndex = idx;
+          this.pickedId = round.tanks[idx].id;
           this.dipDepth = 0;
           this.reactT = 0;
           this.error = null;
@@ -919,4 +875,80 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+
+/**
+ * 濕式蝕刻。濕蝕刻沒有唯一解 —— 蝕刻液要挑「吃得動目標材料」的那一種，
+ * 而檯面上有兩種都成立：
+ *
+ *   氫氟酸 HF   蝕刻二氧化矽。是濕蝕刻最經典的藥液，
+ *               唯一能把 SiO₂ 溶成可溶的 H₂SiF₆。BOE 是它加了
+ *               氟化銨緩衝劑的版本，速率更穩、不啃光阻。
+ *   PAN         鋁專用（磷酸 : 醋酸 : 硝酸 : 水 ≈ 80:15:3:2）。
+ *               硝酸先氧化鋁、磷酸溶掉氧化鋁、醋酸幫助潤濕。
+ *
+ * 兩條都放行，選完在提示上說明「你剛剛蝕的是哪一層」，
+ * 這比逼玩家猜一個唯一答案更接近真實製程的判斷。
+ * 錯的是「根本蝕不動」的選項：單獨的硝酸會讓鋁鈍化、去離子水什麼都不做。
+ */
+export function wetEtchRound(): DipRound {
+  return {
+    tanks: [{ id: 'hf' }, { id: 'pan' }, { id: 'hno3' }, { id: 'di' }],
+    answers: ['hf', 'pan'],
+    seconds: 6,
+    actionLabel: '蝕刻',
+    wrongHint: (id) => {
+      if (id === 'hno3')
+        return '單獨的硝酸只會讓鋁表面鈍化（長出緻密的氧化鋁保護層），反而蝕不動。它必須跟磷酸搭配成 PAN 才有用。';
+      if (id === 'di') return '去離子水不會蝕刻任何東西。要選真正能溶解目標材料的藥液。';
+      return '這不是蝕刻液。';
+    },
+  };
+}
+
+/**
+ * 去光阻與清洗。兩條路線**二選一**，不是三步依序做：
+ *
+ *   丙酮路線   丙酮 ─▶ 完成（**不接去離子水**）
+ *              丙酮揮發極快，泡完直接乾掉。這時候沖水反而有害 ——
+ *              水把還沒帶走的溶解光阻重新沉積回表面，留下水痕與條紋。
+ *              要接的話得接 IPA，不是水。所以這條路線就在丙酮結束。
+ *
+ *   NMP 路線   NMP ─▶ 去離子水 ─▶ 完成
+ *              NMP 沸點高（202°C）、不揮發，泡完一定有一層留在晶圓上；
+ *              它與水完全互溶，所以用去離子水就沖得掉。
+ *              這條**必須**接水洗，否則殘留的 NMP 就留在表面。
+ *
+ * 兩條都是業界實際做法：丙酮快而粗、NMP 慢而乾淨。
+ * 挑哪一條由玩家決定，但選了之後後續步驟就被決定了 ——
+ * 這正是這一步要教的：溶劑的物性決定了它需不需要水洗。
+ */
+export function stripRound(step: number): DipRound {
+  // 第二輪只有 NMP 路線才會走到，此時唯一的正解是去離子水
+  if (step === 1) {
+    return {
+      tanks: [{ id: 'di' }, { id: 'acetone' }, { id: 'nmp' }, { id: 'hno3' }],
+      answers: ['di'],
+      seconds: 3.5,
+      actionLabel: '沖淨 NMP',
+      wrongHint: (id) => {
+        if (id === 'nmp') return 'NMP 已經泡過了。它不揮發，現在要做的是把留在表面的 NMP 沖掉。';
+        if (id === 'acetone') return '光阻已經剝乾淨了。再泡丙酮只是多一種溶劑要洗，沒有幫助。';
+        return '酸會侵蝕晶圓。這一步只需要去離子水。';
+      },
+    };
+  }
+
+  return {
+    tanks: [{ id: 'acetone' }, { id: 'nmp' }, { id: 'di' }, { id: 'tmah' }],
+    answers: ['acetone', 'nmp'],
+    seconds: 4.5,
+    actionLabel: '剝除光阻',
+    wrongHint: (id) => {
+      if (id === 'di') return '光阻不溶於水 —— 這一步不可以用去離子水。要先用有機溶劑把它溶掉。';
+      if (id === 'tmah') return 'TMAH 是顯影液，只溶得掉曝光後改性的光阻，剝不掉整層。';
+      return '這不是剝離液。';
+    },
+  };
 }

@@ -27,8 +27,12 @@ import { BaseStage } from './BaseStage';
 export interface DipRound {
   /** 檯面上有哪些槽。 */
   tanks: TankSpec[];
-  /** 正確的那一槽 id。 */
-  answer: string;
+  /**
+   * 可接受的槽 id。允許多個，因為有些製程步驟本來就有不只一條合法路線
+   * （例如濕蝕刻的氫氟酸系與鋁蝕刻液、去光阻的丙酮路線與 NMP 路線）。
+   * 玩家實際選了哪一個記在 `pickedId`，子類別可以據此走不同的後續流程。
+   */
+  answers: readonly string[];
   /** 答錯時的說明（依選到的 id 給不同解釋）。 */
   wrongHint(pickedId: string): string;
   /** 反應需要多少秒（不攪拌的情況）。 */
@@ -48,6 +52,8 @@ export abstract class DipStageBase extends BaseStage {
   protected wrongIndex = -1;
   protected wrongTimer = 0;
   protected error: string | null = null;
+  /** 這一輪玩家選中的槽 id（一定是 round.answers 之一）；null = 還沒選。 */
+  protected pickedId: string | null = null;
 
   /** 上一幀手的 x，用來偵測「左右晃動＝攪拌」。 */
   private lastHandX: number | null = null;
@@ -63,6 +69,7 @@ export abstract class DipStageBase extends BaseStage {
     this.wrongIndex = -1;
     this.wrongTimer = 0;
     this.error = null;
+    this.pickedId = null;
     this.lastHandX = null;
   }
 
@@ -165,7 +172,8 @@ export abstract class DipStageBase extends BaseStage {
         const p = this.held;
         this.held = null;
         if (idx >= 0 && p) {
-          if (rects[idx].id === round.answer) {
+          if (round.answers.includes(rects[idx].id)) {
+            this.pickedId = rects[idx].id;
             this.dipIndex = idx;
             this.dipDepth = 0;
             this.reactT = 0;

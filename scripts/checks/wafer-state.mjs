@@ -164,4 +164,54 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
   }
 }
 
+
+
+// ── ④ 蝕刻關的藥液規則 ──
+// 這兩條規則是使用者親自訂的製程知識，很容易在後續重構時被改壞，所以鎖在檢查裡。
+{
+  const { wetEtchRound, stripRound } = await import(`${SRC}stages/Stage5Etch.ts`);
+
+  const ids = (r) => r.tanks.map((t) => t.id);
+  const expect = (label, cond, detail) => report.add(label, cond ? [] : [detail], detail);
+
+  // 濕式蝕刻：氫氟酸與 PAN 都可以，硝酸單獨與去離子水不行
+  const wet = wetEtchRound();
+  expect('濕蝕刻 可用氫氟酸', wet.answers.includes('hf'), `answers=${wet.answers.join('/')}`);
+  expect('濕蝕刻 可用 PAN', wet.answers.includes('pan'), `answers=${wet.answers.join('/')}`);
+  expect('濕蝕刻 拒絕單獨硝酸', !wet.answers.includes('hno3'), 'hno3 會讓鋁鈍化');
+  expect('濕蝕刻 拒絕去離子水', !wet.answers.includes('di'), 'di 不蝕刻任何東西');
+  for (const id of wet.answers) {
+    expect(`濕蝕刻 ${id} 有出現在檯面上`, ids(wet).includes(id), ids(wet).join(', '));
+  }
+
+  // 去光阻：丙酮與 NMP 二選一，兩者都要在檯面上，且都要有解釋
+  const s0 = stripRound(0);
+  expect('去光阻 丙酮可選', s0.answers.includes('acetone'), `answers=${s0.answers.join('/')}`);
+  expect('去光阻 NMP 可選', s0.answers.includes('nmp'), `answers=${s0.answers.join('/')}`);
+  expect('去光阻 拒絕先用水', !s0.answers.includes('di'), '光阻不溶於水');
+  expect('去光阻 拒絕顯影液', !s0.answers.includes('tmah'), 'TMAH 剝不掉整層');
+  for (const id of ['acetone', 'nmp', 'di', 'tmah']) {
+    expect(`去光阻 檯面有 ${id}`, ids(s0).includes(id), ids(s0).join(', '));
+  }
+
+  // NMP 路線的第二輪：只能用去離子水，而且丙酮不可以是答案
+  // （丙酮路線根本走不到這一輪，答案是水才對得起「NMP 必須沖掉」）
+  const s1 = stripRound(1);
+  expect('NMP 路線 第二輪只收去離子水',
+    s1.answers.length === 1 && s1.answers[0] === 'di',
+    `answers=${s1.answers.join('/')}`);
+  expect('NMP 路線 第二輪拒絕丙酮', !s1.answers.includes('acetone'), '光阻已剝乾淨');
+
+  // 錯誤提示必須每個「非答案」的槽都講得出理由（不能只丟一句預設值）
+  for (const [name, round] of [['濕蝕刻', wet], ['去光阻', s0], ['NMP 沖水', s1]]) {
+    const wrong = ids(round).filter((id) => !round.answers.includes(id));
+    const vague = wrong.filter((id) => {
+      const h = round.wrongHint(id);
+      return !h || h.length < 12;
+    });
+    report.add(`${name} 每個錯誤選項都有說明`, vague.length ? [`太短或空白：${vague.join(', ')}`] : [],
+      `${wrong.length} 個錯誤選項`);
+  }
+}
+
 export default () => report.print();
