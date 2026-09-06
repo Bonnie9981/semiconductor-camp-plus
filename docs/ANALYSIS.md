@@ -110,46 +110,55 @@
 | **`prefers-reduced-motion`** | `src/core/motion.ts`（新）、`style.css`、`scene/Explosion.ts` | P2 — CSS 一段 blanket 關掉非必要轉場／動畫；突沸動畫（整片白光閃焰 + 擴散衝擊波，對光敏感者不友善）在偏好開啟時改成靜態警示 |
 | **移除 `chip_wars/`** | 刪除 | P2 #7 — 與本專案無關 |
 
-### 4.4 驗證結果（已在本機 + GitHub Actions 跑過）
+### 4.4 第三批：發表整理（scope「做到可發表」）
+
+| 項目 | 檔案 | 說明 |
+| --- | --- | --- |
+| **ESLint + Prettier + `.editorconfig` + `.gitattributes`** | 4 個設定檔、`eslint.config.js` | 保守設定；全庫行尾統一 LF；`npm run lint` / `format` / `format:check`；`verify` 串進去；CI 加最前面的 `lint` job。整個 `src/`+`scripts/` 用 Prettier 掃過一次（純格式）。 |
+| **移除 `mix` 面板** | `types.ts`、`UIManager.ts`、`style.css` | `MixPanel` 五關都沒用；配比互動全是「動手倒藥瓶」的 `pour` 面板。 |
+| **修寫死的步驟計數** | `index.html` | `已完成 0 / 6` → `0 / 5`。 |
+| **CVD 分支測試** | `stage-machine.mjs` | 透過關卡「真的那份」`choice` 面板的 `onToggle` 回呼選 CVD，驗 `devComplete()` 補氧化層 —— 不用在關卡上加測試專用注入點。 |
+| **GitHub Pages 自動部署** | `.github/workflows/deploy.yml` | push `main` → build → 發佈。需在 repo Settings → Pages 把來源設成「GitHub Actions」。 |
+| **截圖 + OG 分享圖** | `scripts/screenshot.mjs`、`docs/screenshots/app.png`、`public/og-image.png` | `npm run screenshot` 產生；README 放主畫面截圖；`index.html` 的 og:image 指向 Pages。 |
+| **貢獻者文件** | `CONTRIBUTING.md`、`.github/ISSUE_TEMPLATE/`、`PULL_REQUEST_TEMPLATE.md`、`CHANGELOG.md` | 版本升到 **0.2.0**。 |
+
+### 4.5 驗證結果（本機 + GitHub Actions）
 
 Node 24.20.0（官方 zip，SHA256 對過）已裝到 `%LOCALAPPDATA%\nodejs` 並加入使用者 PATH。
 
 ```
-npm run typecheck      ✓  0 errors
-npm run check          ✓  全部通過（含 stage-machine：生命週期 + onFrame 冒煙共 12+ 項）
-npm run check:browser  ✓  8 種視窗尺寸 + 結業證書
-npm run build          ✓  dist/ 產出正常（js 184 kB / gzip 60 kB）
+npm run lint          ✓  0 problems
+npm run format:check  ✓  全庫符合 Prettier
+npm run typecheck     ✓  0 errors
+npm run check         ✓  全部通過（含 stage-machine：生命週期 + onFrame 冒煙 + CVD 分支）
+npm run check:browser ✓  8 種視窗尺寸 + 結業證書
+npm run build         ✓  dist/ 產出正常（js 182 kB / gzip 60 kB）
 ```
 
-GitHub Actions 的 `verify` workflow 在新 repo 上 `check` 與 `check-browser` 兩個 job 都綠。
+GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deploy` 需要你先開 Pages。
 
 **待你手動確認**（互動行為，自動檢查涵蓋不到）：
 
 - 第二關選 PVD → 「金屬鍍膜」顯示為灰色虛線框的「–」而非打勾
 - 第二關選 CVD → 四個子步驟外觀與行為完全不變
 - 完成 PVD 關後看結業證書，晶圓／STL 仍正常
+- 線上 demo（Pages 開好後）在手機與桌機都載得起來
 
 ---
 
 ## 5. 後續改進 Roadmap（依投報比排序）
 
-### ✅ 已完成（本次）
+### ✅ 已完成
 
-- **CI**（P1 #1）、**`engines` + `.nvmrc`**（P1 #2）、**MIT LICENSE**（P2 #8）、
-  **`index.html` meta**（P2 #10）、**子步驟略過狀態**（IMPLEMENTATION §7 #1）、
-  **`prefers-reduced-motion`**、**移除 `chip_wars/`**（P2 #7）
-- **關卡測試**（P1 #3／#4）：`stage-machine.mjs` 已涵蓋生命週期 + `devComplete` 鏈
-  + 每關 `onFrame` 冒煙測試。
+原始 P1 / P2 缺口除了以下兩項外都處理掉了；工程結構補齊（CI、Pages、ESLint/Prettier、
+貢獻者文件、CHANGELOG、v0.2.0）。細節見 §4.1–4.5。
 
 ### 還沒做：把關卡測試補滿（接續 P1 #3、#4）
 
 1. **`onFrame()` 有輸入的互動流程**：冒煙測試只驗「空跑不壞」。下一步是餵
    「有座標的 `HandFrame` 序列」（捏著藥瓶移到某位置、放開），並讓
    `makeFrameStubs()` 的假 `desk.geometry` 與各關的 hit-box 對得起來，
-   才能斷言「拖對了 → 子步驟推進」。
-2. **分支路線注入 seam**：給關卡加一個測試專用的狀態注入點（例如 `__setChoiceForTest`），
-   讓 `stage-machine.mjs` 也能跑 cvd / negative / wet，然後刪掉 `wafer-state.mjs`
-   的重寫矩陣。
+   才能斷言「拖對了 → 子步驟推進」。做到這一步，tone / etch 的分支測試也能跟著補齊。
 
 ### 小型體驗與擴充點
 
@@ -158,7 +167,6 @@ GitHub Actions 的 `verify` workflow 在新 repo 上 `check` 與 `check-browser`
   之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。**目前刻意沒做** ——
   要有意義就得同時重構第三、五關約 200 行的自繪卡片邏輯，那需要「有輸入的」
   逐幀互動測試（見上）先到位，否則改壞了自動檢查抓不到。
-- **`MixPanel` 去留**（P2 #6）：找關卡用它，或從主線移除（需產品決策）。
 
 ### 不建議動
 
@@ -171,15 +179,17 @@ GitHub Actions 的 `verify` workflow 在新 repo 上 `check` 與 `check-browser`
 
 ## 6. 一頁摘要
 
-- **狀態**：健康。文件、分層、自建測試都在水準以上。
-- **本次已改**：
-  1. 子步驟「略過」狀態（IMPLEMENTATION §7 #1）
-  2. CI（`.github/workflows/verify.yml`）+ `engines` + `.nvmrc`
-  3. MIT LICENSE + `index.html` 社群 meta
-  4. `stage-machine.mjs`：真正的關卡類別 + 生命週期測試 + 每關 `onFrame` 冒煙測試
-  5. `prefers-reduced-motion`（CSS blanket + 突沸動畫靜態化）
-  6. 移除 `chip_wars/`
-  7. 文件與程式同步多處
+- **狀態**：可發表。功能不變，工程結構補齊。
+- **這次做完的**：
+  1. 子步驟「略過」狀態
+  2. CI（`verify`：lint + check + check-browser）+ GitHub Pages 自動部署
+  3. ESLint + Prettier + `.editorconfig` + `.gitattributes`（LF）
+  4. `engines` / `.nvmrc` / MIT LICENSE / `index.html` 社群 meta + OG 圖
+  5. `stage-machine.mjs`：真關卡的生命週期 + `devComplete` 鏈 + `onFrame` 冒煙 + CVD 分支
+  6. `prefers-reduced-motion`（CSS + 突沸動畫靜態化）
+  7. 移除未使用的 `mix` 面板、移除 `chip_wars/`、修 `index.html` 步驟計數
+  8. CONTRIBUTING / issue・PR 範本 / CHANGELOG / README 截圖 / **v0.2.0**
 - **已驗證**：`npm run verify` + `npm run build` 全綠（本機 Node 24.20.0 + GitHub Actions）。
-- **下一步**：`onFrame()` 有輸入的互動測試 → 分支注入 seam → `ChoiceOption.preview` +
-  第三、五關卡片收斂。
+- **要你做一件事**：repo Settings → Pages → Source 設成「GitHub Actions」，線上 demo 才會上線。
+- **留給之後**：`onFrame()` 有輸入的互動測試（連帶 tone/etch 分支）、`ChoiceOption.preview`
+  + 第三、五關卡片收斂。
