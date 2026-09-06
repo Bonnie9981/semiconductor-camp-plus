@@ -132,6 +132,20 @@ body {
   }
 }
 
+/* 系統設定要求「減少動態效果」時，關掉所有非必要的 CSS 動畫與轉場。
+   canvas 上的製程動畫（粒子、突沸）另由 core/motion.ts 的
+   prefersReducedMotion() 處理。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ==========================================================================
    圖層：#stage-view（canvas 群） < #ui-layer（HTML）
    ========================================================================== */

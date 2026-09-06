@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from '../core/motion';
 import type { Point } from '../core/types';
 
 /**
@@ -105,6 +106,12 @@ export class Explosion {
     if (!this.active) return;
     const p = this.progress;
     const o = this.origin;
+
+    // 減少動態效果：不要整片白光閃焰、不要擴散衝擊波，只留靜態的警示。
+    if (prefersReducedMotion()) {
+      this.renderStatic(ctx, p);
+      return;
+    }
     /** 後半段整體淡出。 */
     const fade = 1 - Math.max(0, (p - 0.5) / 0.5);
 
@@ -178,6 +185,39 @@ export class Explosion {
       ctx.fillStyle = '#ffcf6a';
       ctx.fillText('⚠ 突沸！', o.x, o.y - 90);
     }
+
+    ctx.restore();
+  }
+
+  /**
+   * 減少動態效果時的替代畫面：一圈固定大小的暖色暈染 + 靜態警示字。
+   * 沒有全螢幕閃光、沒有會擴大或移動的東西，末段才平緩淡出。
+   */
+  private renderStatic(ctx: CanvasRenderingContext2D, p: number): void {
+    const o = this.origin;
+    const fade = 1 - Math.max(0, (p - 0.75) / 0.25);
+    if (fade <= 0) return;
+
+    ctx.save();
+
+    const r = 96;
+    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, r);
+    g.addColorStop(0, `rgba(255, 190, 110, ${0.5 * fade})`);
+    g.addColorStop(1, 'rgba(255, 140, 70, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = fade;
+    ctx.font = "700 34px 'IBM Plex Sans', 'Noto Sans TC', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(10, 6, 4, 0.9)';
+    ctx.strokeText('⚠ 突沸！配方報廢', o.x, o.y - 90);
+    ctx.fillStyle = '#ffcf6a';
+    ctx.fillText('⚠ 突沸！配方報廢', o.x, o.y - 90);
 
     ctx.restore();
   }
