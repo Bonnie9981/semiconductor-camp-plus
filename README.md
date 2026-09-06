@@ -1,10 +1,15 @@
 # 半導體製程沉浸式模擬 · Semiconductor Process Simulator
 
 [![verify](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/verify.yml/badge.svg)](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/verify.yml)
+[![deploy](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/deploy.yml/badge.svg)](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/deploy.yml)
 
 以 **Vite + TypeScript + MediaPipe Hands** 打造的 WebAR 手勢互動遊戲。
 玩家用「捏合（Pinch）」手勢拿起虛擬器材 —— 藥瓶、調配杯、晶圓、鑷子 ——
 在畫面下方的虛擬實驗檯上一步步走完五道半導體製程。
+
+**▶ 線上試玩：<https://bonnie9981.github.io/semiconductor-camp-plus/>**（允許攝影機權限即可開始；沒有攝影機也能用滑鼠玩）
+
+![遊戲主畫面：左側製程步驟、中央鏡頭視窗與虛擬實驗檯、右側操作說明](docs/screenshots/app.png)
 
 > **接手開發請先讀 [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md)。**
 > 那份文件說明整套架構的設計概念、每個模組的職責，以及怎麼新增關卡。
@@ -100,14 +105,19 @@ npm run dev     # → http://localhost:5173
 ## 專案結構
 
 ```
-semiconductor-camp/
+semiconductor-camp-plus/
 ├── index.html                  # 版面骨架（Header / Sidebar / Viewport / Panel / Footer / Modal）
 ├── vite.config.ts
+├── eslint.config.js            # ESLint flat config
+├── CONTRIBUTING.md · CHANGELOG.md · LICENSE
+├── .github/workflows/          # verify（lint + check + check:browser）、deploy（GitHub Pages）
 ├── docs/
 │   ├── IMPLEMENTATION.md       # ★ 實作概念與接手指南
-│   └── ANALYSIS.md             # 程式碼分析與改進 roadmap
+│   ├── ANALYSIS.md             # 程式碼分析與改進 roadmap
+│   └── screenshots/            # README 用截圖（npm run screenshot 產生）
 ├── scripts/
 │   ├── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
+│   ├── screenshot.mjs          # 產生截圖與 OG 分享圖
 │   └── checks/                 # 自動化檢查（npm run check），直接跑真正的原始碼
 ├── src/
 │   ├── main.ts                 # 程式入口、關卡註冊、UI 事件綁定、rAF 主迴圈
@@ -147,6 +157,7 @@ semiconductor-camp/
 │       ├── Exporter.ts         # PNG 下載 + STL 擠出
 │       └── Certificate.ts      # 拍照、證書排版、最小 PDF 產生器
 └── public/
+    ├── og-image.png            # 社群分享卡（npm run screenshot 產生）
     ├── assets/                 # 你自己的素材
     └── mediapipe/              # 由 postinstall 產生（已 gitignore）
 ```
