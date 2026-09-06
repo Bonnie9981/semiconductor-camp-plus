@@ -21,6 +21,9 @@
 - **子步驟「略過」狀態**：PVD 路線的「金屬鍍膜」畫成灰色虛線「–」，不再假裝已完成。
 - **`prefers-reduced-motion`**：CSS 關掉非必要動畫；突沸動畫（整片白光閃焰）
   在偏好開啟時改成靜態警示。
+- **效能模式**（`src/core/perf.ts`）：「設定」裡可選 自動 / 高品質 / 效能優先；
+  效能優先＝lite 手部模型 + 640×480 鏡頭 + DPR 1 + 隔幀推論 + 骨架不畫陰影。
+  自動模式偵測到持續掉幀（< 40 FPS 約 2.5 秒）會自己降級並提示一次；選擇存 localStorage。
 - `engines: node >=24`、`.nvmrc`、`CONTRIBUTING.md`、issue / PR 範本、
   MIT `LICENSE`、`index.html` 的 description / OG / Twitter meta。
 - `docs/ANALYSIS.md`：程式碼分析與改進 roadmap。

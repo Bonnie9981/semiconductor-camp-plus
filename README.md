@@ -127,6 +127,9 @@ semiconductor-camp-plus/
 │   │   ├── GestureDetector.ts  # 鏡像座標映射、Pinch 判斷、骨架繪製
 │   │   ├── StageManager.ts     # 關卡狀態機（locked → active → done）
 │   │   ├── WaferState.ts       # 晶圓的層堆疊與污染狀態（整條製程共用）
+│   │   ├── perf.ts             # 效能模式（auto / high / lite）＋ 掉幀自動降級
+│   │   ├── motion.ts           # prefers-reduced-motion 偵測
+│   │   ├── Viewport.ts         # 螢幕太小時的偵測與提示
 │   │   └── types.ts            # 全專案共用型別（含子步驟與互動面板的定義）
 │   ├── data/
 │   │   └── solutions.ts        # 藥液資料表（名稱／化學式／顏色）與混色計算
@@ -534,7 +537,7 @@ __camp.wafer.addLayer({ kind: 'oxide', label: 'SiO₂', thickness: 0.6,
 | 藥瓶抓不起來 | 抓取半徑是 `max(44, 瓶寬 × 1.15)`，見 `Stage1RCA.grabRadius()`。 |
 | 倒得太快／太慢 | `Stage1RCA.ts` 頂端的 `POUR_INTERVAL`（預設 0.8 秒 = 1 份）。 |
 | 互動面板蓋住場景 | 場景左界來自 `UIManager.panelInset()`。若自訂了面板寬度，改 CSS 的 `--panel-scene-w` 即可。 |
-| 低階筆電掉幀 | `CameraManager.createHands()` 把 `modelComplexity` 從 `1` 改成 `0`（lite 模型）。 |
+| 低階裝置掉幀、畫面卡 | 「設定 → 效能模式」選「效能優先」（lite 手部模型 + 640×480 鏡頭 + DPR 1 + 隔幀推論），或留在「自動」讓它偵測到持續掉幀時自己切。實作見 `core/perf.ts`。 |
 | `Hands is not a constructor` | `public/mediapipe/` 不存在。重跑 `npm install` 或 `node scripts/copy-mediapipe.mjs`。 |
 | 想改用 CDN 而不是自架資產 | 把 `CameraManager.ts` 的 `MP_BASE` 改成 `https://cdn.jsdelivr.net/npm/@mediapipe`，並確認版本與 `package.json` 一致。 |
 

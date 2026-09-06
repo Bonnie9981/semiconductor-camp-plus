@@ -48,6 +48,8 @@ export interface CameraManagerOptions {
   /** 影像層容器，鏡像時會被加上 .is-mirrored */
   stageView: HTMLElement;
   onStatus?: (status: CameraStatus, message?: string) => void;
+  /** 精簡模式：lite 手部模型 + 較低鏡頭解析度 + 隔幀推論（低階裝置用）。 */
+  lite?: boolean;
 }
 
 export class CameraManager {
@@ -63,6 +65,11 @@ export class CameraManager {
   private status: CameraStatus = 'idle';
   private starting = false;
 
+  /** 精簡模式：lite 模型 + 640×480 + 隔幀推論。 */
+  private lite: boolean;
+  /** 隔幀推論用的計數器。 */
+  private frameParity = 0;
+
   /** 最新一次推論結果，由主迴圈讀取。 */
   private latest: HandsSnapshot = { landmarks: null, handedness: '' };
 
@@ -70,7 +77,27 @@ export class CameraManager {
     this.video = options.video;
     this.stageView = options.stageView;
     this.onStatus = options.onStatus;
+    this.lite = options.lite ?? false;
     this.applyMirrorClass();
+  }
+
+  isLite(): boolean {
+    return this.lite;
+  }
+
+  /**
+   * 切換精簡模式。手部模型的 modelComplexity 可以即時換；
+   * 鏡頭解析度要重開串流才會變，所以在跑的時候會 stop → start 一次。
+   */
+  async setLite(lite: boolean): Promise<void> {
+    if (lite === this.lite) return;
+    this.lite = lite;
+    this.frameParity = 0;
+    this.hands?.setOptions({ modelComplexity: lite ? 0 : 1 });
+    if (this.status === 'live' && !this.starting) {
+      await this.stopCamera();
+      await this.start(this.facing);
+    }
   }
 
   getStatus(): CameraStatus {
@@ -165,8 +192,8 @@ export class CameraManager {
     hands.setOptions({
       maxNumHands: 1,
       // 0 = lite（快）、1 = full（準）。手勢遊戲對指尖精度敏感，預設用 1；
-      // 若在低階筆電掉幀，改成 0 可明顯提升 FPS。
-      modelComplexity: 1,
+      // 精簡模式（PerfController）會即時改成 0，在低階筆電上明顯提升 FPS。
+      modelComplexity: this.lite ? 0 : 1,
       minDetectionConfidence: 0.6,
       minTrackingConfidence: 0.6,
       // 鏡像一律由我們自己處理（CSS 翻 video + GestureDetector 翻座標），
@@ -197,11 +224,14 @@ export class CameraManager {
 
     const camera = new Camera(this.video, {
       facingMode: this.facing,
-      width: 1280,
-      height: 720,
+      // 精簡模式用較低解析度，wasm 端要複製與處理的像素少一半以上
+      width: this.lite ? 640 : 1280,
+      height: this.lite ? 480 : 720,
       onFrame: async () => {
         // video 還沒有實際影像時送進去，wasm 端會丟例外
         if (this.video.readyState < 2) return;
+        // 精簡模式隔幀推論：渲染仍是滿幀，但手部追蹤約 20~30fps 就夠用
+        if (this.lite && (this.frameParity ^= 1)) return;
         await hands.send({ image: this.video });
       },
     });

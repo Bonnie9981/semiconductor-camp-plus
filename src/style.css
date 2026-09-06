@@ -1062,6 +1062,22 @@ body {
   height: 18px;
   accent-color: oklch(0.75 0.14 190);
 }
+.setting-row select {
+  flex: none;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+.setting-row > span small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--text-4);
+  max-width: 34ch;
+}
 
 /* ==========================================================================
    關卡內子步驟進度列

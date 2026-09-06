@@ -229,12 +229,14 @@ export class GestureDetector {
 export function drawHandSkeleton(
   ctx: CanvasRenderingContext2D,
   hand: HandFrame,
-  options: { color?: string; activeColor?: string } = {},
+  options: { color?: string; activeColor?: string; lite?: boolean } = {},
 ): void {
   if (!hand.present) return;
 
   const color = options.color ?? 'rgba(150, 235, 232, 0.75)';
   const active = options.activeColor ?? 'rgba(120, 255, 236, 1)';
+  // 精簡模式不畫陰影：canvas 的 shadowBlur 每幀在多條線段上算，是低階裝置的隱形成本
+  const lite = options.lite ?? false;
   const lm = hand.landmarks;
 
   ctx.save();
@@ -245,8 +247,10 @@ export function drawHandSkeleton(
   ctx.strokeStyle = hand.pinching ? active : color;
   // 骨架畫在最上層，要夠粗才不會被底下的機台紋理吃掉
   ctx.lineWidth = hand.pinching ? 5 : 3.5;
-  ctx.shadowColor = hand.pinching ? active : 'rgba(0,0,0,0.75)';
-  ctx.shadowBlur = hand.pinching ? 14 : 7;
+  if (!lite) {
+    ctx.shadowColor = hand.pinching ? active : 'rgba(0,0,0,0.75)';
+    ctx.shadowBlur = hand.pinching ? 14 : 7;
+  }
   ctx.beginPath();
   for (const [a, b] of HAND_CONNECTIONS) {
     ctx.moveTo(lm[a].x, lm[a].y);

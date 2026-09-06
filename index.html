@@ -399,6 +399,17 @@
             <span>Pinch 靈敏度（越大越好捏）</span>
             <input id="set-pinch" type="range" min="30" max="90" step="5" value="55" />
           </label>
+          <label class="setting-row">
+            <span>
+              效能模式
+              <small>畫面卡的話選「效能優先」：手部模型換成輕量版、降低鏡頭解析度</small>
+            </span>
+            <select id="set-perf">
+              <option value="auto">自動</option>
+              <option value="high">高品質</option>
+              <option value="lite">效能優先</option>
+            </select>
+          </label>
           <!--
             這一列刻意用 div 而不是 label：label 裡面放按鈕的話，
             點按鈕會連帶觸發 label 而把 checkbox 一起切掉。

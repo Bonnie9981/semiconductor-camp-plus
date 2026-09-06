@@ -1,5 +1,6 @@
 import { HAND_CONNECTIONS, INDEX_TIP, THUMB_TIP } from '../core/GestureDetector';
 import type { CameraStatus, FacingMode } from '../core/CameraManager';
+import type { PerfMode } from '../core/perf';
 import type { StageManager } from '../core/StageManager';
 import type { HandFrame, InstructionStep, PanelSpec, SubStep } from '../core/types';
 import { formatElapsed } from '../utils/format';
@@ -31,6 +32,8 @@ export interface UICallbacks {
   onPenColor: (color: string) => void;
   onPenWidth: (width: number) => void;
   onPinchSensitivity: (threshold: number) => void;
+  /** 效能模式（auto / high / lite）。 */
+  onPerfMode: (mode: PerfMode) => void;
   onToggleMirror: () => void;
   onToggleCamera: () => void;
   onToggleSkeleton: (visible: boolean) => void;
@@ -368,6 +371,9 @@ export class UIManager {
       // slider 30~90 → 門檻 0.030~0.090
       this.cb.onPinchSensitivity(Number((e.target as HTMLInputElement).value) / 1000);
     });
+    el<HTMLSelectElement>('set-perf').addEventListener('change', (e) => {
+      this.cb.onPerfMode((e.target as HTMLSelectElement).value as PerfMode);
+    });
 
     document.querySelector<HTMLElement>('.modal-backdrop')?.addEventListener('click', () => {
       // 結算 / 失敗 Modal 必須做出選擇，只有說明與設定可以點背景關閉
@@ -627,6 +633,12 @@ export class UIManager {
 
   setCameraLabel(facing: FacingMode): void {
     this.setText(this.btnCamera, `攝影機：${facing === 'user' ? '前鏡頭' : '後鏡頭'}`);
+  }
+
+  /** 把「設定」裡的效能模式下拉同步到目前的值（啟動時 / 從 localStorage 讀回後）。 */
+  setPerfMode(mode: PerfMode): void {
+    const select = el<HTMLSelectElement>('set-perf');
+    if (select.value !== mode) select.value = mode;
   }
 
   setCameraStatus(status: CameraStatus, message?: string): void {

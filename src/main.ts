@@ -1,6 +1,7 @@
 import './style.css';
 
 import { CameraManager } from './core/CameraManager';
+import { PerfController, type PerfMode } from './core/perf';
 import { GestureDetector, drawHandSkeleton } from './core/GestureDetector';
 import { StageManager } from './core/StageManager';
 import { WaferState } from './core/WaferState';
@@ -55,6 +56,18 @@ const gesture = new GestureDetector({ pinchOn: 0.055 });
 /** 整條製程共用的同一片晶圓：每一關都在改它的層堆疊與污染狀態。 */
 const wafer = new WaferState();
 
+/**
+ * 效能模式。auto 模式下量到持續掉幀就自動切成 lite（lite 手部模型 + 低鏡頭
+ * 解析度 + DPR 1 + 隔幀推論），並提示一次。使用者也能在「設定」裡手動指定。
+ */
+const perf = new PerfController((lite) => {
+  syncStageView(); // DPR 上限變了，重建 canvas 尺寸
+  void camera.setLite(lite);
+  if (perf.autoDowngraded) {
+    ui.setHint('偵測到畫面偏卡 —— 已自動切到「效能優先」模式（設定裡可改回）。');
+  }
+});
+
 const ui = new UIManager({
   onSelectStage: (index) => stages.goTo(index, ui.isDevMode()),
   onPrimary: () => handlePrimary(),
@@ -67,6 +80,7 @@ const ui = new UIManager({
   onPenColor: (color) => desk.setPenColor(color),
   onPenWidth: (width) => desk.setPenWidth(width),
   onPinchSensitivity: (threshold) => gesture.setPinchThreshold(threshold),
+  onPerfMode: (mode: PerfMode) => perf.setMode(mode),
   onToggleMirror: () => {
     const mirrored = camera.toggleMirror();
     gesture.setMirror(mirrored);
@@ -125,6 +139,7 @@ const camera = new CameraManager({
   video,
   stageView,
   onStatus: (status, message) => ui.setCameraStatus(status, message),
+  lite: perf.lite,
 });
 
 // ────────────────────────────── 關卡註冊 ──────────────────────────────────
@@ -288,7 +303,7 @@ function syncStageView(): void {
   viewLeft = rect.left;
   viewTop = rect.top;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, perf.dprCap);
   arCanvas.width = Math.round(viewW * dpr);
   arCanvas.height = Math.round(viewH * dpr);
   arCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -360,9 +375,11 @@ let lastTime = performance.now();
 let elapsed = 0;
 
 function loop(now: number): void {
-  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  const frameMs = now - lastTime;
+  const dt = Math.min(0.05, frameMs / 1000);
   lastTime = now;
   elapsed += dt;
+  perf.sample(frameMs, now);
 
   // 影像實際解析度會在 metadata 載入後才有值，用來做 object-fit:cover 映射
   const size = camera.getVideoSize();
@@ -375,7 +392,7 @@ function loop(now: number): void {
   //    骨架畫在獨立的 #hand-canvas 上，才會蓋在左側互動面板等 HTML 之上。
   arCtx.clearRect(0, 0, viewW, viewH);
   handCtx.clearRect(0, 0, viewW, viewH);
-  if (showSkeleton) drawHandSkeleton(handCtx, hand);
+  if (showSkeleton) drawHandSkeleton(handCtx, hand, { lite: perf.lite });
 
   // 2) 桌面層：桌子 + Chuck + 晶圓 + 已畫的圖形
   desk.renderBase();
@@ -452,6 +469,7 @@ stages.start();
 ui.syncStages(stages);
 ui.setMirrorLabel(camera.isMirrored());
 ui.setCameraLabel(camera.getFacing());
+ui.setPerfMode(perf.getMode());
 gesture.setMirror(camera.isMirrored());
 requestAnimationFrame(loop);
 
