@@ -364,18 +364,27 @@
         <div id="modal-help" class="modal modal-help hidden">
           <div class="modal-kicker mono">HELP</div>
           <h2 class="modal-title">怎麼玩？</h2>
+          <p class="modal-desc">
+            一步步走完 <b>RCA 清洗 → 薄膜沉積 → 微影 → 顯影 → 蝕刻</b> 五道半導體製程，
+            親手做出一片有你圖案的晶圓，最後拿結業證書。
+          </p>
           <ol class="help-list">
-            <li><b>張開手掌</b>面對鏡頭，畫面上會出現藍綠色的手部骨架。</li>
-            <li><b>捏合拇指與食指</b>（Pinch），畫筆會自動吸附到捏合點。</li>
-            <li>維持捏合，把畫筆移到<b>下方桌面的晶圓</b>上就會畫出線條。</li>
-            <li>張開手指即<b>放下畫筆</b>，可隨時重新定位。</li>
-            <li>圖形夠完整後，右側「完成繪製」會亮起，按下即可送出光罩。</li>
+            <li>
+              <b>用手勢</b>：張開手掌面對鏡頭 → 出現藍綠色骨架 →
+              <b>捏合拇指與食指</b>拿起器材（藥瓶、晶圓、光罩），移動、張開手放下。
+            </li>
+            <li>
+              <b>用滑鼠 / 觸控</b>：沒有鏡頭也能玩 —— 左側互動面板的按鈕直接點，
+              畫面上的器材直接<b>按住拖曳</b>。
+            </li>
+            <li>每一關左上角有子步驟列，跟著提示做；卡住時看右側「操作說明」。</li>
+            <li>畫面很卡？<b>設定 → 效能模式</b>選「效能優先」。</li>
           </ol>
           <p class="modal-note mono">
-            找不到手？請確認光線充足、手完整入鏡；若鏡頭方向相反，切換上方「鏡像」。
+            找不到手？確認光線充足、手完整入鏡；鏡頭方向相反就切換上方「鏡像」。
           </p>
           <div class="modal-actions">
-            <button id="btn-help-close" class="btn btn-primary" type="button">我知道了</button>
+            <button id="btn-help-close" class="btn btn-primary" type="button">開始</button>
           </div>
         </div>
 
@@ -386,6 +395,10 @@
           <label class="setting-row">
             <span>顯示手部骨架</span>
             <input id="set-skeleton" type="checkbox" checked />
+          </label>
+          <label class="setting-row">
+            <span>提示音</span>
+            <input id="set-sound" type="checkbox" checked />
           </label>
           <label class="setting-row">
             <span>鏡像（照鏡子模式）</span>

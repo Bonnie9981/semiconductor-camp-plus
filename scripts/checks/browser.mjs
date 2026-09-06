@@ -55,6 +55,15 @@ for (const vp of VIEWPORTS) {
   });
   // 手勢偵測與鏡頭在這裡都不需要，靜音掉 console 噪音
   page.on('pageerror', () => {});
+  // 首次進來會自動彈「怎麼玩」，Modal 開著關卡就不畫面板 —— 版面檢查要量的是
+  // 面板本身，所以先把「看過了」旗標寫進去，跳過自動彈窗。
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('semiconductor-camp:seen-intro', '1');
+    } catch {
+      /* 隱私模式：忽略 */
+    }
+  });
   await page.goto(url, { waitUntil: 'load' });
   // 等 rAF 跑幾輪，讓關卡把面板與 canvas 都畫出來
   await page.waitForTimeout(900);

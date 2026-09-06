@@ -24,6 +24,13 @@
 - **效能模式**（`src/core/perf.ts`）：「設定」裡可選 自動 / 高品質 / 效能優先；
   效能優先＝lite 手部模型 + 640×480 鏡頭 + DPR 1 + 隔幀推論 + 骨架不畫陰影。
   自動模式偵測到持續掉幀（< 40 FPS 約 2.5 秒）會自己降級並提示一次；選擇存 localStorage。
+- **滑鼠 / 觸控拖曳**（`src/core/PointerHand.ts`）：按住鏡頭視窗上的空白處會被翻譯成
+  等效的捏合手，沒有攝影機也能直接抓畫面上的藥瓶、光罩、旋鈕；按在真正的 HTML
+  控制項上不接管。
+- **提示音**（`src/core/sound.ts`）：Web Audio 即時合成（無音檔）—— 抓取 / 放開 /
+  過關 / 全部完成 / 失敗。「設定」有開關，存 localStorage。
+- **首次引導**：第一次進來自動彈一次「怎麼玩」（改寫成涵蓋手勢與滑鼠兩種玩法），
+  看過就記住。
 - `engines: node >=24`、`.nvmrc`、`CONTRIBUTING.md`、issue / PR 範本、
   MIT `LICENSE`、`index.html` 的 description / OG / Twitter meta。
 - `docs/ANALYSIS.md`：程式碼分析與改進 roadmap。

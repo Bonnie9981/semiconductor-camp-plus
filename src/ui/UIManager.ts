@@ -37,6 +37,8 @@ export interface UICallbacks {
   onToggleMirror: () => void;
   onToggleCamera: () => void;
   onToggleSkeleton: (visible: boolean) => void;
+  /** 提示音開關。 */
+  onToggleSound: (enabled: boolean) => void;
   onExportPNG: () => void;
   onExportSTL: () => void;
   onExportPDF: () => void;
@@ -353,6 +355,9 @@ export class UIManager {
     el<HTMLInputElement>('set-skeleton').addEventListener('change', (e) => {
       this.cb.onToggleSkeleton((e.target as HTMLInputElement).checked);
     });
+    el<HTMLInputElement>('set-sound').addEventListener('change', (e) => {
+      this.cb.onToggleSound((e.target as HTMLInputElement).checked);
+    });
     el<HTMLInputElement>('set-mirror').addEventListener('change', () => this.cb.onToggleMirror());
     el<HTMLInputElement>('set-devmode').addEventListener('change', (e) => {
       this.devMode = (e.target as HTMLInputElement).checked;
@@ -639,6 +644,12 @@ export class UIManager {
   setPerfMode(mode: PerfMode): void {
     const select = el<HTMLSelectElement>('set-perf');
     if (select.value !== mode) select.value = mode;
+  }
+
+  /** 把「設定」裡的提示音勾選同步到目前的值。 */
+  setSoundEnabled(enabled: boolean): void {
+    const box = el<HTMLInputElement>('set-sound');
+    if (box.checked !== enabled) box.checked = enabled;
   }
 
   setCameraStatus(status: CameraStatus, message?: string): void {
@@ -1062,6 +1073,18 @@ export class UIManager {
 
   closeModal(): void {
     this.modalRoot.classList.add('hidden');
+  }
+
+  /** 第一次進來時自動打開「怎麼玩」，看過一次就記住不再自動彈。 */
+  showIntroOnce(): void {
+    const KEY = 'semiconductor-camp:seen-intro';
+    try {
+      if (localStorage.getItem(KEY)) return;
+      localStorage.setItem(KEY, '1');
+    } catch {
+      return; // 存取被擋（隱私視窗）：不彈，免得每次都彈
+    }
+    this.openModal(this.modalHelp);
   }
 
   isModalOpen(): boolean {

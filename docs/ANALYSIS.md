@@ -137,12 +137,32 @@ npm run build         ✓  dist/ 產出正常（js 182 kB / gzip 60 kB）
 
 GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deploy` 需要你先開 Pages。
 
-**待你手動確認**（互動行為，自動檢查涵蓋不到）：
+### 4.6 第四批：效能 + 體驗打磨
 
-- 第二關選 PVD → 「金屬鍍膜」顯示為灰色虛線框的「–」而非打勾
-- 第二關選 CVD → 四個子步驟外觀與行為完全不變
-- 完成 PVD 關後看結業證書，晶圓／STL 仍正常
-- 線上 demo（Pages 開好後）在手機與桌機都載得起來
+| 項目 | 檔案 | 說明 |
+| --- | --- | --- |
+| **效能模式** | `src/core/perf.ts`（新）、`CameraManager`、`GestureDetector`、`main.ts`、`index.html` | 「你的電腦跑起來很卡」。auto / high / lite 三檔；lite＝lite 手部模型 + 640×480 鏡頭 + DPR 1 + 隔幀推論 + 骨架不畫陰影；auto 偵測到持續 < 40 FPS 約 2.5 秒自動降級並提示。存 localStorage。 |
+| **滑鼠 / 觸控拖曳** | `src/core/PointerHand.ts`（新）、`main.ts` | 按住鏡頭視窗 → 翻成等效捏合手，關卡命中判定不用改。沒鏡頭也能直接抓器材。 |
+| **提示音** | `src/core/sound.ts`（新）、`main.ts`、`index.html` | Web Audio 即時合成、無音檔。抓取 / 放開 / 過關 / 完成 / 失敗。設定有開關。 |
+| **首次引導** | `index.html`、`UIManager.showIntroOnce()`、`browser.mjs` | 第一次進來自動彈「怎麼玩」（改寫涵蓋兩種玩法）。`browser.mjs` 加 initScript 跳過它，版面檢查才量得到面板。 |
+
+### 4.7 驗證
+
+```
+npm run verify  ✓  lint + format:check + typecheck + check + check:browser
+npm run build   ✓  js 188 kB / gzip 62 kB
+```
+
+瀏覽器實測（Browser pane）：首次自動彈「怎麼玩」+ localStorage 記住不再彈；
+效能模式切 lite → DPR 從 1.5 降到 1；設定有提示音開關；pointerdown 在
+`#stage-area` 空白處會被 `PointerHand` 接管、在按鈕上不會。無 console error。
+（rendering 的視覺確認被 Browser pane 隱藏時的 rAF 暫停擋住，改靠邏輯驗證。）
+
+**待你在真實裝置上確認**：
+
+- 你原本會卡的那台電腦：設定 → 效能模式 → 「效能優先」是否順了；或留「自動」看會不會自己切
+- 手機 / 平板：按住畫面上的藥瓶能不能拖
+- 提示音會不會太吵（設定可關）
 
 ---
 
@@ -150,8 +170,9 @@ GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deplo
 
 ### ✅ 已完成
 
-原始 P1 / P2 缺口除了以下兩項外都處理掉了；工程結構補齊（CI、Pages、ESLint/Prettier、
-貢獻者文件、CHANGELOG、v0.2.0）。細節見 §4.1–4.5。
+原始 P1 / P2 缺口除了「有輸入的 onFrame 測試」外都處理掉了；工程結構補齊
+（CI、Pages、ESLint/Prettier、貢獻者文件、CHANGELOG、v0.2.0）；效能與體驗打磨
+（效能模式、滑鼠／觸控拖曳、提示音、首次引導）也做了。細節見 §4.1–4.7。
 
 ### 還沒做：把關卡測試補滿（接續 P1 #3、#4）
 
@@ -179,17 +200,18 @@ GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deplo
 
 ## 6. 一頁摘要
 
-- **狀態**：可發表。功能不變，工程結構補齊。
+- **狀態**：已發表、線上 demo 上線、CI（verify + deploy）全綠。
 - **這次做完的**：
   1. 子步驟「略過」狀態
-  2. CI（`verify`：lint + check + check-browser）+ GitHub Pages 自動部署
+  2. CI（`verify`：lint + check + check-browser）+ GitHub Pages 自動部署（已上線）
   3. ESLint + Prettier + `.editorconfig` + `.gitattributes`（LF）
   4. `engines` / `.nvmrc` / MIT LICENSE / `index.html` 社群 meta + OG 圖
   5. `stage-machine.mjs`：真關卡的生命週期 + `devComplete` 鏈 + `onFrame` 冒煙 + CVD 分支
   6. `prefers-reduced-motion`（CSS + 突沸動畫靜態化）
   7. 移除未使用的 `mix` 面板、移除 `chip_wars/`、修 `index.html` 步驟計數
   8. CONTRIBUTING / issue・PR 範本 / CHANGELOG / README 截圖 / **v0.2.0**
+  9. **效能模式**（auto/high/lite，掉幀自動降級）、**滑鼠／觸控拖曳**、**提示音**、**首次引導**
 - **已驗證**：`npm run verify` + `npm run build` 全綠（本機 Node 24.20.0 + GitHub Actions）。
-- **要你做一件事**：repo Settings → Pages → Source 設成「GitHub Actions」，線上 demo 才會上線。
+- **要你在真機上試**：會卡的那台電腦切「效能優先」；手機按住拖藥瓶；提示音音量。
 - **留給之後**：`onFrame()` 有輸入的互動測試（連帶 tone/etch 分支）、`ChoiceOption.preview`
   + 第三、五關卡片收斂。

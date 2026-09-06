@@ -80,7 +80,8 @@ npm run dev     # → http://localhost:5173
 ```
 
 開啟後允許瀏覽器的攝影機權限即可開始。**沒有攝影機也玩得下去** —— 左側互動面板的
-按鈕都是真正的 HTML，用滑鼠一樣能操作（見〈沒有攝影機也能測〉）。
+按鈕都是真正的 HTML，而且畫面上的器材可以直接**用滑鼠 / 觸控按住拖曳**
+（`core/PointerHand.ts` 把指標翻譯成等效的捏合手）。第一次進來會自動彈一次「怎麼玩」。
 
 > **getUserMedia 只在 `https` 或 `localhost` 下可用。**
 > 想用區網 IP 讓其他裝置連進來測試，請改用 `npx vite --https` 或在前面架一層 HTTPS 反向代理。
@@ -127,7 +128,9 @@ semiconductor-camp-plus/
 │   │   ├── GestureDetector.ts  # 鏡像座標映射、Pinch 判斷、骨架繪製
 │   │   ├── StageManager.ts     # 關卡狀態機（locked → active → done）
 │   │   ├── WaferState.ts       # 晶圓的層堆疊與污染狀態（整條製程共用）
+│   │   ├── PointerHand.ts      # 滑鼠／觸控 → 等效的捏合手（沒鏡頭也能拖器材）
 │   │   ├── perf.ts             # 效能模式（auto / high / lite）＋ 掉幀自動降級
+│   │   ├── sound.ts            # 即時合成的提示音（無音檔）
 │   │   ├── motion.ts           # prefers-reduced-motion 偵測
 │   │   ├── Viewport.ts         # 螢幕太小時的偵測與提示
 │   │   └── types.ts            # 全專案共用型別（含子步驟與互動面板的定義）
@@ -506,8 +509,11 @@ ctx.drawImage(pattern, ...);             // 有鉻的地方把光挖掉
 
 兩種方式：
 
-**1. 用滑鼠玩。** 左側互動面板是真正的 HTML，所有按鈕都能點。
-需要手勢的動作（夾晶圓、倒廢液）都另外提供了等效按鈕。
+**1. 用滑鼠 / 觸控玩。** 左側互動面板是真正的 HTML，所有按鈕都能點；
+畫面上的器材也能直接**按住拖曳** —— `core/PointerHand.ts` 監聽鏡頭視窗上的
+pointer 事件，翻譯成 `HandFrame`（按住＝捏合、放開＝鬆手），關卡的命中判定
+不用改就能吃。按在真正的 HTML 控制項上不會被接管。
+需要手勢的動作（夾晶圓、倒廢液）也都另外提供了等效按鈕。
 
 **2. Console。** `npm run dev` 模式下，主要模組會掛在 `window.__camp`：
 

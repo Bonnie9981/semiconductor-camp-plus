@@ -227,6 +227,21 @@ if (hand.present && hand.justPinched &&
 右側面板、Header 都在視野外，手指不過去。所以任何「非按不可」的操作
 都必須在視窗裡也有一份 —— 這就是 `#btn-stage-action` 存在的理由。
 
+### 模式 D′：滑鼠 / 觸控當捏合的手（反方向）
+
+`core/PointerHand.ts` 是模式 D 的鏡像：把「在鏡頭視窗上按住拖曳」翻譯成一份
+等效的 `HandFrame`（`pinching = 按住中`、`pinchPoint = 指標位置換算成 canvas px`、
+`justPinched / justReleased` 自己做邊緣偵測）。`main.ts` 主迴圈：
+
+```ts
+const usePointer = pointer.engaged;           // pressed || 剛放開的那一幀
+const hand = usePointer ? pointer.read(viewLeft, viewTop) : camHand;
+```
+
+所以**關卡的命中判定一行都不用改**就同時支援手勢與滑鼠 / 觸控。
+按在真正的 HTML 控制項（`button` / 面板 / HUD 卡片…）上不會被接管，那些照常 click。
+指標模式沒有骨架可畫，改畫一個小的抓取游標圈（觸控才看得到自己抓在哪）。
+
 ### 模式 E：解出對位，不要用估的
 
 RCA 的「倒廢液」一開始是寫死偏移量，結果杯嘴永遠對不準桶口。

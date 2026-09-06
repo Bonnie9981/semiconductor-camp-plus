@@ -2,6 +2,8 @@ import './style.css';
 
 import { CameraManager } from './core/CameraManager';
 import { PerfController, type PerfMode } from './core/perf';
+import { Sound } from './core/sound';
+import { PointerHand } from './core/PointerHand';
 import { GestureDetector, drawHandSkeleton } from './core/GestureDetector';
 import { StageManager } from './core/StageManager';
 import { WaferState } from './core/WaferState';
@@ -55,6 +57,11 @@ const stages = new StageManager();
 const gesture = new GestureDetector({ pinchOn: 0.055 });
 /** 整條製程共用的同一片晶圓：每一關都在改它的層堆疊與污染狀態。 */
 const wafer = new WaferState();
+/** 即時合成的提示音（無音檔）。第一次使用者互動時 unlock()。 */
+const sound = new Sound();
+window.addEventListener('pointerdown', () => sound.unlock(), { once: true });
+/** 滑鼠 / 觸控按住鏡頭視窗 → 當成捏合的手，讓沒攝影機也能直接抓畫面上的器材。 */
+const pointer = new PointerHand(document.body);
 
 /**
  * 效能模式。auto 模式下量到持續掉幀就自動切成 lite（lite 手部模型 + 低鏡頭
@@ -81,6 +88,7 @@ const ui = new UIManager({
   onPenWidth: (width) => desk.setPenWidth(width),
   onPinchSensitivity: (threshold) => gesture.setPinchThreshold(threshold),
   onPerfMode: (mode: PerfMode) => perf.setMode(mode),
+  onToggleSound: (enabled) => sound.setMuted(!enabled),
   onToggleMirror: () => {
     const mirrored = camera.toggleMirror();
     gesture.setMirror(mirrored);
@@ -166,12 +174,17 @@ stages.subscribe((event) => {
     case 'complete':
       ui.syncStages(stages);
       // 全部完成時走證書流程（在 'allComplete' 處理），不開一般的結算視窗
-      if (stages.doneCount < stages.total) openClearModal(event.stage);
+      if (stages.doneCount < stages.total) {
+        openClearModal(event.stage);
+        sound.play('success');
+      }
       break;
     case 'fail':
       ui.showFail(event.reason);
+      sound.play('error');
       break;
     case 'allComplete':
+      sound.play('complete');
       // 先把時間定格，證書上印的才是實際的製程時間（不含後面的延遲與看證書的時間）
       finishedMs = performance.now() - startedAt;
       /*
@@ -386,13 +399,33 @@ function loop(now: number): void {
   if (size.width > 0 && size.height > 0) gesture.setVideoSize(size.width, size.height);
 
   const snapshot = camera.read();
-  const hand = gesture.update(snapshot.landmarks, snapshot.handedness);
+  const camHand = gesture.update(snapshot.landmarks, snapshot.handedness);
+
+  // 滑鼠 / 觸控按住鏡頭視窗時，用指標的手蓋過鏡頭的手（沒攝影機也能直接抓器材）。
+  // read() 每幀都要呼叫以推進邊緣偵測；engaged 要在推進前判斷。
+  const usePointer = pointer.engaged;
+  const pointerHand = pointer.read(viewLeft, viewTop);
+  const hand = usePointer ? pointerHand : camHand;
+
+  if (hand.justPinched) sound.play('pickup');
+  if (hand.justReleased) sound.play('drop');
 
   // 1) AR 層（道具）與手部層（骨架）各自清空。
   //    骨架畫在獨立的 #hand-canvas 上，才會蓋在左側互動面板等 HTML 之上。
   arCtx.clearRect(0, 0, viewW, viewH);
   handCtx.clearRect(0, 0, viewW, viewH);
-  if (showSkeleton) drawHandSkeleton(handCtx, hand, { lite: perf.lite });
+  // 指標模式沒有骨架可畫，只在用鏡頭時畫；指標模式改畫一個抓取游標（觸控看得到）
+  if (showSkeleton && !usePointer) {
+    drawHandSkeleton(handCtx, hand, { lite: perf.lite });
+  } else if (usePointer && hand.pinching) {
+    handCtx.save();
+    handCtx.strokeStyle = 'rgba(120, 255, 236, 0.9)';
+    handCtx.lineWidth = 2.5;
+    handCtx.beginPath();
+    handCtx.arc(hand.pinchPoint.x, hand.pinchPoint.y, 14, 0, Math.PI * 2);
+    handCtx.stroke();
+    handCtx.restore();
+  }
 
   // 2) 桌面層：桌子 + Chuck + 晶圓 + 已畫的圖形
   desk.renderBase();
@@ -461,15 +494,19 @@ function loop(now: number): void {
 //   __camp.stages.completeCurrent({});   // 直接過關
 //   __camp.gesture.setPinchThreshold(0.08);
 if (import.meta.env.DEV) {
-  Object.assign(window, { __camp: { stages, desk, ui, camera, gesture, wafer, Exporter } });
+  Object.assign(window, {
+    __camp: { stages, desk, ui, camera, gesture, wafer, perf, sound, Exporter },
+  });
 }
 
 syncStageView();
 stages.start();
 ui.syncStages(stages);
+ui.showIntroOnce();
 ui.setMirrorLabel(camera.isMirrored());
 ui.setCameraLabel(camera.getFacing());
 ui.setPerfMode(perf.getMode());
+ui.setSoundEnabled(!sound.isMuted());
 gesture.setMirror(camera.isMirrored());
 requestAnimationFrame(loop);
 
