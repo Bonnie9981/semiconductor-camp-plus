@@ -101,9 +101,8 @@ semiconductor-camp/
 ├── index.html                  # 版面骨架（Header / Sidebar / Viewport / Panel / Footer / Modal）
 ├── vite.config.ts
 ├── docs/
-│   └── IMPLEMENTATION.md       # ★ 實作概念與接手指南
-├── chip_wars/
-│   └── chip_wars.html          # 專案最初的單檔原型「晶片大戰」，已被 src/ 取代，僅留作參考
+│   ├── IMPLEMENTATION.md       # ★ 實作概念與接手指南
+│   └── ANALYSIS.md             # 程式碼分析與改進 roadmap
 ├── scripts/
 │   ├── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
 │   └── checks/                 # 自動化檢查（npm run check），直接跑真正的原始碼

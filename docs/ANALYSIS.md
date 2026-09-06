@@ -56,7 +56,7 @@
 | --- | --- | --- | --- |
 | 5 | `ChoiceOption` 不支援縮圖 | `core/types.ts` | 第三關正負光阻、第五關乾濕蝕刻都得自己在 canvas 畫卡片繞過。加 `preview?: (ctx, w, h) => void` 讓選項自畫縮圖（`IMPLEMENTATION.md` 已列此建議） |
 | 6 | `MixPanel` 是死程式 | `types.ts` / `UIManager.setPanel` | `mix` 面板實作完整、通過型別檢查，但沒有任何關卡在用。要嘛找關卡用它，要嘛移到分支保存、從主線拿掉以縮小 `setPanel()` |
-| 7 | `chip_wars/chip_wars.html` 原型仍在版控 | repo 根 | README 說「已被 `src/` 取代，僅留作參考」。留著沒害，但會讓新讀者困惑，建議搬到 `docs/` 或 tag 一個 `prototype` 後刪除 |
+| ~~7~~ | ~~`chip_wars/` 仍在版控~~ | — | 已刪除（與本專案無關） |
 | 8 | 沒有 `LICENSE` | repo 根 | 教學用途建議補一個（MIT / CC-BY 之類），否則預設「保留全部權利」，別人不能合法 fork 教學 |
 | 9 | 文件與程式不同步（本次已修 3 處） | 見 §4 | `MIN_VIEWPORT` 寫成 1100×600（實為 1100×460）、README 重複的 `npm run verify` 表格列、`semiconductorAR` vs `semiconductor-camp` 舊名 |
 | 10 | `index.html` 缺 `description` / social meta | `index.html` | 已有 `lang="zh-Hant"` 與 viewport，但沒有 `<meta name="description">` 和 OG／Twitter 卡片，分享連結時沒有預覽 |
@@ -153,7 +153,6 @@ npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
   （見上）先到位，否則改壞了自動檢查抓不到。
 - **`prefers-reduced-motion`**：粒子數量 / 爆炸動畫在此媒體查詢下降級。
 - **`MixPanel` 去留**（P2 #6）：找關卡用它，或從主線移除（需產品決策）。
-- **`chip_wars/` 原型**（P2 #7）：搬到 `docs/` 或 tag 後刪除。
 
 ### 不建議動
 
