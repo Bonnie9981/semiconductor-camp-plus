@@ -1,0 +1,41 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支的新 push 取消還在跑的舊 run
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 純計算的檢查：型別、晶圓狀態機 / STL / 版面矩陣 / 證書 PDF，最後 build 一次
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run check
+      - run: npm run build
+
+  # 開真的 Chrome 量 HUD 版面。跟 check 分開，因為要起 dev server + 下載瀏覽器，較慢。
+  check-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # scripts/checks/browser.mjs 用 chromium.launch({ channel: 'chrome' })，需要 Google Chrome
+      - run: npx playwright install --with-deps chrome
+      - run: npm run check:browser
