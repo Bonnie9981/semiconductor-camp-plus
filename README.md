@@ -1,5 +1,7 @@
 # 半導體製程沉浸式模擬 · Semiconductor Process Simulator
 
+[![verify](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/verify.yml/badge.svg)](https://github.com/Bonnie9981/semiconductor-camp-plus/actions/workflows/verify.yml)
+
 以 **Vite + TypeScript + MediaPipe Hands** 打造的 WebAR 手勢互動遊戲。
 玩家用「捏合（Pinch）」手勢拿起虛擬器材 —— 藥瓶、調配杯、晶圓、鑷子 ——
 在畫面下方的虛擬實驗檯上一步步走完五道半導體製程。
