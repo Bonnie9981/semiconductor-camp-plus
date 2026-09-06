@@ -1,5 +1,5 @@
 /**
- * 產生 README 用的截圖與社群分享圖（OG image）。
+ * 產生 README 用的截圖、社群分享圖（OG image）與 demo GIF。
  * ---------------------------------------------------------------------------
  *   node scripts/screenshot.mjs
  *
@@ -7,10 +7,15 @@
  * 產出：
  *   docs/screenshots/app.png   1440×900，遊戲主畫面
  *   public/og-image.png        1200×630，社群分享卡（會一起部署到 Pages）
+ *   docs/demo.gif              約 640×380，走過五道製程 → 結業證書
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { PNG } from 'pngjs';
+import gifenc from 'gifenc';
 import { createServer } from 'vite';
+
+const { GIFEncoder, quantize, applyPalette } = gifenc;
 
 const server = await createServer({ logLevel: 'silent', server: { port: 5223 } });
 await server.listen();
@@ -69,6 +74,70 @@ const browser = await chromium.launch({
   await writeFile('public/og-image.png', buf);
   await page.close();
   console.log('✓ public/og-image.png');
+}
+
+// ── demo GIF：走過五道製程 → 結業證書 ──
+try {
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 760 },
+    deviceScaleFactor: 0.5, // 輸出約 640×380，控制 GIF 檔案大小
+    permissions: ['camera'],
+  });
+  page.on('pageerror', () => {});
+  // 跳過首次「怎麼玩」彈窗
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('semiconductor-camp:seen-intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.goto(url, { waitUntil: 'load' });
+  await page.waitForFunction(() => Boolean(window.__camp), null, { timeout: 8000 });
+  await page.waitForTimeout(1800);
+
+  const frames = [];
+  const grab = async () => frames.push(await page.screenshot({ type: 'png' }));
+
+  await grab();
+  await grab(); // RCA 開場多停一下
+
+  // 依序強制完成五關；每一關 devComplete 會把晶圓推進一層，截面圖 HUD 跟著變
+  for (let i = 0; i < 5; i++) {
+    await page.evaluate(() => {
+      const c = window.__camp;
+      c.stages.forceCompleteCurrent();
+      if (c.stages.hasNext()) c.stages.advance();
+    });
+    await page.waitForTimeout(260);
+    await grab();
+    await page.waitForTimeout(260);
+    await grab();
+  }
+
+  // 五關完成後會延遲 1.6s 開結業證書
+  await page.waitForTimeout(2200);
+  await grab();
+  await grab();
+  await grab();
+
+  await page.close();
+
+  // PNG → RGBA → 量化 → GIF
+  const decoded = frames.map((buf) => PNG.sync.read(buf));
+  const { width, height } = decoded[0];
+  const enc = GIFEncoder();
+  const palette = quantize(decoded[0].data, 256);
+  for (const png of decoded) {
+    const index = applyPalette(png.data, palette);
+    enc.writeFrame(index, width, height, { palette, delay: 320 });
+  }
+  enc.finish();
+  await writeFile('docs/demo.gif', Buffer.from(enc.bytes()));
+  const kb = Math.round(enc.bytes().length / 1024);
+  console.log(`✓ docs/demo.gif  (${width}×${height}, ${decoded.length} 幀, ${kb} KB)`);
+} catch (err) {
+  console.warn(`⚠ demo.gif 產生失敗（略過）：${err.message}`);
 }
 
 await browser.close();
