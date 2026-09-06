@@ -37,15 +37,7 @@ import { BaseStage } from './BaseStage';
  * 曝光動畫刻意用「先畫滿光、再用圖案挖掉」來表達。
  */
 
-type Phase =
-  | 'spread'
-  | 'spin'
-  | 'draw'
-  | 'tone'
-  | 'align'
-  | 'expose'
-  | 'bake'
-  | 'done';
+type Phase = 'spread' | 'spin' | 'draw' | 'tone' | 'align' | 'expose' | 'bake' | 'done';
 
 /** 光罩圖案至少要覆蓋晶圓面積的比例。 */
 const PATTERN_MIN = 0.015;
@@ -475,7 +467,11 @@ export class Stage3Litho extends BaseStage {
 
     ctx.fillStyle = 'rgba(180, 200, 210, 0.8)';
     ctx.font = "600 14px 'IBM Plex Mono', monospace";
-    ctx.fillText(positive ? 'POSITIVE' : 'NEGATIVE', x + w / 2, y + 16 + clamp(w * 0.11, 18, 30) + 4);
+    ctx.fillText(
+      positive ? 'POSITIVE' : 'NEGATIVE',
+      x + w / 2,
+      y + 16 + clamp(w * 0.11, 18, 30) + 4,
+    );
 
     // 示意圖區：三列（曝光 → 顯影後 → 蝕刻後）
     const dx = x + w * 0.1;
@@ -498,11 +494,7 @@ export class Stage3Litho extends BaseStage {
     ctx.textAlign = 'center';
     ctx.fillStyle = positive ? '#ffd68a' : '#8ae0ff';
     ctx.font = `700 ${Math.round(clamp(w * 0.068, 14, 19))}px 'IBM Plex Sans', 'Noto Sans TC', sans-serif`;
-    ctx.fillText(
-      positive ? '你畫的圖案 → 凸起' : '你畫的圖案 → 凹陷',
-      x + w / 2,
-      y + h - 44,
-    );
+    ctx.fillText(positive ? '你畫的圖案 → 凸起' : '你畫的圖案 → 凹陷', x + w / 2, y + h - 44);
 
     ctx.fillStyle = 'rgba(200, 220, 230, 0.9)';
     ctx.font = `600 ${Math.round(clamp(w * 0.052, 12, 15))}px 'IBM Plex Sans', 'Noto Sans TC', sans-serif`;
@@ -684,7 +676,11 @@ export class Stage3Litho extends BaseStage {
         if (hand.present && hand.pinching) {
           // 相對位移，避免一抓就跳位
           this.maskOffset = {
-            x: clamp(this.dragFrom.offset.x + (hand.pinchPoint.x - this.dragFrom.hand.x), -220, 220),
+            x: clamp(
+              this.dragFrom.offset.x + (hand.pinchPoint.x - this.dragFrom.hand.x),
+              -220,
+              220,
+            ),
             y: clamp(this.dragFrom.offset.y + (hand.pinchPoint.y - this.dragFrom.hand.y), -90, 90),
           };
         } else {
@@ -697,7 +693,12 @@ export class Stage3Litho extends BaseStage {
     const buttonLive = this.phase === 'align' && aligned;
 
     // 大按鈕
-    if (hand.present && hand.justPinched && buttonLive && pointInCircle(hand.pinchPoint, L.button, 14)) {
+    if (
+      hand.present &&
+      hand.justPinched &&
+      buttonLive &&
+      pointInCircle(hand.pinchPoint, L.button, 14)
+    ) {
       this.startExposure();
     }
 

@@ -23,7 +23,10 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const targets = [
   { from: join(root, 'node_modules/@mediapipe/hands'), to: join(root, 'public/mediapipe/hands') },
-  { from: join(root, 'node_modules/@mediapipe/camera_utils'), to: join(root, 'public/mediapipe/camera_utils') },
+  {
+    from: join(root, 'node_modules/@mediapipe/camera_utils'),
+    to: join(root, 'public/mediapipe/camera_utils'),
+  },
 ];
 
 /** 不需要放進 public/ 的檔案。 */
@@ -57,4 +60,6 @@ for (const target of targets) {
   }
 }
 
-console.log(`[mediapipe] 資產就緒（新複製 ${copied} 個、已是最新 ${skipped} 個）→ public/mediapipe/`);
+console.log(
+  `[mediapipe] 資產就緒（新複製 ${copied} 個、已是最新 ${skipped} 個）→ public/mediapipe/`,
+);

@@ -72,7 +72,13 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
   const masks = {};
   for (const tone of ['positive', 'negative']) {
     const w = new WaferState();
-    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    w.addLayer({
+      kind: 'resist',
+      label: '光阻層',
+      thickness: 0.45,
+      color: '#2f7d5b',
+      patterned: false,
+    });
     for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = stripes(i);
     w.resistTone = tone;
     w.develop();
@@ -102,8 +108,20 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
     ['etch(1) 濕式', 1],
   ]) {
     const w = new WaferState();
-    w.addLayer({ kind: 'metal', label: '金屬層 Al', thickness: 0.5, color: '#c9ced6', patterned: false });
-    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    w.addLayer({
+      kind: 'metal',
+      label: '金屬層 Al',
+      thickness: 0.5,
+      color: '#c9ced6',
+      patterned: false,
+    });
+    w.addLayer({
+      kind: 'resist',
+      label: '光阻層',
+      thickness: 0.45,
+      color: '#2f7d5b',
+      patterned: false,
+    });
     for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
     w.develop();
     w.etch(uc);
@@ -129,11 +147,29 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
     Object.assign(w.contamination, { particles: 0, oxide: 0, ions: 0, water: 0 });
     // 2 薄膜沉積
     if (method === 'cvd') {
-      w.addLayer({ kind: 'oxide', label: '二氧化矽 SiO₂', thickness: 0.7, color: '#93b3c6', patterned: false });
+      w.addLayer({
+        kind: 'oxide',
+        label: '二氧化矽 SiO₂',
+        thickness: 0.7,
+        color: '#93b3c6',
+        patterned: false,
+      });
     }
-    w.addLayer({ kind: 'metal', label: '金屬層 Al', thickness: 0.5, color: '#c9ced6', patterned: false });
+    w.addLayer({
+      kind: 'metal',
+      label: '金屬層 Al',
+      thickness: 0.5,
+      color: '#c9ced6',
+      patterned: false,
+    });
     // 3 微影
-    w.addLayer({ kind: 'resist', label: '光阻層', thickness: 0.45, color: '#2f7d5b', patterned: false });
+    w.addLayer({
+      kind: 'resist',
+      label: '光阻層',
+      thickness: 0.45,
+      color: '#2f7d5b',
+      patterned: false,
+    });
     for (let i = 0; i < SECTION_CELLS; i++) w.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
     w.resistTone = tone;
     // 4 顯影
@@ -165,8 +201,6 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
   }
 }
 
-
-
 // ── ④ 蝕刻關的藥液規則 ──
 // 這兩條規則是使用者親自訂的製程知識，很容易在後續重構時被改壞，所以鎖在檢查裡。
 {
@@ -197,22 +231,33 @@ const report = new Report('晶圓狀態機（真實 WaferState）');
 
   // 第二輪：丙酮與 NMP 兩條路線都要走到這裡，而且只能用去離子水
   const s1 = stripRound(1);
-  expect('沖洗 只收去離子水',
+  expect(
+    '沖洗 只收去離子水',
     s1.answers.length === 1 && s1.answers[0] === 'di',
-    `answers=${s1.answers.join('/')}`);
-  expect('沖洗 拒絕再泡溶劑',
+    `answers=${s1.answers.join('/')}`,
+  );
+  expect(
+    '沖洗 拒絕再泡溶劑',
     !s1.answers.includes('acetone') && !s1.answers.includes('nmp'),
-    '溶劑已經泡過了');
+    '溶劑已經泡過了',
+  );
 
   // 錯誤提示必須每個「非答案」的槽都講得出理由（不能只丟一句預設值）
-  for (const [name, round] of [['濕蝕刻', wet], ['去光阻', s0], ['沖洗', s1]]) {
+  for (const [name, round] of [
+    ['濕蝕刻', wet],
+    ['去光阻', s0],
+    ['沖洗', s1],
+  ]) {
     const wrong = ids(round).filter((id) => !round.answers.includes(id));
     const vague = wrong.filter((id) => {
       const h = round.wrongHint(id);
       return !h || h.length < 12;
     });
-    report.add(`${name} 每個錯誤選項都有說明`, vague.length ? [`太短或空白：${vague.join(', ')}`] : [],
-      `${wrong.length} 個錯誤選項`);
+    report.add(
+      `${name} 每個錯誤選項都有說明`,
+      vague.length ? [`太短或空白：${vague.join(', ')}`] : [],
+      `${wrong.length} 個錯誤選項`,
+    );
   }
 }
 

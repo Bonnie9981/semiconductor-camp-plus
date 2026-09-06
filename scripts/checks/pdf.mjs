@@ -31,7 +31,9 @@ report.add('結尾 %%EOF', txt.trimEnd().endsWith('%%EOF') ? [] : ['結尾不對
 const xrefStart = Number(txt.match(/startxref\n(\d+)/)?.[1] ?? -1);
 report.add(
   'startxref 指向 xref 表',
-  txt.slice(xrefStart, xrefStart + 4) === 'xref' ? [] : [`位移 ${xrefStart} 指到「${txt.slice(xrefStart, xrefStart + 12)}」`],
+  txt.slice(xrefStart, xrefStart + 4) === 'xref'
+    ? []
+    : [`位移 ${xrefStart} 指到「${txt.slice(xrefStart, xrefStart + 12)}」`],
 );
 
 const table = txt.slice(xrefStart);

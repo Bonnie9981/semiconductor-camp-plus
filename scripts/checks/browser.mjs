@@ -169,8 +169,10 @@ for (const vp of VIEWPORTS) {
     ['完成按鈕', m.action],
   ]) {
     if (!r) continue;
-    if (r.b > m.viewport.h + 2) errs.push(`${name} 超出畫面下緣 ${Math.round(r.b - m.viewport.h)}px`);
-    if (r.r > m.viewport.w + 2) errs.push(`${name} 超出畫面右緣 ${Math.round(r.r - m.viewport.w)}px`);
+    if (r.b > m.viewport.h + 2)
+      errs.push(`${name} 超出畫面下緣 ${Math.round(r.b - m.viewport.h)}px`);
+    if (r.r > m.viewport.w + 2)
+      errs.push(`${name} 超出畫面右緣 ${Math.round(r.r - m.viewport.w)}px`);
     if (r.y < -2) errs.push(`${name} 超出畫面上緣 ${Math.round(-r.y)}px`);
   }
   /*
@@ -178,7 +180,10 @@ for (const vp of VIEWPORTS) {
     捲不到底就以為沒有按鈕。所以標題與操作鈕都設成 sticky，這裡驗它們真的在框內。
   */
   if (m.panel) {
-    for (const [name, r] of [['面板標題', m.spTitle], ['面板操作鈕', m.spConfirm]]) {
+    for (const [name, r] of [
+      ['面板標題', m.spTitle],
+      ['面板操作鈕', m.spConfirm],
+    ]) {
       if (!r) continue;
       if (r.b > m.panel.b + 2 || r.y < m.panel.y - 2) {
         errs.push(`${name}被捲出面板外，玩家看不到`);
@@ -234,7 +239,8 @@ for (const vp of VIEWPORTS) {
       e.push(`證書下緣被切掉 ${Math.round(cert.canvas.bottom - cert.vh)}px`);
     }
     // 視窗本身不可以需要捲動才看得完
-    if (cert.modal.scroll > 2) e.push(`證書視窗需要捲動 ${Math.round(cert.modal.scroll)}px 才看得完`);
+    if (cert.modal.scroll > 2)
+      e.push(`證書視窗需要捲動 ${Math.round(cert.modal.scroll)}px 才看得完`);
     if (cert.modal.bottom > cert.vh + 1) {
       e.push(`證書視窗超出畫面下緣 ${Math.round(cert.modal.bottom - cert.vh)}px`);
     }

@@ -106,9 +106,7 @@ const ui = new UIManager({
     // 開關狀態存在 UIManager（isDevMode()），這裡只負責重繪關卡列與提示
     ui.syncStages(stages);
     ui.setHint(
-      enabled
-        ? '🛠️ 開發者模式已開啟 —— 左側任一關卡都可以直接點選跳關。'
-        : stages.current.hint,
+      enabled ? '🛠️ 開發者模式已開啟 —— 左側任一關卡都可以直接點選跳關。' : stages.current.hint,
     );
   },
   onStageAction: () => {
@@ -327,7 +325,10 @@ function syncHudReserve(): void {
   if (!bottom) return;
   const h = bottom.getBoundingClientRect().height;
   // 卡片可能全部隱藏（height 0），這時仍留一點呼吸空間
-  document.documentElement.style.setProperty('--hud-reserve', `${Math.max(24, Math.round(h) + 16)}px`);
+  document.documentElement.style.setProperty(
+    '--hud-reserve',
+    `${Math.max(24, Math.round(h) + 16)}px`,
+  );
 }
 new ResizeObserver(syncHudReserve).observe(
   requireEl<HTMLElement>('viewport-slot').querySelector('.vp-bottom') ??

@@ -44,7 +44,7 @@ export interface ViewportStatus {
 }
 
 export function checkViewport(w = window.innerWidth, h = window.innerHeight): ViewportStatus {
-  const scale = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+  const scale = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const tooNarrow = w < MIN_VIEWPORT.w;
   const tooShort = h < MIN_VIEWPORT.h;
 

@@ -314,7 +314,9 @@ export class UIManager {
     el<HTMLButtonElement>('btn-cert-pdf').addEventListener('click', () => this.cb.onExportPDF());
     el<HTMLButtonElement>('btn-cert-png').addEventListener('click', () => this.cb.onExportPNG());
     el<HTMLButtonElement>('btn-cert-stl').addEventListener('click', () => this.cb.onExportSTL());
-    el<HTMLButtonElement>('btn-cert-retake').addEventListener('click', () => this.cb.onRetakePhoto());
+    el<HTMLButtonElement>('btn-cert-retake').addEventListener('click', () =>
+      this.cb.onRetakePhoto(),
+    );
     // 「再玩一次」要先確認，避免玩家還在看證書就被誤觸而重置整場
     el<HTMLButtonElement>('btn-cert-close').addEventListener('click', () => {
       this.confirm({
@@ -327,16 +329,22 @@ export class UIManager {
       });
     });
 
-    el<HTMLButtonElement>('btn-confirm-cancel').addEventListener('click', () => this.closeConfirm());
+    el<HTMLButtonElement>('btn-confirm-cancel').addEventListener('click', () =>
+      this.closeConfirm(),
+    );
     el<HTMLButtonElement>('btn-confirm-ok').addEventListener('click', () => {
       const ok = this.confirmOk;
       this.closeConfirm();
       ok?.();
     });
 
-    el<HTMLButtonElement>('btn-help').addEventListener('click', () => this.openModal(this.modalHelp));
+    el<HTMLButtonElement>('btn-help').addEventListener('click', () =>
+      this.openModal(this.modalHelp),
+    );
     el<HTMLButtonElement>('btn-help-close').addEventListener('click', () => this.closeModal());
-    el<HTMLButtonElement>('btn-settings').addEventListener('click', () => this.openModal(this.modalSettings));
+    el<HTMLButtonElement>('btn-settings').addEventListener('click', () =>
+      this.openModal(this.modalSettings),
+    );
     el<HTMLButtonElement>('btn-settings-close').addEventListener('click', () => this.closeModal());
 
     el<HTMLInputElement>('set-skeleton').addEventListener('change', (e) => {
@@ -363,7 +371,10 @@ export class UIManager {
 
     document.querySelector<HTMLElement>('.modal-backdrop')?.addEventListener('click', () => {
       // 結算 / 失敗 Modal 必須做出選擇，只有說明與設定可以點背景關閉
-      if (!this.modalHelp.classList.contains('hidden') || !this.modalSettings.classList.contains('hidden')) {
+      if (
+        !this.modalHelp.classList.contains('hidden') ||
+        !this.modalSettings.classList.contains('hidden')
+      ) {
         this.closeModal();
       }
     });
@@ -466,7 +477,10 @@ export class UIManager {
     this.stageFlow.replaceChildren(...flowNodes);
 
     // 右側面板
-    this.setText(this.panelCounter, `STEP ${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`);
+    this.setText(
+      this.panelCounter,
+      `STEP ${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`,
+    );
     this.setText(this.panelTitle, stage.title);
     this.setText(this.panelDesc, stage.description);
     this.setText(this.liveLabel, `LIVE · ${stage.shortTitle}`);
@@ -1016,11 +1030,19 @@ export class UIManager {
   }
 
   isCertificateOpen(): boolean {
-    return !this.modalRoot.classList.contains('hidden') && !this.modalCert.classList.contains('hidden');
+    return (
+      !this.modalRoot.classList.contains('hidden') && !this.modalCert.classList.contains('hidden')
+    );
   }
 
   private openModal(modal: HTMLElement): void {
-    for (const m of [this.modalSuccess, this.modalFail, this.modalHelp, this.modalSettings, this.modalCert]) {
+    for (const m of [
+      this.modalSuccess,
+      this.modalFail,
+      this.modalHelp,
+      this.modalSettings,
+      this.modalCert,
+    ]) {
       m.classList.toggle('hidden', m !== modal);
     }
     this.modalRoot.classList.remove('hidden');

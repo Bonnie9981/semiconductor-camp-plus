@@ -314,8 +314,8 @@ function drawCircuitPattern(ctx: CanvasRenderingContext2D): void {
 
   ctx.fillStyle = 'rgba(94, 233, 223, 0.09)';
   for (let i = 0; i < 40; i++) {
-    const x = ((i * 211) % CERT_W);
-    const y = ((i * 137) % CERT_H);
+    const x = (i * 211) % CERT_W;
+    const y = (i * 137) % CERT_H;
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fill();

@@ -97,7 +97,11 @@ export class Stage2Deposition extends BaseStage {
     { glyph: '🤏', title: '拖晶圓選製程', desc: '捏起晶圓放進 e-gun（PVD）或 PECVD（CVD）機台。' },
     { glyph: '🚪', title: '拖門把關腔門', desc: '捏住腔門把手往左拖到底，密閉後才會開始抽真空。' },
     { glyph: '🎛️', title: '操作機台控制', desc: 'PVD 上下拖拉桿調功率；CVD 左右轉兩顆氣閥旋鈕。' },
-    { glyph: '🟢', title: '按下大按鈕', desc: '參數就緒後機台上的圓形按鈕會亮起，捏一下即可啟動。' },
+    {
+      glyph: '🟢',
+      title: '按下大按鈕',
+      desc: '參數就緒後機台上的圓形按鈕會亮起，捏一下即可啟動。',
+    },
   ];
 
   // ── 流程 ──
@@ -246,7 +250,10 @@ export class Stage2Deposition extends BaseStage {
     const layouts = geos.map((g, i) => chamberLayout(g, kinds[i]));
 
     const waferR = Math.min(cw * 0.16, 42);
-    const restPoint: Point = { x: scene.left + scene.w / 2, y: groundY + waferR * WAFER_SQUASH + 26 };
+    const restPoint: Point = {
+      x: scene.left + scene.w / 2,
+      y: groundY + waferR * WAFER_SQUASH + 26,
+    };
 
     // ── 抓取與放置 ──
     const held = this.waferHold;
@@ -654,7 +661,12 @@ export class Stage2Deposition extends BaseStage {
                 : '🎚️ 捏住拉桿上下拖曳，把電子束功率調進綠色區間',
             good,
           );
-          ui.setHandState('⚡', good ? '沉積中' : '功率不在窗口', `POWER ${Math.round(this.power * 100)}%`, good);
+          ui.setHandState(
+            '⚡',
+            good ? '沉積中' : '功率不在窗口',
+            `POWER ${Math.round(this.power * 100)}%`,
+            good,
+          );
         } else {
           ui.setArHint(
             good
@@ -662,7 +674,12 @@ export class Stage2Deposition extends BaseStage {
               : '🎛️ 轉動兩顆旋鈕，把氣體流量都調進綠色區間',
             good,
           );
-          ui.setHandState('🟣', good ? '沉積中' : '氣體比例不對', `品質 ${Math.round(this.quality * 100)}%`, good);
+          ui.setHandState(
+            '🟣',
+            good ? '沉積中' : '氣體比例不對',
+            `品質 ${Math.round(this.quality * 100)}%`,
+            good,
+          );
         }
         break;
       }

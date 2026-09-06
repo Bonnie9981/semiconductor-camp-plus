@@ -277,7 +277,12 @@ export abstract class DipStageBase extends BaseStage {
           : `🧪 ${round.actionLabel}中 ${pct}% — 左右晃動手可以攪拌加速`,
         true,
       );
-      ui.setHandState('🧪', `${round.actionLabel}中`, `${pct}% / 攪拌 ${Math.round(this.agitation * 100)}%`, true);
+      ui.setHandState(
+        '🧪',
+        `${round.actionLabel}中`,
+        `${pct}% / 攪拌 ${Math.round(this.agitation * 100)}%`,
+        true,
+      );
       return;
     }
     if (this.grabbing) {

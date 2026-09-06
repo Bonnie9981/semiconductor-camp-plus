@@ -131,9 +131,7 @@ export function chamberLayout(geo: ChamberGeometry, kind: ChamberKind): ChamberL
   */
   const handleR = clamp(geo.w * 0.035, short ? 11 : 13, 20);
   const handleDrop = short ? 13 : 18;
-  const doorRowH = short
-    ? Math.ceil(handleDrop + handleR + DOOR_TEXT_H)
-    : DOOR_ROW_H;
+  const doorRowH = short ? Math.ceil(handleDrop + handleR + DOOR_TEXT_H) : DOOR_ROW_H;
 
   const statusBar = {
     x: geo.x + pad,
@@ -918,7 +916,11 @@ function drawBigButton(
 
 // ─────────────────────────────── 小工具 ──────────────────────────────────
 
-export function pointInCircle(p: Point, c: { cx: number; cy: number; r: number }, pad = 0): boolean {
+export function pointInCircle(
+  p: Point,
+  c: { cx: number; cy: number; r: number },
+  pad = 0,
+): boolean {
   return Math.hypot(p.x - c.cx, p.y - c.cy) <= c.r + pad;
 }
 
@@ -949,7 +951,13 @@ function lerp(a: number, b: number, t: number): number {
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
-  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const full =
+    h.length === 3
+      ? h
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : h;
   return [
     parseInt(full.slice(0, 2), 16),
     parseInt(full.slice(2, 4), 16),

@@ -96,11 +96,7 @@ export function tankBenchGeometry(opts: {
     所以位置要同時滿足兩邊：不壓到槽名、也不掉出畫面下緣（下方還有 20px 的字）。
   */
   const restRY = waferR * WAFER_SQUASH;
-  const restY = clamp(
-    groundY + restRY + 34,
-    labelBottom + restRY + 6,
-    height - restRY - 22,
-  );
+  const restY = clamp(groundY + restRY + 34, labelBottom + restRY + 6, height - restRY - 22);
 
   return {
     geo,
@@ -264,7 +260,7 @@ function drawBubbles(
   ctx.lineWidth = 1;
   const n = Math.round(10 + s.agitation * 14);
   for (let i = 0; i < n; i++) {
-    const seed = (i * 37) % 100 / 100;
+    const seed = ((i * 37) % 100) / 100;
     const t = (time * (0.5 + seed * 0.7) + seed) % 1;
     const x = r.x + 8 + seed * (r.w - 16);
     const y = r.y + r.h - 8 - t * (r.y + r.h - r.surfaceY - 12);

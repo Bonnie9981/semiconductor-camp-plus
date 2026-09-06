@@ -32,8 +32,7 @@ export class Stage4Develop extends DipStageBase {
   readonly id = 'develop';
   readonly title = '顯影';
   readonly shortTitle = '顯影';
-  readonly description =
-    '把晶圓泡進顯影液，溶掉該溶的光阻，讓曝光時轉印的圖案真正顯現出來。';
+  readonly description = '把晶圓泡進顯影液，溶掉該溶的光阻，讓曝光時轉印的圖案真正顯現出來。';
   readonly hint = '捏起晶圓拖進正確的顯影液槽；泡下去之後左右晃動手就是攪拌，反應更快。';
   readonly primaryLabel = '完成顯影';
   readonly usesCrossSection = true;
@@ -45,9 +44,21 @@ export class Stage4Develop extends DipStageBase {
 
   readonly instructions: InstructionStep[] = [
     { glyph: '🧪', title: '選出標準顯影液', desc: 'TMAH 不含金屬離子，是半導體製程的標準顯影液。' },
-    { glyph: '🤏', title: '拖進正確的槽', desc: '捏起晶圓移到槽上方放開，選錯會被擋下並說明原因。' },
-    { glyph: '🌊', title: '左右晃動攪拌', desc: '攪拌能帶走溶解物、讓新鮮藥液接觸表面，反應快一倍。' },
-    { glyph: '🔍', title: '看右下角截面圖', desc: '光阻被溶掉的地方會出現缺口 —— 那就是你畫的圖案。' },
+    {
+      glyph: '🤏',
+      title: '拖進正確的槽',
+      desc: '捏起晶圓移到槽上方放開，選錯會被擋下並說明原因。',
+    },
+    {
+      glyph: '🌊',
+      title: '左右晃動攪拌',
+      desc: '攪拌能帶走溶解物、讓新鮮藥液接觸表面，反應快一倍。',
+    },
+    {
+      glyph: '🔍',
+      title: '看右下角截面圖',
+      desc: '光阻被溶掉的地方會出現缺口 —— 那就是你畫的圖案。',
+    },
   ];
 
   private picked: string | null = null;
@@ -113,19 +124,16 @@ export class Stage4Develop extends DipStageBase {
 
   private buildRound(): DipRound {
     return {
-      tanks: [
-        { id: 'tmah' },
-        { id: 'xylene' },
-        { id: 'acetone' },
-        { id: 'di' },
-      ],
+      tanks: [{ id: 'tmah' }, { id: 'xylene' }, { id: 'acetone' }, { id: 'di' }],
       answers: [this.answer],
       seconds: 5,
       actionLabel: '顯影',
       wrongHint: (id) => {
-        if (id === 'acetone') return '丙酮會把整層光阻都溶掉，圖案會全部消失。顯影液必須只溶掉「該溶的那一半」。';
+        if (id === 'acetone')
+          return '丙酮會把整層光阻都溶掉，圖案會全部消失。顯影液必須只溶掉「該溶的那一半」。';
         if (id === 'di') return '純水溶不掉光阻，泡再久也不會有反應。';
-        if (id === 'xylene') return '二甲苯是早期負光阻用的有機溶劑，量產線已不使用。半導體的標準顯影液是不含金屬離子的 TMAH。';
+        if (id === 'xylene')
+          return '二甲苯是早期負光阻用的有機溶劑，量產線已不使用。半導體的標準顯影液是不含金屬離子的 TMAH。';
         return '這不是顯影液。';
       },
     };
@@ -187,9 +195,7 @@ export class Stage4Develop extends DipStageBase {
       kind: 'action',
       title: '顯影液選擇',
       note: `你在微影那關選的是 ${toneLabel}，${
-        positive
-          ? '曝光區斷鏈後會變得可溶，顯影時被洗掉。'
-          : '曝光區交聯硬化後留下，其餘被洗掉。'
+        positive ? '曝光區斷鏈後會變得可溶，顯影時被洗掉。' : '曝光區交聯硬化後留下，其餘被洗掉。'
       }\n兩者都用同一種顯影液：TMAH（四甲基氫氧化銨）——不含金屬離子，是半導體製程的標準顯影液。\n捏起晶圓，拖進正確的那一槽。`,
       error: this.error ?? undefined,
       label: '沒有鏡頭？直接放入正確的槽',

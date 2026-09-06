@@ -84,8 +84,12 @@
         <div id="confirm-title" class="confirm-title">確定要重新開始嗎？</div>
         <p id="confirm-text" class="confirm-text"></p>
         <div class="confirm-actions">
-          <button id="btn-confirm-cancel" data-pinch="1" class="btn btn-ghost" type="button">取消</button>
-          <button id="btn-confirm-ok" data-pinch="1" class="btn btn-danger" type="button">確定</button>
+          <button id="btn-confirm-cancel" data-pinch="1" class="btn btn-ghost" type="button">
+            取消
+          </button>
+          <button id="btn-confirm-ok" data-pinch="1" class="btn btn-danger" type="button">
+            確定
+          </button>
         </div>
       </div>
     </div>
@@ -124,9 +128,21 @@
             </div>
           </div>
           <div class="header-actions">
-            <button id="btn-settings" class="icon-btn" type="button" title="設定" aria-label="設定">⚙</button>
-            <button id="btn-help" class="icon-btn" type="button" title="說明" aria-label="說明">?</button>
-            <button id="btn-exit" class="icon-btn icon-btn-danger" type="button" title="退出" aria-label="退出">⏻</button>
+            <button id="btn-settings" class="icon-btn" type="button" title="設定" aria-label="設定">
+              ⚙
+            </button>
+            <button id="btn-help" class="icon-btn" type="button" title="說明" aria-label="說明">
+              ?
+            </button>
+            <button
+              id="btn-exit"
+              class="icon-btn icon-btn-danger"
+              type="button"
+              title="退出"
+              aria-label="退出"
+            >
+              ⏻
+            </button>
           </div>
         </div>
       </header>
@@ -186,19 +202,34 @@
               視窗內的主要行動按鈕。右側面板在鏡頭視野之外，手構不到；
               這一顆在視窗內，所以「完成本關 / 下一步」也能純用手完成。
             -->
-            <button id="btn-stage-action" class="stage-action hidden" type="button" data-pinch="1"></button>
+            <button
+              id="btn-stage-action"
+              class="stage-action hidden"
+              type="button"
+              data-pinch="1"
+            ></button>
 
             <!-- 下方虛擬桌面上的 HUD：左＝截面圖 / 已繪製圖形，右＝畫筆顏色 -->
             <div class="vp-bottom">
               <div class="vp-bottom-left">
                 <div class="hud-card hud-card-section hidden" id="hud-cross-section">
                   <div class="hud-head mono">晶圓截面 · CROSS SECTION</div>
-                  <canvas id="cross-section-canvas" class="section-canvas" width="208" height="112"></canvas>
+                  <canvas
+                    id="cross-section-canvas"
+                    class="section-canvas"
+                    width="208"
+                    height="112"
+                  ></canvas>
                 </div>
 
                 <div class="hud-card">
                   <div class="hud-head mono">已繪製圖形</div>
-                  <canvas id="pattern-preview" class="preview-canvas" width="96" height="96"></canvas>
+                  <canvas
+                    id="pattern-preview"
+                    class="preview-canvas"
+                    width="96"
+                    height="96"
+                  ></canvas>
                 </div>
               </div>
 
@@ -214,7 +245,9 @@
         <!-- 右側：操作說明 + 行動按鈕 -->
         <aside id="right-panel">
           <div class="block">
-            <div class="panel-label mono">目前步驟 · <span id="panel-step-counter">STEP 01 / 06</span></div>
+            <div class="panel-label mono">
+              目前步驟 · <span id="panel-step-counter">STEP 01 / 06</span>
+            </div>
             <h2 id="panel-step-title" class="panel-title">繪製光罩圖形</h2>
             <p id="panel-step-desc" class="panel-desc"></p>
           </div>
@@ -237,7 +270,9 @@
 
           <div class="block block-actions">
             <div class="panel-label mono">行動</div>
-            <button id="btn-primary" class="btn btn-primary" type="button" disabled>完成繪製</button>
+            <button id="btn-primary" class="btn btn-primary" type="button" disabled>
+              完成繪製
+            </button>
             <button id="btn-next" class="btn btn-ghost" type="button" disabled>下一步 🔒</button>
           </div>
 
@@ -268,26 +303,36 @@
           <p id="success-desc" class="modal-desc"></p>
           <div class="modal-actions">
             <button id="btn-export-png" class="btn btn-primary" type="button">下載圖案 PNG</button>
-            <button id="btn-export-stl" class="btn btn-ghost" type="button">下載 3D 物件 (.stl)</button>
+            <button id="btn-export-stl" class="btn btn-ghost" type="button">
+              下載 3D 物件 (.stl)
+            </button>
           </div>
-          <button id="btn-modal-continue" data-pinch="1" class="link-btn" type="button">繼續下一步 →</button>
+          <button id="btn-modal-continue" data-pinch="1" class="link-btn" type="button">
+            繼續下一步 →
+          </button>
         </div>
 
         <!-- 結業證書：五道製程全部完成後才出現 -->
         <div id="modal-cert" class="modal modal-cert hidden">
           <div class="modal-kicker mono">ALL PROCESSES COMPLETE</div>
           <h2 class="modal-title">製程全部完成！</h2>
-          <p class="modal-desc">
-            這是你的結業證書 —— 上面有你的照片與親手做出來的晶圓圖案。
-          </p>
+          <p class="modal-desc">這是你的結業證書 —— 上面有你的照片與親手做出來的晶圓圖案。</p>
           <div class="cert-frame">
             <canvas id="cert-canvas" width="842" height="595"></canvas>
           </div>
           <div class="modal-actions cert-actions">
-            <button id="btn-cert-retake" data-pinch="1" class="btn btn-ghost" type="button">重新拍照</button>
-            <button id="btn-cert-pdf" data-pinch="1" class="btn btn-primary" type="button">下載證書 PDF</button>
-            <button id="btn-cert-png" data-pinch="1" class="btn btn-ghost" type="button">下載晶圓圖片 PNG</button>
-            <button id="btn-cert-stl" data-pinch="1" class="btn btn-ghost" type="button">下載 3D 模型 STL</button>
+            <button id="btn-cert-retake" data-pinch="1" class="btn btn-ghost" type="button">
+              重新拍照
+            </button>
+            <button id="btn-cert-pdf" data-pinch="1" class="btn btn-primary" type="button">
+              下載證書 PDF
+            </button>
+            <button id="btn-cert-png" data-pinch="1" class="btn btn-ghost" type="button">
+              下載晶圓圖片 PNG
+            </button>
+            <button id="btn-cert-stl" data-pinch="1" class="btn btn-ghost" type="button">
+              下載 3D 模型 STL
+            </button>
           </div>
           <button id="btn-cert-close" data-pinch="1" class="btn-play-again" type="button">
             🔄 再玩一次
@@ -300,7 +345,9 @@
           <h2 class="modal-title modal-title-danger">製程失敗</h2>
           <p id="fail-reason" class="modal-desc"></p>
           <div class="modal-actions">
-            <button id="btn-retry" data-pinch="1" class="btn btn-danger" type="button">重新開始本關</button>
+            <button id="btn-retry" data-pinch="1" class="btn btn-danger" type="button">
+              重新開始本關
+            </button>
           </div>
         </div>
 
@@ -353,7 +400,12 @@
               <small>開啟後可任意點選左側任一關卡跳關，方便測試</small>
             </label>
             <div class="dev-controls">
-              <button id="btn-dev-complete" data-pinch="1" class="chip chip-dev hidden" type="button">
+              <button
+                id="btn-dev-complete"
+                data-pinch="1"
+                class="chip chip-dev hidden"
+                type="button"
+              >
                 ⚡ 標記本關完成
               </button>
               <input id="set-devmode" type="checkbox" />

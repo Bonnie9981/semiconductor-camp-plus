@@ -45,8 +45,7 @@ function makeStubContext(wafer) {
     new Proxy(
       {},
       {
-        get: (_t, prop) =>
-          typeof prop === 'string' && prop in values ? values[prop] : noop,
+        get: (_t, prop) => (typeof prop === 'string' && prop in values ? values[prop] : noop),
       },
     );
 
@@ -64,15 +63,40 @@ function makeCtx2D() {
   const state = {};
   const grad = { addColorStop() {} };
   const methods = {
-    save() {}, restore() {}, beginPath() {}, closePath() {},
-    moveTo() {}, lineTo() {}, arc() {}, arcTo() {}, rect() {}, roundRect() {},
-    ellipse() {}, bezierCurveTo() {}, quadraticCurveTo() {},
-    fill() {}, stroke() {}, clip() {},
-    fillRect() {}, strokeRect() {}, clearRect() {},
-    fillText() {}, strokeText() {},
-    translate() {}, rotate() {}, scale() {}, transform() {}, setTransform() {}, resetTransform() {},
-    drawImage() {}, putImageData() {}, setLineDash() {}, getLineDash: () => [],
-    createLinearGradient: () => grad, createRadialGradient: () => grad, createConicGradient: () => grad,
+    save() {},
+    restore() {},
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    arc() {},
+    arcTo() {},
+    rect() {},
+    roundRect() {},
+    ellipse() {},
+    bezierCurveTo() {},
+    quadraticCurveTo() {},
+    fill() {},
+    stroke() {},
+    clip() {},
+    fillRect() {},
+    strokeRect() {},
+    clearRect() {},
+    fillText() {},
+    strokeText() {},
+    translate() {},
+    rotate() {},
+    scale() {},
+    transform() {},
+    setTransform() {},
+    resetTransform() {},
+    drawImage() {},
+    putImageData() {},
+    setLineDash() {},
+    getLineDash: () => [],
+    createLinearGradient: () => grad,
+    createRadialGradient: () => grad,
+    createConicGradient: () => grad,
     createPattern: () => null,
     measureText: () => ({ width: 0 }),
     getImageData: (_x, _y, w, h) => ({
@@ -85,7 +109,13 @@ function makeCtx2D() {
   };
   return new Proxy(methods, {
     get: (t, p) =>
-      p in t ? t[p] : p === 'canvas' ? { width: 1280, height: 720 } : p in state ? state[p] : () => undefined,
+      p in t
+        ? t[p]
+        : p === 'canvas'
+          ? { width: 1280, height: 720 }
+          : p in state
+            ? state[p]
+            : () => undefined,
     set: (_t, p, v) => ((state[p] = v), true),
   });
 }
@@ -107,9 +137,15 @@ const EMPTY_HAND = {
 function makeFrameStubs(wafer) {
   const ctx2d = makeCtx2D();
   const geometry = {
-    deskTop: 520, deskHeight: 190, deskBottom: 710,
-    waferCX: 640, waferCY: 430, waferR: 120, groundY: 590,
-    width: 1280, height: 720,
+    deskTop: 520,
+    deskHeight: 190,
+    deskBottom: 710,
+    waferCX: 640,
+    waferCY: 430,
+    waferR: 120,
+    groundY: 590,
+    width: 1280,
+    height: 720,
   };
   const deskValues = {
     coverage: () => 0,
@@ -125,7 +161,10 @@ function makeFrameStubs(wafer) {
     sceneOverlay: () => ({ top: 40, bottom: 700, left: 0, right: 1280, panelRight: 0 }),
   };
   const trap = (values) =>
-    new Proxy({}, { get: (_t, p) => (typeof p === 'string' && p in values ? values[p] : () => undefined) });
+    new Proxy(
+      {},
+      { get: (_t, p) => (typeof p === 'string' && p in values ? values[p] : () => undefined) },
+    );
 
   const stages = new StageManager();
   const stageCtx = { ui: trap(uiValues), desk: trap(deskValues), stages, wafer };
@@ -240,7 +279,11 @@ function makeFrameStubs(wafer) {
       errs.push(`onFrame 丟出例外：${e.message}`);
     }
 
-    report.add(`${name}：onEnter + 8 幀 onFrame 空跑`, errs, `子步驟停在 ${stage.subIndex}/${stage.subCount}`);
+    report.add(
+      `${name}：onEnter + 8 幀 onFrame 空跑`,
+      errs,
+      `子步驟停在 ${stage.subIndex}/${stage.subCount}`,
+    );
   }
 }
 

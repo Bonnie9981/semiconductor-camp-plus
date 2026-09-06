@@ -490,13 +490,7 @@ export class VirtualDesk {
     ctx.beginPath();
     ctx.arc(waferCX, waferCY, waferR, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(
-      this.pattern,
-      waferCX - waferR,
-      waferCY - waferR,
-      waferR * 2,
-      waferR * 2,
-    );
+    ctx.drawImage(this.pattern, waferCX - waferR, waferCY - waferR, waferR * 2, waferR * 2);
     ctx.restore();
 
     // 邊緣

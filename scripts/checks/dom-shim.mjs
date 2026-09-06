@@ -40,7 +40,9 @@ function fakeCanvas() {
         getImageData(_x, _y, w, h) {
           if (!canvas._data) throw new Error('dom-shim: getImageData 前沒有 drawImage');
           if (canvas._data.w !== w || canvas._data.h !== h) {
-            throw new Error(`dom-shim: getImageData 尺寸不符（畫了 ${canvas._data.w}×${canvas._data.h}，讀 ${w}×${h}）`);
+            throw new Error(
+              `dom-shim: getImageData 尺寸不符（畫了 ${canvas._data.w}×${canvas._data.h}，讀 ${w}×${h}）`,
+            );
           }
           return { data: canvas._data.data, width: w, height: h };
         },

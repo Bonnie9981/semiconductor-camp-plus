@@ -82,7 +82,11 @@ export class Stage5Etch extends DipStageBase {
   readonly instructions: InstructionStep[] = [
     { glyph: '🤏', title: '把晶圓放進機台', desc: '捏起晶圓拖到腔體中央的虛線圈上放開。' },
     { glyph: '🚪', title: '關門、按大按鈕', desc: '拖門把關閉腔門，抽完真空後按下綠色圓鈕。' },
-    { glyph: '⚖️', title: '選乾式或濕式', desc: '拖進電漿腔＝乾式；拖進藥液槽＝濕式。結果不一樣。' },
+    {
+      glyph: '⚖️',
+      title: '選乾式或濕式',
+      desc: '拖進電漿腔＝乾式；拖進藥液槽＝濕式。結果不一樣。',
+    },
     { glyph: '🔍', title: '比較側壁形狀', desc: '乾式側壁筆直；濕式會往光阻底下橫向咬出凹陷。' },
   ];
 
@@ -435,18 +439,25 @@ export class Stage5Etch extends DipStageBase {
           : '🤏 捏合夾起晶圓，放進腔體',
         this.grab === 'wafer',
       );
-      ui.setHandState(this.grab === 'wafer' ? '🤏' : '✋', this.grab === 'wafer' ? '夾著晶圓' : '（空手）', 'LOADING', this.grab === 'wafer');
+      ui.setHandState(
+        this.grab === 'wafer' ? '🤏' : '✋',
+        this.grab === 'wafer' ? '夾著晶圓' : '（空手）',
+        'LOADING',
+        this.grab === 'wafer',
+      );
     } else if (this.phase.endsWith('seal')) {
       ui.setArHint('🚪 捏住腔門把手往左拖到底', this.grab === 'door');
-      ui.setHandState('🚪', '關閉腔門', `DOOR ${Math.round((1 - this.door) * 100)}%`, this.grab === 'door');
+      ui.setHandState(
+        '🚪',
+        '關閉腔門',
+        `DOOR ${Math.round((1 - this.door) * 100)}%`,
+        this.grab === 'door',
+      );
     } else if (this.phase.endsWith('pump')) {
       ui.setArHint(`🌀 抽真空中… ${Math.round(this.vacuum * 100)}%`, true);
       ui.setHandState('🌀', '抽真空中', `VACUUM ${Math.round(this.vacuum * 100)}%`, true);
     } else if (this.phase.endsWith('ready')) {
-      ui.setArHint(
-        dry ? '🟢 按下大按鈕開始鉛直離子轟擊' : '🟢 按下大按鈕點燃 O₂ 電漿',
-        true,
-      );
+      ui.setArHint(dry ? '🟢 按下大按鈕開始鉛直離子轟擊' : '🟢 按下大按鈕點燃 O₂ 電漿', true);
       ui.setHandState('🟢', '待機中', 'READY', true);
     } else {
       ui.setArHint(
@@ -455,7 +466,12 @@ export class Stage5Etch extends DipStageBase {
           : `🟣 O₂ 電漿掃除光阻殘渣 — ${Math.round(this.progress * 100)}%`,
         true,
       );
-      ui.setHandState(dry ? '⬇️' : '🟣', dry ? '乾式蝕刻中' : '電漿清潔中', `${Math.round(this.progress * 100)}%`, true);
+      ui.setHandState(
+        dry ? '⬇️' : '🟣',
+        dry ? '乾式蝕刻中' : '電漿清潔中',
+        `${Math.round(this.progress * 100)}%`,
+        true,
+      );
     }
     void hand;
   }
@@ -480,10 +496,17 @@ export class Stage5Etch extends DipStageBase {
     });
     const top = groundY - 30 - chH;
 
-    const stations: { id: 'dry' | 'wet'; x: number; title: string; sub: string; color: string }[] = [
-      { id: 'dry', x: scene.left, title: '乾式蝕刻', sub: '電漿腔 · 鉛直蝕刻', color: '#8ae0ff' },
-      { id: 'wet', x: scene.left + cw + gap, title: '濕式蝕刻', sub: '藥液槽 · 側向蝕刻', color: '#ffd68a' },
-    ];
+    const stations: { id: 'dry' | 'wet'; x: number; title: string; sub: string; color: string }[] =
+      [
+        { id: 'dry', x: scene.left, title: '乾式蝕刻', sub: '電漿腔 · 鉛直蝕刻', color: '#8ae0ff' },
+        {
+          id: 'wet',
+          x: scene.left + cw + gap,
+          title: '濕式蝕刻',
+          sub: '藥液槽 · 側向蝕刻',
+          color: '#ffd68a',
+        },
+      ];
 
     const waferR = Math.min(cw * 0.15, 44);
     const rest: Point = { x: scene.left + scene.w / 2, y: groundY + waferR * WAFER_SQUASH + 26 };
@@ -627,15 +650,21 @@ export class Stage5Etch extends DipStageBase {
       ctx.beginPath();
       ctx.moveTo(gapL, y + resistH);
       ctx.bezierCurveTo(
-        gapL - w * 0.1, y + resistH + h * 0.2,
-        gapL - w * 0.1, y + h,
-        gapL + w * 0.04, y + h,
+        gapL - w * 0.1,
+        y + resistH + h * 0.2,
+        gapL - w * 0.1,
+        y + h,
+        gapL + w * 0.04,
+        y + h,
       );
       ctx.lineTo(gapR - w * 0.04, y + h);
       ctx.bezierCurveTo(
-        gapR + w * 0.1, y + h,
-        gapR + w * 0.1, y + resistH + h * 0.2,
-        gapR, y + resistH,
+        gapR + w * 0.1,
+        y + h,
+        gapR + w * 0.1,
+        y + resistH + h * 0.2,
+        gapR,
+        y + resistH,
       );
       ctx.closePath();
       ctx.fill();
@@ -652,8 +681,6 @@ export class Stage5Etch extends DipStageBase {
   }
 
   // ─────────────────── 濕式蝕刻 / 去光阻：拖進正確的槽 ──────────────────────
-
-
 
   private frameWet(frame: StageFrame, groundY: number): void {
     const wafer = this.ctx.wafer;
@@ -882,7 +909,6 @@ function roundRect(
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
-
 
 /**
  * 濕式蝕刻。濕蝕刻沒有唯一解 —— 蝕刻液要挑「吃得動目標材料」的那一種，

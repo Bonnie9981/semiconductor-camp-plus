@@ -18,9 +18,5 @@ for (const name of modules) {
   failed += mod.default();
 }
 
-console.log(
-  failed === 0
-    ? '\n全部通過 ✓'
-    : `\n${failed} 項檢查失敗 ✗`,
-);
+console.log(failed === 0 ? '\n全部通過 ✓' : `\n${failed} 項檢查失敗 ✗`);
 process.exit(failed === 0 ? 0 : 1);

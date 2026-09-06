@@ -319,14 +319,7 @@ export class SpinDryer {
     ctx.lineTo(p.x + 4, p.y - r + 3);
     ctx.stroke();
 
-    const grad = ctx.createRadialGradient(
-      p.x - r * 0.3,
-      p.y - r * 0.35,
-      r * 0.1,
-      p.x,
-      p.y,
-      r,
-    );
+    const grad = ctx.createRadialGradient(p.x - r * 0.3, p.y - r * 0.35, r * 0.1, p.x, p.y, r);
     grad.addColorStop(0, '#f0f5f7');
     grad.addColorStop(0.6, state.waferColor);
     grad.addColorStop(1, '#8d9ea6');
@@ -404,7 +397,7 @@ export class SpinDryer {
     ctx.strokeStyle = 'rgba(255, 176, 102, 0.35)';
     ctx.lineWidth = 2;
     for (let i = 0; i < 4; i++) {
-      const t = ((time * 0.9 + i * 0.25) % 1);
+      const t = (time * 0.9 + i * 0.25) % 1;
       const rr = drum.r * (1 - t * 0.85);
       ctx.globalAlpha = 0.4 * (1 - t);
       ctx.beginPath();

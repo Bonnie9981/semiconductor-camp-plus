@@ -177,7 +177,7 @@ export class CrossSection {
       ctx.globalAlpha = c.particles;
       ctx.fillStyle = '#8a7c5e';
       for (let i = 0; i < 14; i++) {
-        const t = (i * 37 + 11) % 100 / 100;
+        const t = ((i * 37 + 11) % 100) / 100;
         const r = 1.4 + ((i * 13) % 5) * 0.5;
         const bob = Math.sin(time * 2 + i) * 0.6;
         ctx.beginPath();
@@ -195,7 +195,7 @@ export class CrossSection {
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       for (let i = 0; i < 9; i++) {
-        const x = x0 + ((i * 41 + 23) % 100) / 100 * innerW;
+        const x = x0 + (((i * 41 + 23) % 100) / 100) * innerW;
         const y = surfaceY - 6 - Math.sin(time * 1.6 + i * 0.9) * 2;
         ctx.moveTo(x - 2.2, y);
         ctx.lineTo(x + 2.2, y);
@@ -212,7 +212,7 @@ export class CrossSection {
       ctx.globalAlpha = c.water * 0.85;
       ctx.fillStyle = '#7fc8e8';
       for (let i = 0; i < 7; i++) {
-        const x = x0 + ((i * 29 + 9) % 100) / 100 * innerW;
+        const x = x0 + (((i * 29 + 9) % 100) / 100) * innerW;
         const r = 3 + ((i * 7) % 3);
         ctx.beginPath();
         ctx.arc(x, surfaceY, r, Math.PI, Math.PI * 2);

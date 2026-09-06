@@ -1,8 +1,4 @@
-import type {
-  Hands as HandsSolution,
-  HandsConfig,
-  Results,
-} from '@mediapipe/hands';
+import type { Hands as HandsSolution, HandsConfig, Results } from '@mediapipe/hands';
 import type { Camera as CameraSolution, CameraOptions } from '@mediapipe/camera_utils';
 import type { Landmark } from './types';
 

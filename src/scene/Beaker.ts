@@ -229,7 +229,15 @@ export class Beaker {
       ctx.globalAlpha = 0.22 + 0.14 * Math.sin(time * 3);
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(p.x - r * 0.25, p.y - r * WAFER_SQUASH * 0.35, r * 0.4, r * 0.12, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        p.x - r * 0.25,
+        p.y - r * WAFER_SQUASH * 0.35,
+        r * 0.4,
+        r * 0.12,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
 
@@ -326,14 +334,7 @@ export function drawFlatWafer(
   ctx.fill();
 
   // 盤面：左上受光的徑向漸層，看起來像鏡面矽晶
-  const grad = ctx.createRadialGradient(
-    p.x - r * 0.35,
-    p.y - ry * 0.5,
-    r * 0.05,
-    p.x,
-    p.y,
-    r,
-  );
+  const grad = ctx.createRadialGradient(p.x - r * 0.35, p.y - ry * 0.5, r * 0.05, p.x, p.y, r);
   grad.addColorStop(0, shade(color, 1.25));
   grad.addColorStop(0.55, color);
   grad.addColorStop(1, shade(color, 0.8));

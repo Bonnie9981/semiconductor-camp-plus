@@ -7,7 +7,7 @@
  * 這支曾經抓到兩個真實 bug：CVD 的兩顆氣閥旋鈕疊到大按鈕、
  * 腔門下方的狀態文字溢出機台外框。
  */
-import { Report, SCREENS, SRC, TOO_SMALL_SCREENS, clamp, panelMetrics, viewport } from './lib.mjs';
+import { Report, SCREENS, SRC, TOO_SMALL_SCREENS, panelMetrics, viewport } from './lib.mjs';
 
 const { chamberLayout } = await import(`${SRC}scene/Chamber.ts`);
 const { alignerLayout, ALIGN_TOLERANCE } = await import(`${SRC}scene/Aligner.ts`);
@@ -28,7 +28,15 @@ for (const screen of SCREENS) {
     真正的重疊由 scripts/checks/browser.mjs 開 Chrome 驗。
   */
   const bandTop =
-    (screen.h <= 540 ? 56 : screen.h <= 660 ? 68 : screen.h <= 740 ? 76 : screen.h <= 860 ? 86 : 94) +
+    (screen.h <= 540
+      ? 56
+      : screen.h <= 660
+        ? 68
+        : screen.h <= 740
+          ? 76
+          : screen.h <= 860
+            ? 86
+            : 94) +
     (screen.h <= 660 ? 26 : screen.h <= 740 ? 30 : 40) +
     8;
 
@@ -61,7 +69,8 @@ for (const screen of SCREENS) {
     if (L.beaker.height < 90) errs.push(`燒杯太矮 ${L.beaker.height.toFixed(0)}px`);
     // 六個瓶子橫向排得下
     const need = L.shelf.w * 6;
-    if (need > scene.w) errs.push(`六個藥瓶排不下（需要 ${need.toFixed(0)}、只有 ${scene.w.toFixed(0)}）`);
+    if (need > scene.w)
+      errs.push(`六個藥瓶排不下（需要 ${need.toFixed(0)}、只有 ${scene.w.toFixed(0)}）`);
     // 晶圓架不可以被燒杯壓到
     if (L.waferStand.cx + L.waferStand.r > L.beaker.cx - L.beaker.width / 2 + 2) {
       errs.push('待清洗晶圓與燒杯重疊');
@@ -85,7 +94,8 @@ for (const screen of SCREENS) {
       errs.push(`待命晶圓壓到槽名 ${(T.labelBottom - waferTop).toFixed(0)}px`);
     }
     const waferBottom = T.rest.y + T.waferR * 0.3 + 20;
-    if (waferBottom > height) errs.push(`待命晶圓超出畫面下緣 ${(waferBottom - height).toFixed(0)}px`);
+    if (waferBottom > height)
+      errs.push(`待命晶圓超出畫面下緣 ${(waferBottom - height).toFixed(0)}px`);
     if (T.geo.baseY - T.geo.height < bandTop - 1) errs.push('藥液槽頂端壓到上方提示帶');
     report.add(
       `${screen.name}  藥液槽`,

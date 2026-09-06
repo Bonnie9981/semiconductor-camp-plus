@@ -103,7 +103,9 @@ for (const [label, invert] of [
   }
   if (stats.volume <= 0) errs.push(`帶號體積 ${stats.volume.toFixed(0)} mm³ ≤ 0 → 整體法線朝內`);
   if (stats.volume <= baseVolume) {
-    errs.push(`體積 ${stats.volume.toFixed(0)} mm³ 小於基材 ${baseVolume.toFixed(0)} mm³ → 幾何有誤`);
+    errs.push(
+      `體積 ${stats.volume.toFixed(0)} mm³ 小於基材 ${baseVolume.toFixed(0)} mm³ → 幾何有誤`,
+    );
   }
 
   report.add(label, errs, `${stats.triangles} 面、體積 ${stats.volume.toFixed(0)} mm³`);

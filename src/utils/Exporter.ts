@@ -132,9 +132,15 @@ export class Exporter {
     // ── 3. 產生三角形（每 9 個數字一個三角形） ──
     const tris: number[] = [];
     const push = (
-      ax: number, ay: number, az: number,
-      bx: number, by: number, bz: number,
-      cx: number, cy: number, cz: number,
+      ax: number,
+      ay: number,
+      az: number,
+      bx: number,
+      by: number,
+      bz: number,
+      cx: number,
+      cy: number,
+      cz: number,
     ): void => {
       tris.push(ax, ay, az, bx, by, bz, cx, cy, cz);
     };
@@ -198,13 +204,23 @@ export class Exporter {
     let offset = 84;
     for (let t = 0; t < count; t++) {
       const o = t * 9;
-      const ax = tris[o], ay = tris[o + 1], az = tris[o + 2];
-      const bx = tris[o + 3], by = tris[o + 4], bz = tris[o + 5];
-      const cx = tris[o + 6], cy = tris[o + 7], cz = tris[o + 8];
+      const ax = tris[o],
+        ay = tris[o + 1],
+        az = tris[o + 2];
+      const bx = tris[o + 3],
+        by = tris[o + 4],
+        bz = tris[o + 5];
+      const cx = tris[o + 6],
+        cy = tris[o + 7],
+        cz = tris[o + 8];
 
       // 法線 = (B-A) × (C-A)，正規化
-      const ux = bx - ax, uy = by - ay, uz = bz - az;
-      const vx = cx - ax, vy = cy - ay, vz = cz - az;
+      const ux = bx - ax,
+        uy = by - ay,
+        uz = bz - az;
+      const vx = cx - ax,
+        vy = cy - ay,
+        vz = cz - az;
       let nx = uy * vz - uz * vy;
       let ny = uz * vx - ux * vz;
       let nz = ux * vy - uy * vx;

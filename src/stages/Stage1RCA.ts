@@ -145,7 +145,8 @@ export class Stage1RCA extends BaseStage {
   readonly shortTitle = 'RCA 清洗';
   readonly description =
     '晶圓進廠時表面有微粒、原生氧化層與金屬離子。親手配出三種清洗液把它們洗掉，最後甩乾。';
-  readonly hint = '先加去離子水！沒有水墊底就把兩種不同的藥液混在一起會突沸。配錯了要整杯倒進廢液桶重來。';
+  readonly hint =
+    '先加去離子水！沒有水墊底就把兩種不同的藥液混在一起會突沸。配錯了要整杯倒進廢液桶重來。';
   readonly primaryLabel = '完成清洗';
   readonly usesCrossSection = true;
 
@@ -158,8 +159,16 @@ export class Stage1RCA extends BaseStage {
 
   readonly instructions: InstructionStep[] = [
     { glyph: '🤏', title: '捏起藥瓶', desc: '瓶子下方亮起光暈就代表抓得到，捏合即可拿起來。' },
-    { glyph: '💧', title: '先倒去離子水', desc: '沒有水墊底就讓兩種不同的藥液相遇會突沸 —— 整杯報廢重配。' },
-    { glyph: '🫗', title: '倒進調配杯', desc: '移到杯口上方瓶身會自動傾倒，每停留 0.8 秒進 1 份。' },
+    {
+      glyph: '💧',
+      title: '先倒去離子水',
+      desc: '沒有水墊底就讓兩種不同的藥液相遇會突沸 —— 整杯報廢重配。',
+    },
+    {
+      glyph: '🫗',
+      title: '倒進調配杯',
+      desc: '移到杯口上方瓶身會自動傾倒，每停留 0.8 秒進 1 份。',
+    },
     { glyph: '💧', title: '送去浸泡', desc: '配方正確才會通過；配錯會鎖住，要整杯倒掉重來。' },
     { glyph: '🌀', title: '夾進乾燥機', desc: '最後一步捏合抓起晶圓，放進滾筒後按 START 甩乾。' },
   ];
@@ -442,7 +451,8 @@ export class Stage1RCA extends BaseStage {
         waferR,
         waferColor: wafer.surfaceColor(),
         bubbling: this.bubbling,
-        label: totalParts === 0 ? '調配杯 · 空' : this.phase === 'dip' ? recipe.beakerLabel : '調配杯',
+        label:
+          totalParts === 0 ? '調配杯 · 空' : this.phase === 'dip' ? recipe.beakerLabel : '調配杯',
         tilt,
         held: this.heldBeaker,
         hot: !this.heldBeaker && this.canGrabBeaker(hand, benchGeo),
@@ -620,7 +630,11 @@ export class Stage1RCA extends BaseStage {
 
     // 限制在場景範圍內：拖出去會跑到左側面板底下或畫面外，看起來像瓶子消失了
     this.bottlePos = {
-      x: clamp(hand.pinchPoint.x, shelf.scene.left + shelf.w * 0.5, shelf.scene.right - shelf.w * 0.5),
+      x: clamp(
+        hand.pinchPoint.x,
+        shelf.scene.left + shelf.w * 0.5,
+        shelf.scene.right - shelf.w * 0.5,
+      ),
       y: hand.pinchPoint.y,
     };
 
@@ -662,7 +676,12 @@ export class Stage1RCA extends BaseStage {
    * 回傳 false 代表這一倒違反了安全順序（杯子裡還沒有水），已觸發突沸。
    */
   private addPart(id: string): boolean {
-    if (isUnsafePour(id, this.mix.map((r) => r.id))) {
+    if (
+      isUnsafePour(
+        id,
+        this.mix.map((r) => r.id),
+      )
+    ) {
       this.triggerBoom(id);
       return false;
     }
@@ -748,21 +767,14 @@ export class Stage1RCA extends BaseStage {
       if (held && this.pouring) {
         const mouth = bottleMouth(visual.pos, visual.tilt, bottleH);
         const total = this.mix.reduce((sum, r) => sum + r.parts, 0);
-        const surface = this.beaker.liquidSurfaceY(
-          geo,
-          clamp((total / MAX_PARTS) * 0.88, 0, 0.88),
-        );
+        const surface = this.beaker.liquidSurfaceY(geo, clamp((total / MAX_PARTS) * 0.88, 0, 0.88));
         drawPourStream(ctx, mouth, surface, s.color, time);
       }
     });
   }
 
   /** 杯口上方的倒液進度環：讓玩家知道「再 0.3 秒就會進 1 份」。 */
-  private drawPourGauge(
-    ctx: CanvasRenderingContext2D,
-    geo: BeakerGeometry,
-    total: number,
-  ): void {
+  private drawPourGauge(ctx: CanvasRenderingContext2D, geo: BeakerGeometry, total: number): void {
     const cx = geo.cx;
     const cy = geo.top - 26;
     const r = 15;
