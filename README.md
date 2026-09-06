@@ -632,7 +632,7 @@ npm run verify         # lint + format:check + typecheck + check + check:browser
 | 檢查 | 測什麼 | 曾經抓到 |
 | --- | --- | --- |
 | `wafer-state.mjs` | `isUnsafePour()` 的安全規則、`formatElapsed()`、`WaferState.develop()` / `etch()`，以及五關全部強制完成後的最終狀態（8 種分支組合，重寫版） | 同一瓶藥液多倒一份被誤判成突沸 |
-| `stage-machine.mjs` | 真正的 5 個 `Stage` 類別：`StageManager` 生命週期（start → forceComplete → advance）、預設路線的 `devComplete()` 鏈與 `buildResult()`、locked 關卡的跳關規則，以及每一關 `onEnter` + 8 幀 `onFrame` 空跑不丟例外／不自己過關 | — |
+| `stage-machine.mjs` | 真正的 5 個 `Stage` 類別：`StageManager` 生命週期、預設路線的 `devComplete()` 鏈與 `buildResult()`、locked 關卡跳關規則、每關 `onEnter` + 8 幀 `onFrame` 空跑、以及透過真實 choice 面板驅動的 method / tone / etch 三維分支 | — |
 | `stl.mjs` | `Exporter.buildSTL()` 的封閉性、**定向一致性**、帶號體積 | 外緣側牆繞序反向 |
 | `layout.mjs` | `chamberLayout()` / `alignerLayout()` 在五種筆電尺寸下不重疊、元件不會太小 | 氣閥疊到大按鈕、腔門文字溢出機台 |
 | `pdf.mjs` | `canvasToPdf()` 的 xref 位移、JPEG 完整性、`/Length` | — |

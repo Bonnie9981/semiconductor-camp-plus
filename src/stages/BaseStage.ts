@@ -139,6 +139,15 @@ export abstract class BaseStage {
     this.skippedSubs.clear();
   }
 
+  /**
+   * 測試專用：直接跳到某個子步驟（會觸發 onSubEnter，行為與遊戲一致）。
+   * `scripts/checks/stage-machine.mjs` 用它到達「選擇」子步驟，再透過真正的
+   * choice 面板 `onToggle` 驅動 tone / etch 分支。正式流程不會呼叫這個。
+   */
+  goToSubForTest(index: number): void {
+    this.goToSub(index);
+  }
+
   // ─────────────────────────────── 生命週期 ───────────────────────────────
 
   /** 進入關卡時呼叫一次。覆寫時記得 `super.onEnter(ctx)`。 */

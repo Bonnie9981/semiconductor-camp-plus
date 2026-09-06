@@ -8,11 +8,12 @@
  *      buildResult()。這條路線測的是會出貨的程式，不是副本。
  *   ② onFrame 冒煙 —— 用 makeFrameStubs() + permissive 的 2D context 替身，
  *      每一關 onEnter + 8 幀 onFrame，斷言不丟例外、沒輸入時不自己過關。
- *   ③ 分支 —— 透過關卡「真的那份」choice 面板的 onToggle 回呼選 CVD，
- *      驗 devComplete() 補上氧化層。
+ *   ③ 分支 —— 透過關卡「真的那份」choice 面板的 onToggle 回呼驅動三個分支維度：
+ *      method（Stage2 PVD/CVD）、tone（Stage3 正/負光阻）、etch（Stage5 乾/濕）。
+ *      tone / etch 的 choice 面板在手勢子步驟之後才出現，用 goToSubForTest() 跳過去。
  *
- * 還沒涵蓋：tone / etch 的分支（它們的 choice 面板在手勢子步驟之後才出現，
- * 要餵有座標的 HandFrame 序列才到得了），仍由 wafer-state.mjs 的重寫矩陣把關。
+ * wafer-state.mjs 還留一份重寫的 8 組合矩陣，驗整條鏈的最終晶圓狀態；分支的
+ * devComplete() 本身現在是由這裡跑真程式把關的。
  */
 import { Report, SRC } from './lib.mjs';
 
@@ -322,6 +323,85 @@ function makeFrameStubs(wafer) {
     errs,
     wafer.layers.map((l) => l.kind).join('+'),
   );
+}
+
+// ── 分支路線：Stage3 正／負光阻、Stage5 乾／濕蝕刻，透過真實 choice 面板驅動 ──
+// goToSubForTest() 跳到「選擇」子步驟（那時 buildPanel() 才給 choice 面板），
+// 再呼叫面板的 onToggle。這樣 tone / etch 兩維也是跑會出貨的程式，不是重寫的副本。
+{
+  for (const tone of ['positive', 'negative']) {
+    const wafer = new WaferState();
+    wafer.addLayer({
+      kind: 'resist',
+      label: '光阻層',
+      thickness: 0.45,
+      color: '#2f7d5b',
+      patterned: false,
+    });
+    const { stageCtx, stages, frame, getLastPanel } = makeFrameStubs(wafer);
+    const stage = new Stage3Litho();
+    stages.register(stage).attachContext(stageCtx);
+
+    const errs = [];
+    try {
+      stage.onEnter(stageCtx);
+      stage.goToSubForTest(2); // 'tone'
+      stage.onFrame(frame);
+      const spec = getLastPanel();
+      if (spec?.kind !== 'choice') errs.push(`tone 子步驟的面板不是 choice（${spec?.kind}）`);
+      else {
+        spec.onToggle(tone);
+        stage.devComplete();
+        if (wafer.resistTone !== tone)
+          errs.push(`選了 ${tone}，devComplete 後 resistTone 卻是 ${wafer.resistTone}`);
+      }
+    } catch (e) {
+      errs.push(`丟出例外：${e.message}`);
+    }
+    report.add(`微影：從真實面板選「${tone}」光阻`, errs, `resistTone=${wafer.resistTone}`);
+  }
+
+  for (const [choice, wantUndercut] of [
+    ['dry', 0],
+    ['wet', 1],
+  ]) {
+    const wafer = new WaferState();
+    for (const kind of ['metal', 'resist']) {
+      wafer.addLayer({
+        kind,
+        label: kind,
+        thickness: 0.45,
+        color: '#999',
+        patterned: kind === 'resist',
+      });
+    }
+    for (let i = 0; i < wafer.exposedMask.length; i++) {
+      wafer.exposedMask[i] = Math.floor(i / 3) % 2 === 0 ? 1 : 0;
+    }
+    wafer.develop();
+    const { stageCtx, stages, frame, getLastPanel } = makeFrameStubs(wafer);
+    const stage = new Stage5Etch();
+    stages.register(stage).attachContext(stageCtx);
+
+    const errs = [];
+    try {
+      stage.onEnter(stageCtx);
+      stage.goToSubForTest(1); // 'etch'
+      stage.onFrame(frame);
+      const spec = getLastPanel();
+      if (spec?.kind !== 'choice') errs.push(`etch 子步驟的面板不是 choice（${spec?.kind}）`);
+      else {
+        spec.onToggle(choice);
+        stage.devComplete();
+        if (wafer.undercut !== wantUndercut)
+          errs.push(`選了 ${choice}，undercut 應為 ${wantUndercut}，得到 ${wafer.undercut}`);
+        if (wafer.hasLayer('resist')) errs.push('devComplete 後光阻沒被剝掉');
+      }
+    } catch (e) {
+      errs.push(`丟出例外：${e.message}`);
+    }
+    report.add(`蝕刻：從真實面板選「${choice}」`, errs, `undercut=${wafer.undercut}`);
+  }
 }
 
 export default () => report.print();

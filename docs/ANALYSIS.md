@@ -146,11 +146,22 @@ GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deplo
 | **提示音** | `src/core/sound.ts`（新）、`main.ts`、`index.html` | Web Audio 即時合成、無音檔。抓取 / 放開 / 過關 / 完成 / 失敗。設定有開關。 |
 | **首次引導** | `index.html`、`UIManager.showIntroOnce()`、`browser.mjs` | 第一次進來自動彈「怎麼玩」（改寫涵蓋兩種玩法）。`browser.mjs` 加 initScript 跳過它，版面檢查才量得到面板。 |
 
-### 4.7 驗證
+### 4.8 第五批：backlog 清掃（「所有主軸自動下去」）
+
+| 項目 | 檔案 | 說明 |
+| --- | --- | --- |
+| **純滑鼠模式** | `main.ts`、`index.html` | 「設定 → 使用攝影機手勢」關掉＝`camera.stop()`，完全不跑 MediaPipe。存 localStorage。 |
+| **精簡模式降粒子上限** | `scene/Particles.ts` | `setParticleCap()`；lite 140→60。 |
+| **製程小百科** | `index.html`、`UIManager` | Header 📖 開一頁 modal，五道製程的「為什麼」。 |
+| **結業評等** | `Certificate.ts`、`main.ts` | 證書多「評等」列（S/A/B/C）：失誤次數 + 圖案覆蓋率 + 用時。 |
+| **tone / etch 分支測試跑真程式** | `stage-machine.mjs`、`BaseStage.goToSubForTest()` | 透過真實 choice 面板 `onToggle` 驅動 Stage3 正/負光阻、Stage5 乾/濕蝕刻；`wafer-state.mjs` 的重寫矩陣只剩「驗整條鏈最終狀態」的角色。 |
+| 修 Header 寫死的「關卡 1 / 6」→「1 / 5」 | `index.html` | |
+
+### 4.9 驗證
 
 ```
-npm run verify  ✓  lint + format:check + typecheck + check + check:browser
-npm run build   ✓  js 188 kB / gzip 62 kB
+npm run verify  ✓  lint + format:check + typecheck + check（stage-machine 17 項）+ check:browser
+npm run build   ✓  js 189 kB / gzip 62 kB
 ```
 
 瀏覽器實測（Browser pane）：首次自動彈「怎麼玩」+ localStorage 記住不再彈；
@@ -170,24 +181,23 @@ npm run build   ✓  js 188 kB / gzip 62 kB
 
 ### ✅ 已完成
 
-原始 P1 / P2 缺口除了「有輸入的 onFrame 測試」外都處理掉了；工程結構補齊
-（CI、Pages、ESLint/Prettier、貢獻者文件、CHANGELOG、v0.2.0）；效能與體驗打磨
-（效能模式、滑鼠／觸控拖曳、提示音、首次引導）也做了。細節見 §4.1–4.7。
+原始 P1 / P2 缺口、工程結構（CI、Pages、ESLint/Prettier、貢獻者文件、CHANGELOG、
+v0.2.0）、效能（效能模式、純滑鼠模式、降粒子）、體驗（滑鼠／觸控拖曳、提示音、
+首次引導、製程小百科、結業評等）、關卡測試（生命週期 + onFrame 冒煙 + 三維分支）
+都做完了。細節見 §4.1–4.9。
 
-### 還沒做：把關卡測試補滿（接續 P1 #3、#4）
+### 只剩兩項，都非發表阻礙
 
-1. **`onFrame()` 有輸入的互動流程**：冒煙測試只驗「空跑不壞」。下一步是餵
-   「有座標的 `HandFrame` 序列」（捏著藥瓶移到某位置、放開），並讓
-   `makeFrameStubs()` 的假 `desk.geometry` 與各關的 hit-box 對得起來，
-   才能斷言「拖對了 → 子步驟推進」。做到這一步，tone / etch 的分支測試也能跟著補齊。
+1. **「拖對了 → 子步驟推進」的座標互動測試**：目前 `stage-machine.mjs` 靠 choice
+   面板驅動分支、靠 devComplete 驗結果，但「捏著藥瓶拖進正確的槽」這種靠像素命中的
+   流程還是只有手動玩會測到。要補就得餵「有座標的 `HandFrame` 序列」，並讓
+   `makeFrameStubs()` 的假 `desk.geometry` 與各關 hit-box 對得起來 —— 這一塊天生偏
+   brittle（版面微調就可能弄壞測試而 gameplay 沒事），投報比偏低。
 
-### 小型體驗與擴充點
-
-- **`ChoiceOption.preview`**（P2 #5）：加 `preview?: (ctx, w, h) => void`，
-  `UIManager` 的 choice 分支若有 preview 就建一個小 canvas 呼叫它。
-  之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。**目前刻意沒做** ——
-  要有意義就得同時重構第三、五關約 200 行的自繪卡片邏輯，那需要「有輸入的」
-  逐幀互動測試（見上）先到位，否則改壞了自動檢查抓不到。
+2. **`ChoiceOption.preview`**（原 P2 #5）：加 `preview?: (ctx, w, h) => void` 讓
+   choice 選項自畫縮圖。**建議不做** —— 第三關的正負光阻卡片有三列剖面示意圖
+   （曝光 / 顯影 / 蝕刻），是重要的教學內容，收斂成一個小縮圖是降級不是改善；
+   第五關的乾濕蝕刻卡片同理。這兩處的「自繪卡片」是刻意比 choice 面板豐富的。
 
 ### 不建議動
 
@@ -200,18 +210,19 @@ npm run build   ✓  js 188 kB / gzip 62 kB
 
 ## 6. 一頁摘要
 
-- **狀態**：已發表、線上 demo 上線、CI（verify + deploy）全綠。
-- **這次做完的**：
-  1. 子步驟「略過」狀態
-  2. CI（`verify`：lint + check + check-browser）+ GitHub Pages 自動部署（已上線）
-  3. ESLint + Prettier + `.editorconfig` + `.gitattributes`（LF）
-  4. `engines` / `.nvmrc` / MIT LICENSE / `index.html` 社群 meta + OG 圖
-  5. `stage-machine.mjs`：真關卡的生命週期 + `devComplete` 鏈 + `onFrame` 冒煙 + CVD 分支
-  6. `prefers-reduced-motion`（CSS + 突沸動畫靜態化）
-  7. 移除未使用的 `mix` 面板、移除 `chip_wars/`、修 `index.html` 步驟計數
-  8. CONTRIBUTING / issue・PR 範本 / CHANGELOG / README 截圖 / **v0.2.0**
-  9. **效能模式**（auto/high/lite，掉幀自動降級）、**滑鼠／觸控拖曳**、**提示音**、**首次引導**
+- **狀態**：已發表、線上 demo 上線、CI（verify + deploy）全綠、v0.2.0。
+- **做完的（15 個工作項、~30 個 commit）**：
+  - 工程：CI（lint + check + check-browser）+ GitHub Pages 自動部署、ESLint + Prettier
+    + `.editorconfig` + `.gitattributes`(LF)、`engines`/`.nvmrc`、MIT LICENSE、
+    社群 meta + OG 圖、CONTRIBUTING/issue・PR 範本/CHANGELOG/README 截圖
+  - 測試：`stage-machine.mjs`（真關卡生命週期 + `devComplete` 鏈 + `onFrame` 冒煙
+    + method/tone/etch 三維分支）
+  - 效能：效能模式（auto/high/lite + 掉幀自動降級）、純滑鼠模式、精簡模式降粒子
+  - 體驗：子步驟「略過」狀態、`prefers-reduced-motion`、滑鼠／觸控拖曳、提示音、
+    首次引導、製程小百科、結業評等
+  - 清理：移除 `mix` 面板、移除 `chip_wars/`、修寫死的步驟計數
 - **已驗證**：`npm run verify` + `npm run build` 全綠（本機 Node 24.20.0 + GitHub Actions）。
-- **要你在真機上試**：會卡的那台電腦切「效能優先」；手機按住拖藥瓶；提示音音量。
-- **留給之後**：`onFrame()` 有輸入的互動測試（連帶 tone/etch 分支）、`ChoiceOption.preview`
-  + 第三、五關卡片收斂。
+- **要你在真機上試**：會卡的那台電腦切「效能優先」（或「使用攝影機手勢」關掉）；
+  手機按住拖藥瓶；提示音音量；走完一輪看結業證書上的評等。
+- **留給之後（都非阻礙）**：座標命中的互動測試（偏 brittle）、`ChoiceOption.preview`
+  （建議不做，會犧牲第三、五關的教學剖面圖）。

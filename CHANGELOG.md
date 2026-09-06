@@ -17,7 +17,8 @@
   `format` / `format:check`；全庫行尾統一 LF。
 - **關卡狀態機自動測試**（`scripts/checks/stage-machine.mjs`）：import 真正的 5 個
   Stage 類別，測 `StageManager` 生命週期、預設路線的 `devComplete()` 鏈、
-  每關 `onFrame` 冒煙、以及透過真實 choice 面板驅動的 CVD 分支。
+  每關 `onFrame` 冒煙、以及透過真實 choice 面板驅動的 method / tone / etch 三維分支
+  （`BaseStage.goToSubForTest()` 跳到選擇子步驟）。
 - **子步驟「略過」狀態**：PVD 路線的「金屬鍍膜」畫成灰色虛線「–」，不再假裝已完成。
 - **`prefers-reduced-motion`**：CSS 關掉非必要動畫；突沸動畫（整片白光閃焰）
   在偏好開啟時改成靜態警示。
