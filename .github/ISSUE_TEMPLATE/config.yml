@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 接手開發指南
+    url: https://github.com/Bonnie9981/semiconductor-camp-plus/blob/main/docs/IMPLEMENTATION.md
+    about: 架構設計概念、每個模組的職責、怎麼新增關卡

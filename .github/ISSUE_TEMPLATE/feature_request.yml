@@ -1,0 +1,21 @@
+name: 功能建議 Feature request
+description: 想加新關卡、新互動、教學內容或其他改進
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你想要什麼
+      description: 想解決的問題，或想看到的效果
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: 為什麼值得做
+      description: 對玩家 / 教學的價值。若是製程知識，附一個來源會很有幫助
+  - type: textarea
+    id: notes
+    attributes:
+      label: 實作想法（選填）
+      description: 大概會動到哪些模組、有沒有現成的東西可以重用

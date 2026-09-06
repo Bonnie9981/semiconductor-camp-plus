@@ -1,0 +1,43 @@
+name: 回報問題 Bug report
+description: 遊戲行為不對、版面壞掉、手勢對不上等
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 發生什麼事
+      description: 你做了什麼、預期看到什麼、實際看到什麼
+      placeholder: |
+        1. 進到第三關「微影製程」
+        2. 捏合畫圖案
+        3. 光阻塗佈層把整片晶圓塗滿了
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 環境
+      description: 瀏覽器 + 版本、作業系統、視窗大小（或螢幕解析度 + 顯示縮放）
+      placeholder: Chrome 141 / Windows 11 / 1920×1080 @ 125%
+    validations:
+      required: true
+  - type: dropdown
+    id: camera
+    attributes:
+      label: 有沒有開攝影機
+      options:
+        - 有，用手勢玩
+        - 沒有，用滑鼠點面板
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 截圖 / 錄影
+      description: 版面或手勢對位的問題，截圖幾乎是必要的（直接貼上即可）
+  - type: textarea
+    id: console
+    attributes:
+      label: Console 錯誤
+      description: F12 → Console，把紅字貼上來
+      render: text
