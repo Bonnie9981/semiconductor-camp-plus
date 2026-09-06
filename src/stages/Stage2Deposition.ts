@@ -94,6 +94,11 @@ export class Stage2Deposition extends BaseStage {
   ];
 
   readonly instructions: InstructionStep[] = [
+    {
+      glyph: '💡',
+      title: '為什麼要做這關',
+      desc: '這一層決定晶片的導線與絕緣；PVD 直線沉積、快而純，CVD 靠反應成膜、覆蓋好。',
+    },
     { glyph: '🤏', title: '拖晶圓選製程', desc: '捏起晶圓放進 e-gun（PVD）或 PECVD（CVD）機台。' },
     { glyph: '🚪', title: '拖門把關腔門', desc: '捏住腔門把手往左拖到底，密閉後才會開始抽真空。' },
     { glyph: '🎛️', title: '操作機台控制', desc: 'PVD 上下拖拉桿調功率；CVD 左右轉兩顆氣閥旋鈕。' },

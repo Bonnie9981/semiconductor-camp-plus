@@ -43,6 +43,11 @@ export class Stage4Develop extends DipStageBase {
   ];
 
   readonly instructions: InstructionStep[] = [
+    {
+      glyph: '💡',
+      title: '為什麼要做這關',
+      desc: '曝光只改變了光阻的溶解性，圖案還看不見；顯影把該溶的洗掉，圖案第一次「顯」出來。',
+    },
     { glyph: '🧪', title: '選出標準顯影液', desc: 'TMAH 不含金屬離子，是半導體製程的標準顯影液。' },
     {
       glyph: '🤏',

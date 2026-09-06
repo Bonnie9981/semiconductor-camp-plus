@@ -80,6 +80,11 @@ export class Stage5Etch extends DipStageBase {
   ];
 
   readonly instructions: InstructionStep[] = [
+    {
+      glyph: '💡',
+      title: '為什麼要做這關',
+      desc: '把沒被光阻保護的下層材料挖掉，圖案才真的「刻」進晶圓；乾式管精度、濕式快但側向咬。',
+    },
     { glyph: '🤏', title: '把晶圓放進機台', desc: '捏起晶圓拖到腔體中央的虛線圈上放開。' },
     { glyph: '🚪', title: '關門、按大按鈕', desc: '拖門把關閉腔門，抽完真空後按下綠色圓鈕。' },
     {

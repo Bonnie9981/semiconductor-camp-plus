@@ -65,6 +65,11 @@ export class Stage3Litho extends BaseStage {
   ];
 
   readonly instructions: InstructionStep[] = [
+    {
+      glyph: '💡',
+      title: '為什麼要做這關',
+      desc: '微影是唯一把「設計圖」變成晶圓上實體圖案的一步；後面的顯影、蝕刻只是照著光阻做。',
+    },
     { glyph: '💧', title: '滴一滴光阻', desc: '只滴在晶圓正中心，接著靠旋轉塗佈用離心力鋪開。' },
     { glyph: '✍️', title: '畫出圖案', desc: '畫的是光罩上的鉻層 —— 有畫到的地方會擋住 UV 光。' },
     { glyph: '🃏', title: '選正負光阻', desc: '兩張卡片下方有剖面示意圖，捏一下想用的那張。' },

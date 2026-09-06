@@ -158,6 +158,11 @@ export class Stage1RCA extends BaseStage {
   ];
 
   readonly instructions: InstructionStep[] = [
+    {
+      glyph: '💡',
+      title: '為什麼要做這關',
+      desc: '晶圓一髒，後面每一層薄膜都長不好 —— 清潔是整條製程的地基。',
+    },
     { glyph: '🤏', title: '捏起藥瓶', desc: '瓶子下方亮起光暈就代表抓得到，捏合即可拿起來。' },
     {
       glyph: '💧',

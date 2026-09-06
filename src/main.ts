@@ -316,15 +316,30 @@ function openCertificate(recapture: boolean): void {
   const litho = stages.resultOf('litho') as { tone?: string } | undefined;
   const etch = stages.resultOf('etching') as { etchMethod?: string } | undefined;
 
+  const isCvd = deposition?.method === 'cvd';
+  const isNeg = litho?.tone === 'negative';
+  const isWet = etch?.etchMethod === 'wet';
+
   const data: CertificateData = {
     photo: recapture ? capturePhoto(video, camera.isMirrored()) : lastPhoto,
     wafer: desk.composeWaferImage(720),
-    method: deposition?.method === 'cvd' ? '化學氣相沉積 CVD' : '物理氣相沉積 PVD',
-    tone: litho?.tone === 'negative' ? '負型光阻' : '正型光阻',
-    etch: etch?.etchMethod === 'wet' ? '濕式蝕刻 · 側向' : '乾式蝕刻 · 鉛直',
+    method: isCvd ? '化學氣相沉積 CVD' : '物理氣相沉積 PVD',
+    tone: isNeg ? '負型光阻' : '正型光阻',
+    etch: isWet ? '濕式蝕刻 · 側向' : '乾式蝕刻 · 鉛直',
     date,
     elapsed: formatElapsed(elapsedMs()),
     grade: computeGrade(elapsedMs(), desk.coverage()),
+    review: [
+      isCvd
+        ? '沉積 · CVD：氣體在晶圓表面反應成膜，階梯覆蓋比 PVD 好'
+        : '沉積 · PVD：靶材被離子撞飛、在真空中直線沉積，膜純而快',
+      isNeg
+        ? '光阻 · 負型：曝光區交聯硬化留下 → 你畫的圖案最後凹陷'
+        : '光阻 · 正型：曝光區斷鏈變可溶被洗掉 → 你畫的圖案最後凸起',
+      isWet
+        ? '蝕刻 · 濕式：藥液等向性，會往光阻底下橫向咬出 undercut'
+        : '蝕刻 · 乾式：電漿鉛直轟擊，側壁筆直、線寬精準',
+    ],
     serial: serial ?? (serial = makeSerial(date)),
   };
   lastPhoto = data.photo;

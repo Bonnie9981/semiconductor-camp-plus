@@ -29,6 +29,8 @@ export interface CertificateData {
   elapsed: string;
   /** 評等字串，例如「A　·　失誤 1 次　·　圖案覆蓋 7%」。 */
   grade: string;
+  /** 觀念回顧：把這次的選擇對應到背後的原理，最多 3 行（不評分，純複習）。 */
+  review: string[];
   /** 流水序號。 */
   serial: string;
 }
@@ -262,6 +264,26 @@ export function composeCertificate(data: CertificateData): HTMLCanvasElement {
     ctx.font = `700 ${vFont}px ${sans}`;
     ctx.fillText(v, startX + kW + gap, ry);
     ry += 52;
+  });
+
+  // ── B2：觀念回顧（把這次的選擇對應到背後的原理，不評分） ──
+  const revY = 864;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(94, 233, 223, 0.6)';
+  ctx.font = `600 19px ${mono}`;
+  ctx.fillText('觀念回顧 · WHY IT WORKS', CERT_W / 2, revY);
+  ctx.strokeStyle = 'rgba(94, 233, 223, 0.22)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(CERT_W / 2 - 300, revY + 32);
+  ctx.lineTo(CERT_W / 2 + 300, revY + 32);
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(214, 230, 236, 0.9)';
+  ctx.font = `400 22px ${sans}`;
+  data.review.slice(0, 3).forEach((line, i) => {
+    ctx.fillText(`·  ${line}`, 206, revY + 56 + i * 30);
   });
 
   // ── 頁尾 ──
