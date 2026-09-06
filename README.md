@@ -67,7 +67,7 @@
 ## 快速開始
 
 ```bash
-cd semiconductorAR
+cd semiconductor-camp
 npm install     # postinstall 會自動把 MediaPipe 資產複製到 public/mediapipe/（約 26MB）
 npm run dev     # → http://localhost:5173
 ```
@@ -88,15 +88,14 @@ npm run dev     # → http://localhost:5173
 | `npm run typecheck` | 只跑 `tsc --noEmit` |
 | `npm run check` | 自動化檢查：晶圓狀態機、蝕刻藥液規則、STL 幾何、版面、證書 PDF |
 | `npm run check:browser` | **開真的 Chrome** 量版面：HUD 卡片有沒有互相壓到、有沒有蓋住 canvas 上的道具、證書整張看不看得到 |
-| `npm run verify` | 以上全部（typecheck + check + check:browser） |
-| `npm run verify` | `typecheck` + `check`，送出前跑這個 |
+| `npm run verify` | 以上全部（typecheck + check + check:browser），送出前跑這個 |
 
 ---
 
 ## 專案結構
 
 ```
-semiconductorAR/
+semiconductor-camp/
 ├── index.html                  # 版面骨架（Header / Sidebar / Viewport / Panel / Footer / Modal）
 ├── vite.config.ts
 ├── docs/
@@ -601,8 +600,7 @@ z-index 70）。刻意不用 `window.confirm` —— 原生對話框沒辦法用
 ```bash
 npm run check          # 純計算的檢查（快）
 npm run check:browser  # 開 Chrome 量真實版面（需要系統已安裝 Google Chrome）
-npm run verify         # 全部
-npm run verify     # typecheck + check（送出前跑這個）
+npm run verify         # typecheck + check + check:browser（送出前跑這個）
 ```
 
 四組檢查，**全部直接 import 真正的原始碼**：
