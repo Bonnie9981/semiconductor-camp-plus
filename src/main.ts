@@ -4,6 +4,7 @@ import { CameraManager } from './core/CameraManager';
 import { PerfController, type PerfMode } from './core/perf';
 import { Sound } from './core/sound';
 import { PointerHand } from './core/PointerHand';
+import { setParticleCap } from './scene/Particles';
 import { GestureDetector, drawHandSkeleton } from './core/GestureDetector';
 import { StageManager } from './core/StageManager';
 import { WaferState } from './core/WaferState';
@@ -70,10 +71,12 @@ const pointer = new PointerHand(document.body);
 const perf = new PerfController((lite) => {
   syncStageView(); // DPR 上限變了，重建 canvas 尺寸
   void camera.setLite(lite);
+  setParticleCap(lite ? 60 : 140);
   if (perf.autoDowngraded) {
     ui.setHint('偵測到畫面偏卡 —— 已自動切到「效能優先」模式（設定裡可改回）。');
   }
 });
+setParticleCap(perf.lite ? 60 : 140);
 
 const ui = new UIManager({
   onSelectStage: (index) => stages.goTo(index, ui.isDevMode()),
@@ -89,6 +92,7 @@ const ui = new UIManager({
   onPinchSensitivity: (threshold) => gesture.setPinchThreshold(threshold),
   onPerfMode: (mode: PerfMode) => perf.setMode(mode),
   onToggleSound: (enabled) => sound.setMuted(!enabled),
+  onUseCamera: (enabled) => setUseCamera(enabled),
   onToggleMirror: () => {
     const mirrored = camera.toggleMirror();
     gesture.setMirror(mirrored);
@@ -198,6 +202,35 @@ stages.subscribe((event) => {
       break;
   }
 });
+
+// ─────────────────────── 使用攝影機手勢的開關（省效能用） ──────────────────────
+// 關掉＝純滑鼠／觸控玩，完全不啟動鏡頭與 MediaPipe。選擇存 localStorage。
+
+const USE_CAMERA_KEY = 'semiconductor-camp:use-camera';
+
+function readUseCamera(): boolean {
+  try {
+    return localStorage.getItem(USE_CAMERA_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function setUseCamera(enabled: boolean): void {
+  try {
+    localStorage.setItem(USE_CAMERA_KEY, enabled ? '1' : '0');
+  } catch {
+    /* 存不進去也沒關係 */
+  }
+  ui.setUseCamera(enabled);
+  if (enabled) {
+    void camera.start('user');
+  } else {
+    // camera.stop() 內部會把狀態設成 'idle'（不會跳錯誤橫幅）
+    void camera.stop();
+    ui.setHint('攝影機已關閉。畫面上的器材可以直接用滑鼠 / 觸控按住拖曳。');
+  }
+}
 
 /** 整場重來：清掉圖案、晶圓狀態與證書，關卡回到第一關。 */
 function resetEverything(): void {
@@ -510,7 +543,13 @@ ui.setSoundEnabled(!sound.isMuted());
 gesture.setMirror(camera.isMirrored());
 requestAnimationFrame(loop);
 
-void camera.start('user');
+const useCamera = readUseCamera();
+ui.setUseCamera(useCamera);
+if (useCamera) {
+  void camera.start('user');
+} else {
+  ui.setHint('攝影機已關閉（設定裡可開）。畫面上的器材直接用滑鼠 / 觸控按住拖曳。');
+}
 
 function requireEl<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);

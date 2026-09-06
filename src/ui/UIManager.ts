@@ -39,6 +39,8 @@ export interface UICallbacks {
   onToggleSkeleton: (visible: boolean) => void;
   /** 提示音開關。 */
   onToggleSound: (enabled: boolean) => void;
+  /** 使用攝影機手勢開關（關掉＝純滑鼠／觸控、完全不跑 MediaPipe）。 */
+  onUseCamera: (enabled: boolean) => void;
   onExportPNG: () => void;
   onExportSTL: () => void;
   onExportPDF: () => void;
@@ -358,6 +360,9 @@ export class UIManager {
     el<HTMLInputElement>('set-sound').addEventListener('change', (e) => {
       this.cb.onToggleSound((e.target as HTMLInputElement).checked);
     });
+    el<HTMLInputElement>('set-use-camera').addEventListener('change', (e) => {
+      this.cb.onUseCamera((e.target as HTMLInputElement).checked);
+    });
     el<HTMLInputElement>('set-mirror').addEventListener('change', () => this.cb.onToggleMirror());
     el<HTMLInputElement>('set-devmode').addEventListener('change', (e) => {
       this.devMode = (e.target as HTMLInputElement).checked;
@@ -649,6 +654,12 @@ export class UIManager {
   /** 把「設定」裡的提示音勾選同步到目前的值。 */
   setSoundEnabled(enabled: boolean): void {
     const box = el<HTMLInputElement>('set-sound');
+    if (box.checked !== enabled) box.checked = enabled;
+  }
+
+  /** 把「設定」裡的「使用攝影機手勢」勾選同步到目前的值。 */
+  setUseCamera(enabled: boolean): void {
+    const box = el<HTMLInputElement>('set-use-camera');
     if (box.checked !== enabled) box.checked = enabled;
   }
 

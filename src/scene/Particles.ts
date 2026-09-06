@@ -44,8 +44,13 @@ interface Particle {
   flash: number;
 }
 
-/** 粒子數上限。滿版腔體大約用到 90~110 顆就很密了。 */
-const MAX_PARTICLES = 140;
+/** 粒子數上限。滿版腔體大約用到 90~110 顆就很密了。效能模式會調低。 */
+let maxParticles = 140;
+
+/** 效能模式（core/perf.ts）呼叫：精簡模式把粒子上限調低，減少每幀的繪圖與更新。 */
+export function setParticleCap(n: number): void {
+  maxParticles = Math.max(20, Math.round(n));
+}
 
 export class DepositionField {
   private particles: Particle[] = [];
@@ -60,7 +65,7 @@ export class DepositionField {
     // ── 生成 ──
     const perSecond = cfg.mode === 'ballistic' ? 70 : 46;
     this.spawnAccum += dt * perSecond * cfg.rate;
-    while (this.spawnAccum >= 1 && this.particles.length < MAX_PARTICLES) {
+    while (this.spawnAccum >= 1 && this.particles.length < maxParticles) {
       this.spawnAccum -= 1;
       this.particles.push(this.spawn(cfg));
     }
@@ -103,7 +108,7 @@ export class DepositionField {
     }
 
     // 強度降到很低時逐步縮減粒子數，畫面才會跟著「停下來」
-    const want = Math.round(MAX_PARTICLES * Math.min(1, cfg.rate * 1.2));
+    const want = Math.round(maxParticles * Math.min(1, cfg.rate * 1.2));
     if (this.particles.length > want + 12) this.particles.length = want + 12;
   }
 
