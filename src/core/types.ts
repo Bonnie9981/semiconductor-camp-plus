@@ -97,7 +97,7 @@ export interface SubStep {
 // 關卡不直接碰 DOM，而是把「我現在要玩家做什麼」描述成一份 PanelSpec 交給
 // UIManager 渲染。三種面板涵蓋了全部五關的互動：
 //   choice —— 選溶液 / 選正負光阻 / 選顯影劑 / 選蝕刻方式
-//   mix    —— 調配比例（5:1:1、6:1:1）
+//   pour   —— 調配杯（唯讀顯示杯內成分 + 送出 / 倒掉）
 //   action —— 單一按鈕（開始烘乾 / 開始曝光 / 開始蝕刻）
 
 export interface ChoiceOption {
@@ -111,12 +111,13 @@ export interface ChoiceOption {
   glyph?: string;
 }
 
+/** 調配杯裡的一種成分（`PourPanel` 用來唯讀顯示「杯子裡有什麼、各幾份」）。 */
 export interface MixRow {
   id: string;
   label: string;
   sub?: string;
   color: string;
-  /** 目前份數。 */
+  /** 份數。 */
   parts: number;
 }
 
@@ -138,15 +139,6 @@ export interface ChoicePanel extends PanelBase {
   confirmLabel: string;
   confirmEnabled: boolean;
   onToggle(id: string): void;
-  onConfirm(): void;
-}
-
-export interface MixPanel extends PanelBase {
-  kind: 'mix';
-  rows: MixRow[];
-  confirmLabel: string;
-  confirmEnabled: boolean;
-  onAdjust(id: string, delta: number): void;
   onConfirm(): void;
 }
 
@@ -174,4 +166,4 @@ export interface PourPanel extends PanelBase {
   onDump(): void;
 }
 
-export type PanelSpec = ChoicePanel | MixPanel | ActionPanel | PourPanel;
+export type PanelSpec = ChoicePanel | ActionPanel | PourPanel;

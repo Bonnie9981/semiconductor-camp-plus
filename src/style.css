@@ -1298,30 +1298,6 @@ body {
   background: oklch(0.2 0.012 250 / 0.9);
   border: 1px solid oklch(0.3 0.015 250);
 }
-.sp-parts {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.sp-step {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--r-sm);
-  border: 1px solid oklch(0.4 0.02 250);
-  background: oklch(0.26 0.015 250);
-  color: var(--text-2);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.12s;
-}
-.sp-step:hover,
-.sp-step.is-pinch-hover {
-  border-color: var(--accent);
-  color: var(--accent-bright);
-}
 .sp-count {
   font-family: var(--mono);
   font-size: 15.5px;

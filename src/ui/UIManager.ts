@@ -720,54 +720,6 @@ export class UIManager {
         });
         body.append(btn);
       }
-    } else if (spec.kind === 'mix') {
-      for (const row of spec.rows) {
-        const line = document.createElement('div');
-        line.className = 'sp-mix-row';
-
-        const dot = document.createElement('span');
-        dot.className = 'sp-dot';
-        dot.style.background = row.color;
-
-        const labels = document.createElement('span');
-        labels.className = 'sp-labels';
-        const main = document.createElement('span');
-        main.textContent = row.label;
-        labels.append(main);
-        if (row.sub) {
-          const sub = document.createElement('span');
-          sub.className = 'sp-sub';
-          sub.textContent = row.sub;
-          labels.append(sub);
-        }
-
-        const parts = document.createElement('span');
-        parts.className = 'sp-parts';
-        const minus = stepButton('−', () => {
-          const cur = this.panelSpec;
-          if (cur?.kind === 'mix') cur.onAdjust(row.id, -1);
-        });
-        const count = document.createElement('span');
-        count.className = 'sp-count';
-        count.textContent = String(row.parts);
-        const plus = stepButton('＋', () => {
-          const cur = this.panelSpec;
-          if (cur?.kind === 'mix') cur.onAdjust(row.id, +1);
-        });
-        parts.append(minus, count, plus);
-
-        line.append(dot, labels, parts);
-        body.append(line);
-      }
-
-      const ratio = document.createElement('div');
-      ratio.className = 'sp-ratio';
-      const total = spec.rows.reduce((s, r) => s + r.parts, 0);
-      ratio.innerHTML =
-        total === 0
-          ? '目前比例 <b>—</b>'
-          : `目前比例 <b>${spec.rows.map((r) => r.parts).join(' : ')}</b>　總量 ${total} 份`;
-      body.append(ratio);
     } else if (spec.kind === 'pour') {
       if (spec.rows.length === 0) {
         const empty = document.createElement('div');
@@ -1098,16 +1050,6 @@ function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
-function stepButton(glyph: string, onClick: () => void): HTMLButtonElement {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'sp-step';
-  btn.textContent = glyph;
-  btn.dataset.pinch = '1';
-  btn.addEventListener('click', onClick);
-  return btn;
-}
-
 /**
  * 面板的重建簽章。只要玩家看得見的東西沒變就不重建 DOM
  * （見 UIManager.setPanel 的說明）。
@@ -1118,11 +1060,6 @@ function panelKey(spec: PanelSpec): string {
     return `${head}|${spec.options.map((o) => o.id).join(',')}|${[...spec.selected]
       .sort()
       .join(',')}|${spec.max}|${spec.confirmLabel}|${spec.confirmEnabled}`;
-  }
-  if (spec.kind === 'mix') {
-    return `${head}|${spec.rows.map((r) => `${r.id}:${r.parts}`).join(',')}|${
-      spec.confirmLabel
-    }|${spec.confirmEnabled}`;
   }
   if (spec.kind === 'pour') {
     return `${head}|${spec.rows.map((r) => `${r.id}:${r.parts}`).join(',')}|${
