@@ -106,18 +106,22 @@
 | **`engines` + `.nvmrc`** | `package.json`、`.nvmrc` | P1 #2 — 明講 Node ≥ 24 |
 | **MIT LICENSE** | `LICENSE` | P2 #8 — Copyright 2026 Bonnie9981 |
 | **社群分享 meta** | `index.html` | P2 #10 — description / OG / Twitter / theme-color |
-| **關卡狀態機測試** | `scripts/checks/stage-machine.mjs`（新）、`run.mjs` | P1 #3／#4 — 用窄的 `makeStubContext()` import 真正的 5 個 Stage，跑完整條 `StageManager` 生命週期，驗預設路線的 `devComplete()` 鏈與 `buildResult()`。原本「零真實關卡覆蓋」→ 現在預設路線跑的是會出貨的程式。分支路線（cvd/negative/wet）因 private 欄位仍由 `wafer-state.mjs` 重寫矩陣涵蓋 |
+| **關卡狀態機測試** | `scripts/checks/stage-machine.mjs`（新）、`run.mjs` | P1 #3／#4 — ① 用窄的 `makeStubContext()` 跑完整條 `StageManager` 生命週期，驗預設路線的 `devComplete()` 鏈與 `buildResult()`；② 用 `makeFrameStubs()` + permissive 2D context 替身跑每一關 `onEnter` + 8 幀 `onFrame`（不丟例外、不自己過關）。原本「零真實關卡覆蓋」→ 現在生命週期與逐幀繪圖路徑都跑會出貨的程式。分支路線（cvd/negative/wet）因 private 欄位仍由 `wafer-state.mjs` 重寫矩陣涵蓋 |
+| **`prefers-reduced-motion`** | `src/core/motion.ts`（新）、`style.css`、`scene/Explosion.ts` | P2 — CSS 一段 blanket 關掉非必要轉場／動畫；突沸動畫（整片白光閃焰 + 擴散衝擊波，對光敏感者不友善）在偏好開啟時改成靜態警示 |
+| **移除 `chip_wars/`** | 刪除 | P2 #7 — 與本專案無關 |
 
-### 4.4 驗證結果（已在本機跑過）
+### 4.4 驗證結果（已在本機 + GitHub Actions 跑過）
 
 Node 24.20.0（官方 zip，SHA256 對過）已裝到 `%LOCALAPPDATA%\nodejs` 並加入使用者 PATH。
 
 ```
 npm run typecheck      ✓  0 errors
-npm run check          ✓  全部通過（含新增的 stage-machine：7 項）
+npm run check          ✓  全部通過（含 stage-machine：生命週期 + onFrame 冒煙共 12+ 項）
 npm run check:browser  ✓  8 種視窗尺寸 + 結業證書
-npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
+npm run build          ✓  dist/ 產出正常（js 184 kB / gzip 60 kB）
 ```
+
+GitHub Actions 的 `verify` workflow 在新 repo 上 `check` 與 `check-browser` 兩個 job 都綠。
 
 **待你手動確認**（互動行為，自動檢查涵蓋不到）：
 
@@ -132,14 +136,17 @@ npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
 ### ✅ 已完成（本次）
 
 - **CI**（P1 #1）、**`engines` + `.nvmrc`**（P1 #2）、**MIT LICENSE**（P2 #8）、
-  **`index.html` meta**（P2 #10）、**子步驟略過狀態**（IMPLEMENTATION §7 #1）
-- **關卡狀態機測試起步**（P1 #3／#4）：`stage-machine.mjs` 已涵蓋預設路線。
+  **`index.html` meta**（P2 #10）、**子步驟略過狀態**（IMPLEMENTATION §7 #1）、
+  **`prefers-reduced-motion`**、**移除 `chip_wars/`**（P2 #7）
+- **關卡測試**（P1 #3／#4）：`stage-machine.mjs` 已涵蓋生命週期 + `devComplete` 鏈
+  + 每關 `onFrame` 冒煙測試。
 
 ### 還沒做：把關卡測試補滿（接續 P1 #3、#4）
 
-1. **`onFrame()` 逐幀狀態機**：`makeStubContext()` 目前只夠跑生命週期，`onFrame`
-   會畫 canvas，要再補一層 2D context 替身（可參考 `dom-shim.mjs` 的做法：
-   只實作被呼叫到的方法，其餘拋錯）。之後就能「餵一串 `HandFrame` → 斷言子步驟推進」。
+1. **`onFrame()` 有輸入的互動流程**：冒煙測試只驗「空跑不壞」。下一步是餵
+   「有座標的 `HandFrame` 序列」（捏著藥瓶移到某位置、放開），並讓
+   `makeFrameStubs()` 的假 `desk.geometry` 與各關的 hit-box 對得起來，
+   才能斷言「拖對了 → 子步驟推進」。
 2. **分支路線注入 seam**：給關卡加一個測試專用的狀態注入點（例如 `__setChoiceForTest`），
    讓 `stage-machine.mjs` 也能跑 cvd / negative / wet，然後刪掉 `wafer-state.mjs`
    的重寫矩陣。
@@ -148,10 +155,9 @@ npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
 
 - **`ChoiceOption.preview`**（P2 #5）：加 `preview?: (ctx, w, h) => void`，
   `UIManager` 的 choice 分支若有 preview 就建一個小 canvas 呼叫它。
-  之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。**本次刻意沒做** ——
-  要有意義就得同時重構第三、五關約 200 行的自繪卡片邏輯，那需要逐幀互動測試
-  （見上）先到位，否則改壞了自動檢查抓不到。
-- **`prefers-reduced-motion`**：粒子數量 / 爆炸動畫在此媒體查詢下降級。
+  之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。**目前刻意沒做** ——
+  要有意義就得同時重構第三、五關約 200 行的自繪卡片邏輯，那需要「有輸入的」
+  逐幀互動測試（見上）先到位，否則改壞了自動檢查抓不到。
 - **`MixPanel` 去留**（P2 #6）：找關卡用它，或從主線移除（需產品決策）。
 
 ### 不建議動
@@ -170,8 +176,10 @@ npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
   1. 子步驟「略過」狀態（IMPLEMENTATION §7 #1）
   2. CI（`.github/workflows/verify.yml`）+ `engines` + `.nvmrc`
   3. MIT LICENSE + `index.html` 社群 meta
-  4. `stage-machine.mjs`：真正的關卡類別 + 生命週期測試（預設路線）
-  5. 5 處文件與程式同步
-- **已驗證**：`npm run verify` + `npm run build` 全綠（Node 24.20.0）。
-- **下一步**：`onFrame()` 逐幀測試 → 分支注入 seam → `ChoiceOption.preview` +
+  4. `stage-machine.mjs`：真正的關卡類別 + 生命週期測試 + 每關 `onFrame` 冒煙測試
+  5. `prefers-reduced-motion`（CSS blanket + 突沸動畫靜態化）
+  6. 移除 `chip_wars/`
+  7. 文件與程式同步多處
+- **已驗證**：`npm run verify` + `npm run build` 全綠（本機 Node 24.20.0 + GitHub Actions）。
+- **下一步**：`onFrame()` 有輸入的互動測試 → 分支注入 seam → `ChoiceOption.preview` +
   第三、五關卡片收斂。

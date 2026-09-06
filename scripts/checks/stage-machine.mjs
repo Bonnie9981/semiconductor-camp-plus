@@ -55,6 +55,92 @@ function makeStubContext(wafer) {
   return { ctx, stages };
 }
 
+/**
+ * permissive 的 2D context 替身：任何繪圖方法都是 no-op，
+ * 會回傳值的（gradient / measureText / getImageData）給剛好夠用的結果，
+ * 屬性（fillStyle…）可讀可寫。用來讓關卡的 onFrame() 真的跑一遍繪圖路徑。
+ */
+function makeCtx2D() {
+  const state = {};
+  const grad = { addColorStop() {} };
+  const methods = {
+    save() {}, restore() {}, beginPath() {}, closePath() {},
+    moveTo() {}, lineTo() {}, arc() {}, arcTo() {}, rect() {}, roundRect() {},
+    ellipse() {}, bezierCurveTo() {}, quadraticCurveTo() {},
+    fill() {}, stroke() {}, clip() {},
+    fillRect() {}, strokeRect() {}, clearRect() {},
+    fillText() {}, strokeText() {},
+    translate() {}, rotate() {}, scale() {}, transform() {}, setTransform() {}, resetTransform() {},
+    drawImage() {}, putImageData() {}, setLineDash() {}, getLineDash: () => [],
+    createLinearGradient: () => grad, createRadialGradient: () => grad, createConicGradient: () => grad,
+    createPattern: () => null,
+    measureText: () => ({ width: 0 }),
+    getImageData: (_x, _y, w, h) => ({
+      data: new Uint8ClampedArray(Math.max(0, w | 0) * Math.max(0, h | 0) * 4),
+      width: w,
+      height: h,
+    }),
+    isPointInPath: () => false,
+    isPointInStroke: () => false,
+  };
+  return new Proxy(methods, {
+    get: (t, p) =>
+      p in t ? t[p] : p === 'canvas' ? { width: 1280, height: 720 } : p in state ? state[p] : () => undefined,
+    set: (_t, p, v) => ((state[p] = v), true),
+  });
+}
+
+/** 沒有手的那一幀。 */
+const EMPTY_HAND = {
+  present: false,
+  landmarks: [],
+  normalized: [],
+  pinching: false,
+  justPinched: false,
+  justReleased: false,
+  pinchPoint: { x: 0, y: 0 },
+  pinchDistance: 1,
+  handedness: '',
+};
+
+/** 給 onFrame() 用的假 StageContext：多補上繪圖需要的 context / size / geometry。 */
+function makeFrameStubs(wafer) {
+  const ctx2d = makeCtx2D();
+  const geometry = {
+    deskTop: 520, deskHeight: 190, deskBottom: 710,
+    waferCX: 640, waferCY: 430, waferR: 120, groundY: 590,
+    width: 1280, height: 720,
+  };
+  const deskValues = {
+    coverage: () => 0,
+    getPatternDataURL: () => 'data:,',
+    getPatternCanvas: () => ({ width: 512, height: 512, getContext: () => makeCtx2D() }),
+    context: ctx2d,
+    size: { width: 1280, height: 720 },
+    geometry,
+    isOnWafer: () => false,
+  };
+  const uiValues = {
+    panelInset: () => 0,
+    sceneOverlay: () => ({ top: 40, bottom: 700, left: 0, right: 1280, panelRight: 0 }),
+  };
+  const trap = (values) =>
+    new Proxy({}, { get: (_t, p) => (typeof p === 'string' && p in values ? values[p] : () => undefined) });
+
+  const stages = new StageManager();
+  const stageCtx = { ui: trap(uiValues), desk: trap(deskValues), stages, wafer };
+  const frame = {
+    ...stageCtx,
+    hand: EMPTY_HAND,
+    ar: ctx2d,
+    width: 1280,
+    height: 720,
+    dt: 1 / 60,
+    time: 0,
+  };
+  return { stageCtx, stages, frame };
+}
+
 // ── 跑完整條預設路線 ──
 {
   const wafer = new WaferState();
@@ -117,6 +203,45 @@ function makeStubContext(wafer) {
   if (stages.currentIndex !== 0) errs.push('跳關失敗後 currentIndex 不該變');
   if (stages.goTo(1, true) !== true) errs.push('force=true 應該要能跳進 locked 關');
   report.add('locked 關卡的跳關規則', errs);
+}
+
+// ── onFrame() 冒煙測試：每一關進場後空跑幾幀，不可以丟例外或自己過關 ──
+{
+  const makeStage = {
+    'RCA 清洗': () => new Stage1RCA(),
+    薄膜沉積: () => new Stage2Deposition(),
+    微影製程: () => new Stage3Litho(),
+    顯影: () => new Stage4Develop(),
+    蝕刻: () => new Stage5Etch(),
+  };
+
+  for (const [name, ctor] of Object.entries(makeStage)) {
+    const wafer = new WaferState();
+    // 顯影 / 蝕刻的 onEnter 會自己補光阻層，其餘關卡先給一個乾淨起點
+    const { stageCtx, frame } = makeFrameStubs(wafer);
+    const stage = ctor();
+
+    const errs = [];
+    try {
+      stage.onEnter(stageCtx);
+      const sub0 = stage.subIndex;
+      for (let i = 0; i < 8; i++) {
+        stage.onFrame({ ...frame, time: i / 60 });
+      }
+      // 沒有手、沒有任何輸入，不該推進子步驟，也不該變成可完成
+      if (stage.subCount > 0 && stage.subIndex !== sub0) {
+        errs.push(`空跑 8 幀後子步驟從 ${sub0} 跳到 ${stage.subIndex}`);
+      }
+      if (stage.canComplete() && stage.subCount > 0) {
+        errs.push('沒做任何事就回報 canComplete() = true');
+      }
+      stage.onExit();
+    } catch (e) {
+      errs.push(`onFrame 丟出例外：${e.message}`);
+    }
+
+    report.add(`${name}：onEnter + 8 幀 onFrame 空跑`, errs, `子步驟停在 ${stage.subIndex}/${stage.subCount}`);
+  }
 }
 
 export default () => report.print();

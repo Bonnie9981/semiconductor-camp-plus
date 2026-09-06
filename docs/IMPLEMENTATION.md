@@ -543,7 +543,7 @@ const startObject = () => offsets.push(length);   // 呼叫時的 length 就是�
 | --- | --- | --- | --- |
 | **`ChoiceOption` 不支援示意圖** | `core/types.ts` 的 `ChoiceOption` 只有 `sub` / `color` / `glyph` | 第三關的正負光阻、第五關的乾濕蝕刻都得自己在 canvas 上畫卡片繞過去 | 加 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
 | **`#hand-canvas` 蓋住整個視窗格** | `z-index: 60`、`pointer-events: none` | 不擋點擊，但之後若要放「需要被點到」的浮層，記得排在它之上 | — |
-| **各關 `onFrame()` 互動流程沒有測試** | `stage-machine.mjs` 現在涵蓋了 StageManager 生命週期與各關 `devComplete()`（見〈已解決〉），但 `onFrame()` 的逐幀手勢狀態機仍未測 | 手勢互動的迴歸只能靠手動玩 | 需要能餵一串 `HandFrame` 並驗子步驟推進。`makeStubContext()`（`stage-machine.mjs`）已是起點，但 `onFrame` 會畫 canvas，得再補一層 2D context 替身 |
+| **各關 `onFrame()` 的手勢互動流程沒有測試** | `stage-machine.mjs` 已有「onEnter + 8 幀空跑」的冒煙測試（不丟例外、不自己過關），但「捏著藥瓶拖進正確的槽 → 子步驟推進」這種真正的互動流程仍未測 | 互動流程的迴歸只能靠手動玩 | 冒煙測試用的 `makeFrameStubs()` + `makeCtx2D()`（`stage-machine.mjs`）已能跑完整 `onFrame`；接下來要餵「有座標的 `HandFrame` 序列」並讓假的 `desk.geometry` / hit-box 對得起來 |
 | **分支路線的 devComplete 未跑真程式** | `stage-machine.mjs` 只跑得了預設路線（PVD/正光阻/乾式）；其餘 7 種組合仍由 `wafer-state.mjs` 的重寫矩陣涵蓋 | `method` / `tone` / `etchMethod` 是 private，沒有 gameplay 之外的注入點；改了分支的 `devComplete()` 而忘了同步 `wafer-state.mjs` 仍會漏 | 給關卡加一個測試用的狀態注入 seam，或讓 `stage-machine.mjs` 也能驅動子步驟做選擇 |
 
 ### 已解決（保留紀錄）
@@ -556,7 +556,7 @@ const startObject = () => offsets.push(length);   // 呼叫時的 length 就是�
 | ~~右側面板的按鈕手構不到~~ | 視窗內的 `#btn-stage-action`，Modal 按鈕也都標了 `data-pinch` |
 | ~~`Stage1DrawPattern.ts` / `StagePlaceholder.ts` 是死碼~~ | 已刪除（刪除前 `grep -rn` 確認除檔案自身外無任何引用） |
 | ~~子步驟沒有「略過」狀態~~ | `BaseStage.skipSub()` 把該 index 記進 `skippedSubs`；`UIManager.renderSubsteps()` 畫成灰色斜線的「–」。第二關 PVD 路線的「金屬鍍膜」改用它 |
-| ~~關卡類別完全沒有自動測試~~ | `scripts/checks/stage-machine.mjs` 用窄的 `makeStubContext()` import 真正的 5 個 Stage，跑完整條 StageManager 生命週期（start → forceComplete → advance），驗預設路線的 `devComplete()` 鏈與 `buildResult()`。取代了「零真實關卡覆蓋」的狀態 |
+| ~~關卡類別完全沒有自動測試~~ | `scripts/checks/stage-machine.mjs`：① 用窄的 `makeStubContext()` 跑完整條 StageManager 生命週期，驗預設路線的 `devComplete()` 鏈與 `buildResult()`；② 用 `makeFrameStubs()` + permissive 的 2D context 替身跑每一關的 `onEnter` + 8 幀 `onFrame`（冒煙測試）。取代了「零真實關卡覆蓋」的狀態 |
 
 ---
 
