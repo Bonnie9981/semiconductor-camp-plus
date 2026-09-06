@@ -1104,6 +1104,19 @@ body {
   background: oklch(0.4 0.12 145);
   color: oklch(0.95 0.02 145);
 }
+/* 被略過（此製程路線不需要）的子步驟：灰、虛線框、標題加刪除線，
+   和「已完成」的打勾明顯區隔開。 */
+.substep.is-skipped {
+  color: var(--text-4);
+  opacity: 0.55;
+  border-style: dashed;
+}
+.substep.is-skipped .substep-num {
+  background: oklch(0.3 0.015 250 / 0.6);
+}
+.substep.is-skipped .substep-label {
+  text-decoration: line-through;
+}
 .substep-sep {
   width: 10px;
   height: 1px;

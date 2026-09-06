@@ -99,8 +99,8 @@ const inset = frame.ui.panelInset();   // 面板實際右緣，收起時為 0
 
 純函式還有第二個好處：`npm run check` 能 import 真正的計算，
 在整個尺寸矩陣上驗證「有沒有重疊、有沒有掉出畫面」。版面錯誤沒辦法靠 `tsc` 抓，
-只能算給它看。低於 `MIN_VIEWPORT`（`core/Viewport.ts`，1100×600）的尺寸就不硬畫，
-改成蓋上提示叫玩家放大視窗（下限 1100×460，是實測出來的，不是猜的）。
+只能算給它看。低於 `MIN_VIEWPORT`（`core/Viewport.ts`，1100×460）的尺寸就不硬畫，
+改成蓋上提示叫玩家放大視窗（1100×460 是實測出來的，不是猜的）。
 
 而 CSS 那一層的重疊只有真瀏覽器量得到，所以另外有 `npm run check:browser`：
 開系統已安裝的 Chrome、跑 8 種視窗尺寸（16:9 與 16:10 各四種），
@@ -541,7 +541,6 @@ const startObject = () => offsets.push(length);   // 呼叫時的 length 就是�
 
 | 問題 | 驗證方式 | 影響 | 建議 |
 | --- | --- | --- | --- |
-| **子步驟沒有「略過」狀態** | `UIManager.renderSubsteps()` 只算 `done = i < subIndex` 與 `active = i === subIndex` | 第二關走 PVD 時「金屬鍍膜」被跳過，進度列卻顯示打勾的「已完成」，會讓學生以為自己做過那一步 | 加第三種狀態：關卡回報哪些 index 被略過，樣式畫成灰色斜線 |
 | **`ChoiceOption` 不支援示意圖** | `core/types.ts` 的 `ChoiceOption` 只有 `sub` / `color` / `glyph` | 第三關的正負光阻、第五關的乾濕蝕刻都得自己在 canvas 上畫卡片繞過去 | 加 `preview?: (ctx, w, h) => void` 讓選項自己畫縮圖 |
 | **`#hand-canvas` 蓋住整個視窗格** | `z-index: 60`、`pointer-events: none` | 不擋點擊，但之後若要放「需要被點到」的浮層，記得排在它之上 | — |
 | **關卡邏輯沒有測試** | `npm run check` 已涵蓋 `WaferState`、STL 幾何、機台版面與證書 PDF（見 README〈自動化檢查〉），但各關的 `onFrame()` 狀態機仍完全沒有測試 | 互動流程的迴歸只能靠手動玩 | 關卡需要完整的 `StageContext`（DOM + canvas + UIManager）才跑得起來。若要補，先把 `StageContext` 的介面縮到可以做假物件的程度 |
@@ -556,6 +555,7 @@ const startObject = () => offsets.push(length);   // 呼叫時的 length 就是�
 | ~~手部骨架被 UI 蓋住~~ | 獨立的 `#hand-canvas`（z-index 60），詳見 README〈圖層規範〉 |
 | ~~右側面板的按鈕手構不到~~ | 視窗內的 `#btn-stage-action`，Modal 按鈕也都標了 `data-pinch` |
 | ~~`Stage1DrawPattern.ts` / `StagePlaceholder.ts` 是死碼~~ | 已刪除（刪除前 `grep -rn` 確認除檔案自身外無任何引用） |
+| ~~子步驟沒有「略過」狀態~~ | `BaseStage.skipSub()` 把該 index 記進 `skippedSubs`；`UIManager.renderSubsteps()` 畫成灰色斜線的「–」。第二關 PVD 路線的「金屬鍍膜」改用它 |
 
 ---
 

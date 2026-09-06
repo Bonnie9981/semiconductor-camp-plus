@@ -11,6 +11,9 @@ import { formatElapsed } from '../utils/format';
  * 所有 setter 都會先比對舊值，值沒變就不動 DOM，避免每秒 60 次的無謂 reflow。
  */
 
+/** renderSubsteps() 的預設「無略過」引數，避免每次呼叫都配置新的 Set。 */
+const EMPTY_SKIPPED: ReadonlySet<number> = new Set<number>();
+
 export const PEN_COLORS = [
   { label: '光阻綠', value: '#0f6b5c' },
   { label: '鈷藍', value: '#2563eb' },
@@ -472,7 +475,7 @@ export class UIManager {
     this.setText(this.statusSub, `已完成 ${stages.doneCount} / ${total} 步驟`);
 
     this.renderInstructions(stage.instructions);
-    this.renderSubsteps(stage.substeps, stage.subIndex);
+    this.renderSubsteps(stage.substeps, stage.subIndex, stage.skippedSubs);
     this.setNextEnabled(stages.isCurrentDone() && stages.hasNext());
 
     // 只有需要畫筆的關卡才顯示下方工具列
@@ -484,10 +487,15 @@ export class UIManager {
   }
 
   /**
-   * 關卡內子步驟進度列。已完成的打勾、目前這步高亮、還沒到的變灰。
-   * subIndex 等於 substeps.length 代表全部做完（整列都會是打勾狀態）。
+   * 關卡內子步驟進度列。已完成的打勾、目前這步高亮、還沒到的變灰、
+   * 被略過（不適用）的畫成灰色斜線。
+   * subIndex 等於 substeps.length 代表全部做完。
    */
-  renderSubsteps(substeps: readonly SubStep[], subIndex: number): void {
+  renderSubsteps(
+    substeps: readonly SubStep[],
+    subIndex: number,
+    skipped: ReadonlySet<number> = EMPTY_SKIPPED,
+  ): void {
     if (substeps.length === 0) {
       this.substepStrip.classList.add('hidden');
       this.substepStrip.replaceChildren();
@@ -495,7 +503,8 @@ export class UIManager {
       return;
     }
 
-    const key = `${substeps.map((s) => s.id).join('|')}#${subIndex}`;
+    const skipKey = [...skipped].sort((a, b) => a - b).join(',');
+    const key = `${substeps.map((s) => s.id).join('|')}#${subIndex}#${skipKey}`;
     if (this.cache.get('substeps') === key) return;
     this.cache.set('substeps', key);
 
@@ -507,16 +516,20 @@ export class UIManager {
         nodes.push(sep);
       }
       const li = document.createElement('li');
-      const done = i < subIndex;
+      const isSkipped = skipped.has(i);
+      const done = !isSkipped && i < subIndex;
       const active = i === subIndex;
-      li.className = `substep ${active ? 'is-active' : ''} ${done ? 'is-done' : ''}`;
-      li.title = step.desc;
+      li.className = `substep ${active ? 'is-active' : ''} ${done ? 'is-done' : ''} ${
+        isSkipped ? 'is-skipped' : ''
+      }`;
+      li.title = isSkipped ? `${step.desc}（此路線不需要）` : step.desc;
 
       const num = document.createElement('span');
       num.className = 'substep-num';
-      num.textContent = done ? '✓' : String(i + 1);
+      num.textContent = isSkipped ? '–' : done ? '✓' : String(i + 1);
 
       const label = document.createElement('span');
+      label.className = 'substep-label';
       label.textContent = step.title;
 
       li.append(num, label);

@@ -155,9 +155,10 @@ export class Stage2Deposition extends BaseStage {
   protected override onSubEnter(index: number): void {
     const sub = this.substeps[index];
 
-    // PVD 一次就鍍上金屬，不需要額外的金屬鍍膜步驟
+    // PVD 一次就鍍上金屬，不需要額外的金屬鍍膜步驟。
+    // 用 skipSub() 而不是 nextSub()：進度列會把這一格畫成「略過」而非「已完成」。
     if (sub?.id === 'metal' && this.method === 'pvd') {
-      this.nextSub();
+      this.skipSub();
       return;
     }
 

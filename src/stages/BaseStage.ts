@@ -64,6 +64,14 @@ export abstract class BaseStage {
   /** 關卡內的子步驟；空陣列代表這一關是單一步驟。 */
   readonly substeps: readonly SubStep[] = [];
 
+  /**
+   * 被略過（「不適用」）的子步驟索引。
+   * 例如第二關走 PVD 路線時「金屬鍍膜」不需要做——直接 nextSub() 會讓進度列
+   * 把它畫成打勾的「已完成」，玩家會誤以為自己做過。改用 skipSub() 標記後，
+   * UIManager.renderSubsteps() 會把它畫成灰色斜線的「略過」。
+   */
+  readonly skippedSubs = new Set<number>();
+
   /** 這一關是否需要下方虛擬桌面預設的晶圓（自行畫場景的關卡設 false）。 */
   readonly usesDesk: boolean = true;
   /** 這一關是否需要下方 HUD（已繪製圖形 / 畫筆顏色）。 */
@@ -112,12 +120,23 @@ export abstract class BaseStage {
     this.goToSub(this.sub + 1);
   }
 
+  /**
+   * 把目前的子步驟標記為「不適用」，再前進到下一步。
+   * 與 nextSub() 唯一的差別在進度列的呈現：略過的步驟畫成灰色斜線，
+   * 不是打勾——避免玩家以為自己做過那一步。
+   */
+  protected skipSub(): void {
+    this.skippedSubs.add(this.sub);
+    this.nextSub();
+  }
+
   /** 子步驟切換時呼叫（含 onEnter 時的第 0 步）。在這裡重設該步的狀態與面板。 */
   protected onSubEnter(_index: number): void {}
 
   /** 把子步驟指標歸零，不觸發 onSubEnter（restart / onEnter 內部使用）。 */
   protected resetSub(): void {
     this.sub = 0;
+    this.skippedSubs.clear();
   }
 
   // ─────────────────────────────── 生命週期 ───────────────────────────────
