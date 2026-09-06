@@ -184,6 +184,7 @@ stages.subscribe((event) => {
       }
       break;
     case 'fail':
+      mistakeCount += 1;
       ui.showFail(event.reason);
       sound.play('error');
       break;
@@ -272,6 +273,8 @@ function openClearModal(stage: BaseStage): void {
 let startedAt = performance.now();
 /** 全部完成時的定格值；null = 還在跑。 */
 let finishedMs: number | null = null;
+/** 整場累計的失誤次數（配方錯 / 過關失敗），用來算結業評等。 */
+let mistakeCount = 0;
 
 function elapsedMs(): number {
   return finishedMs ?? performance.now() - startedAt;
@@ -280,6 +283,26 @@ function elapsedMs(): number {
 function resetTimer(): void {
   startedAt = performance.now();
   finishedMs = null;
+  mistakeCount = 0;
+}
+
+/**
+ * 結業評等：滿分起扣。
+ *   失誤每次 −14；圖案幾乎沒畫（覆蓋 < 1.5%）−12；
+ *   用時 8 分內不扣、超過 14 分 −12（中間線性）。
+ * S ≥ 92 / A ≥ 80 / B ≥ 66 / 其餘 C。
+ */
+function computeGrade(ms: number, coverage: number): string {
+  let score = 100;
+  score -= mistakeCount * 14;
+  if (coverage < 0.015) score -= 12;
+  const min = ms / 60000;
+  if (min > 8) score -= Math.min(12, (min - 8) * 2);
+  score = Math.max(0, Math.round(score));
+
+  const letter = score >= 92 ? 'S' : score >= 80 ? 'A' : score >= 66 ? 'B' : 'C';
+  const cov = Math.round(coverage * 100);
+  return `${letter}　·　失誤 ${mistakeCount} 次　·　圖案覆蓋 ${cov}%`;
 }
 
 // ─────────────────────────────── 結業證書 ─────────────────────────────────
@@ -301,6 +324,7 @@ function openCertificate(recapture: boolean): void {
     etch: etch?.etchMethod === 'wet' ? '濕式蝕刻 · 側向' : '乾式蝕刻 · 鉛直',
     date,
     elapsed: formatElapsed(elapsedMs()),
+    grade: computeGrade(elapsedMs(), desk.coverage()),
     serial: serial ?? (serial = makeSerial(date)),
   };
   lastPhoto = data.photo;

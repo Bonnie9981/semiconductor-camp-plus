@@ -33,6 +33,8 @@
   過關 / 全部完成 / 失敗。「設定」有開關，存 localStorage。
 - **首次引導**：第一次進來自動彈一次「怎麼玩」（改寫成涵蓋手勢與滑鼠兩種玩法），
   看過就記住。
+- **製程小百科**（Header 的 📖）：一頁講完五道製程各在做什麼、為什麼要這樣做。
+- **結業評等**：證書多一列「評等」（S/A/B/C）—— 依失誤次數、圖案覆蓋率、用時計算。
 - `engines: node >=24`、`.nvmrc`、`CONTRIBUTING.md`、issue / PR 範本、
   MIT `LICENSE`、`index.html` 的 description / OG / Twitter meta。
 - `docs/ANALYSIS.md`：程式碼分析與改進 roadmap。
@@ -51,7 +53,8 @@
 
 ### 修正
 
-- `index.html` 寫死的步驟計數「已完成 0 / 6」→「0 / 5」（實際 5 關）。
+- `index.html` 寫死的步驟計數「已完成 0 / 6」→「0 / 5」、Header 的「關卡 1 / 6」→「1 / 5」、
+  進度「16%」→「0%」（實際 5 關；JS 首次同步就會覆寫，但首幀前會閃錯的數字）。
 - `scripts/checks/layout.mjs` 未使用的 `clamp` import。
 
 [0.2.0]: https://github.com/Bonnie9981/semiconductor-camp-plus/releases/tag/v0.2.0

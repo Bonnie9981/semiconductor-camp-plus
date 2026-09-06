@@ -140,6 +140,7 @@ export class UIManager {
   private readonly modalSuccess = el<HTMLElement>('modal-success');
   private readonly modalFail = el<HTMLElement>('modal-fail');
   private readonly modalHelp = el<HTMLElement>('modal-help');
+  private readonly modalGlossary = el<HTMLElement>('modal-glossary');
   private readonly modalCert = el<HTMLElement>('modal-cert');
   private readonly confirmRoot = el<HTMLElement>('confirm-root');
   private readonly confirmTitle = el<HTMLElement>('confirm-title');
@@ -349,6 +350,10 @@ export class UIManager {
       this.openModal(this.modalHelp),
     );
     el<HTMLButtonElement>('btn-help-close').addEventListener('click', () => this.closeModal());
+    el<HTMLButtonElement>('btn-glossary').addEventListener('click', () =>
+      this.openModal(this.modalGlossary),
+    );
+    el<HTMLButtonElement>('btn-glossary-close').addEventListener('click', () => this.closeModal());
     el<HTMLButtonElement>('btn-settings').addEventListener('click', () =>
       this.openModal(this.modalSettings),
     );
@@ -386,9 +391,10 @@ export class UIManager {
     });
 
     document.querySelector<HTMLElement>('.modal-backdrop')?.addEventListener('click', () => {
-      // 結算 / 失敗 Modal 必須做出選擇，只有說明與設定可以點背景關閉
+      // 結算 / 失敗 Modal 必須做出選擇，只有說明 / 小百科 / 設定可以點背景關閉
       if (
         !this.modalHelp.classList.contains('hidden') ||
+        !this.modalGlossary.classList.contains('hidden') ||
         !this.modalSettings.classList.contains('hidden')
       ) {
         this.closeModal();
@@ -1074,6 +1080,7 @@ export class UIManager {
       this.modalSuccess,
       this.modalFail,
       this.modalHelp,
+      this.modalGlossary,
       this.modalSettings,
       this.modalCert,
     ]) {

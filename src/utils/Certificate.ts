@@ -27,6 +27,8 @@ export interface CertificateData {
   date: Date;
   /** 走完整條製程花了多久（已格式化，例如 12:34）。 */
   elapsed: string;
+  /** 評等字串，例如「A　·　失誤 1 次　·　圖案覆蓋 7%」。 */
+  grade: string;
   /** 流水序號。 */
   serial: string;
 }
@@ -218,6 +220,7 @@ export function composeCertificate(data: CertificateData): HTMLCanvasElement {
   const colR = waferX;
   const colMid = (colL + colR) / 2;
   const rows: [string, string][] = [
+    ['評等', data.grade],
     ['總花費時間', data.elapsed],
     ['沉積方式', data.method],
     ['光阻類型', data.tone],

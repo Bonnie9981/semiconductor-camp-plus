@@ -129,8 +129,8 @@
         <div class="header-right">
           <div class="progress-block">
             <div class="progress-row">
-              <span id="stage-counter" class="mono">關卡 1 / 6</span>
-              <span id="progress-percent" class="mono accent">16%</span>
+              <span id="stage-counter" class="mono">關卡 1 / 5</span>
+              <span id="progress-percent" class="mono accent">0%</span>
             </div>
             <div class="progress-track">
               <div id="progress-fill" class="progress-fill"></div>
@@ -142,6 +142,15 @@
             </button>
             <button id="btn-help" class="icon-btn" type="button" title="說明" aria-label="說明">
               ?
+            </button>
+            <button
+              id="btn-glossary"
+              class="icon-btn"
+              type="button"
+              title="製程小百科"
+              aria-label="製程小百科"
+            >
+              📖
             </button>
             <button
               id="btn-exit"
@@ -385,6 +394,55 @@
           </p>
           <div class="modal-actions">
             <button id="btn-help-close" class="btn btn-primary" type="button">開始</button>
+          </div>
+        </div>
+
+        <!-- 製程小百科 -->
+        <div id="modal-glossary" class="modal modal-glossary hidden">
+          <div class="modal-kicker mono">FIELD NOTES</div>
+          <h2 class="modal-title">製程小百科</h2>
+          <p class="modal-desc">每一關在做什麼、為什麼要這樣做。</p>
+          <ol class="glossary-list">
+            <li>
+              <h3>1 · RCA 清洗</h3>
+              <p>
+                微粒、原生氧化層、金屬離子會讓後面每一層都長不好。<b>SC-1</b>（鹼 + 雙氧水）
+                去有機物與微粒、<b>HF</b> 溶掉原生 SiO₂、<b>SC-2</b>（酸 + 雙氧水）帶走金屬離子，
+                最後甩乾。<b>先加水再加藥</b> —— 濃酸鹼乾混會突沸。
+              </p>
+            </li>
+            <li>
+              <h3>2 · 薄膜沉積</h3>
+              <p>
+                <b>PVD</b>（物理）靶材被打飛、在真空中直線沉積；<b>CVD</b>（化學）通入的氣體
+                在表面反應成膜、階梯覆蓋較好。決定這一層的材質。
+              </p>
+            </li>
+            <li>
+              <h3>3 · 微影</h3>
+              <p>
+                旋轉塗上光阻 → 畫圖案（那是光罩上的<b>鉻</b>，會擋 UV）→ 對準曝光。
+                <b>正光阻</b>被照到的斷鏈變可溶；<b>負光阻</b>被照到的交聯硬化。
+              </p>
+            </li>
+            <li>
+              <h3>4 · 顯影</h3>
+              <p>
+                鹼性 <b>TMAH 2.38%</b>（不含金屬離子）把該溶的光阻洗掉，圖案第一次「顯」出來。
+                正、負光阻都用它。
+              </p>
+            </li>
+            <li>
+              <h3>5 · 蝕刻</h3>
+              <p>
+                <b>乾式</b>（電漿、鉛直、線寬精準）或<b>濕式</b>（藥液、等向性，會往光阻底下咬
+                undercut）。此時最上層是鋁，濕蝕刻要用 <b>PAN</b> 而不是對鋁無效的 BOE。 最後
+                <b>丙酮 → NMP → 去離子水</b> 三步去光阻。
+              </p>
+            </li>
+          </ol>
+          <div class="modal-actions">
+            <button id="btn-glossary-close" class="btn btn-primary" type="button">關閉</button>
           </div>
         </div>
 

@@ -1033,11 +1033,43 @@ body {
 .help-list b {
   color: var(--accent-bright);
 }
+.glossary-list {
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.glossary-list h3 {
+  font-size: 14.5px;
+  color: var(--accent-bright);
+  margin: 0 0 4px;
+  letter-spacing: 0.02em;
+}
+.glossary-list p {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.85;
+  margin: 0;
+}
+.glossary-list b {
+  color: var(--text);
+  font-weight: 600;
+}
+.modal-glossary .modal-desc {
+  align-self: flex-start;
+  text-align: left;
+  max-width: none;
+}
 .modal-help,
+.modal-glossary,
 .modal-settings {
   align-items: stretch;
 }
 .modal-help .modal-title,
+.modal-glossary .modal-title,
 .modal-settings .modal-title {
   text-align: left;
   color: var(--text);
