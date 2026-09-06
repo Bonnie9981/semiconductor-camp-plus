@@ -12,7 +12,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 純計算的檢查：型別、晶圓狀態機 / STL / 版面矩陣 / 證書 PDF，最後 build 一次
+  # 靜態檢查：ESLint、Prettier 格式、TypeScript 型別，跑得最快，放最前面
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+
+  # 純計算的檢查：晶圓狀態機 / 關卡狀態機 / STL / 版面矩陣 / 證書 PDF，最後 build 一次
   check:
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +36,6 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
       - run: npm run check
       - run: npm run build
 

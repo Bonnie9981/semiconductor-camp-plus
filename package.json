@@ -12,17 +12,26 @@
     "build": "node scripts/copy-mediapipe.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "check": "node --import ./scripts/checks/register.mjs scripts/checks/run.mjs",
-    "verify": "npm run typecheck && npm run check && npm run check:browser",
-    "check:browser": "node scripts/checks/browser.mjs"
+    "check:browser": "node scripts/checks/browser.mjs",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run check && npm run check:browser"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "0.3.1675466862",
     "@mediapipe/hands": "0.4.1675469240"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.2",
+    "globals": "^15.15.0",
     "playwright": "^1.62.0",
+    "prettier": "^3.9.6",
     "typescript": "~5.6.3",
+    "typescript-eslint": "^8.69.0",
     "vite": "^8.1.5"
   }
 }

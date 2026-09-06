@@ -1,0 +1,5 @@
+dist/
+public/mediapipe/
+package-lock.json
+*.md
+CHANGELOG.md

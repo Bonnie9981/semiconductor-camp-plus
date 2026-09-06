@@ -87,10 +87,13 @@ npm run dev     # → http://localhost:5173
 | `npm run dev` | 開發伺服器（含 HMR） |
 | `npm run build` | 型別檢查 + 產出 `dist/` |
 | `npm run preview` | 預覽 build 結果 |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier 格式化整個專案 |
+| `npm run format:check` | 只檢查格式，不改檔（CI 用） |
 | `npm run typecheck` | 只跑 `tsc --noEmit` |
-| `npm run check` | 自動化檢查：晶圓狀態機、蝕刻藥液規則、STL 幾何、版面、證書 PDF |
+| `npm run check` | 自動化檢查：晶圓狀態機、關卡狀態機、蝕刻藥液規則、STL 幾何、版面、證書 PDF |
 | `npm run check:browser` | **開真的 Chrome** 量版面：HUD 卡片有沒有互相壓到、有沒有蓋住 canvas 上的道具、證書整張看不看得到 |
-| `npm run verify` | 以上全部（typecheck + check + check:browser），送出前跑這個 |
+| `npm run verify` | 以上全部（lint + format:check + typecheck + check + check:browser），送出前跑這個 |
 
 ---
 
@@ -601,7 +604,7 @@ z-index 70）。刻意不用 `window.confirm` —— 原生對話框沒辦法用
 ```bash
 npm run check          # 純計算的檢查（快）
 npm run check:browser  # 開 Chrome 量真實版面（需要系統已安裝 Google Chrome）
-npm run verify         # typecheck + check + check:browser（送出前跑這個）
+npm run verify         # lint + format:check + typecheck + check + check:browser（送出前跑這個）
 ```
 
 五組檢查，**全部直接 import 真正的原始碼**：

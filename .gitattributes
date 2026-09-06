@@ -1,0 +1,14 @@
+# 全庫統一用 LF，讓 Windows / macOS / Linux 與 CI 的 Prettier 檢查一致
+* text=auto eol=lf
+
+# 二進位資產不要做行尾轉換
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.stl binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
