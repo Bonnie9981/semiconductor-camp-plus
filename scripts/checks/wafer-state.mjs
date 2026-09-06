@@ -4,9 +4,10 @@
  * 測的是真正的 `WaferState.develop()` / `etch()`，以及「五關全部強制完成」
  * 之後晶圓應該長什麼樣（開發者模式的 devComplete 鏈）。
  *
- * 這裡不 import 各個 Stage —— 它們需要完整的 StageContext（DOM、canvas）。
- * 改成在這裡重現 devComplete() 對晶圓做的事，並與各關的實作保持同步。
- * 如果哪天改了某一關的 devComplete()，這支檢查也要一起改。
+ * 預設路線（PVD/正光阻/乾式）的 devComplete() 鏈已由 stage-machine.mjs 跑
+ * 真正的 Stage 類別涵蓋。這裡保留的重寫版負責另外 7 種分支組合
+ * （method / tone / etchMethod 是 private，沒有 gameplay 之外的注入點）——
+ * 改到分支相關的 devComplete() 時，這支檢查也要一起改。
  */
 import { Report, SRC } from './lib.mjs';
 

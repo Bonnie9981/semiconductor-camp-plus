@@ -603,11 +603,12 @@ npm run check:browser  # 開 Chrome 量真實版面（需要系統已安裝 Goog
 npm run verify         # typecheck + check + check:browser（送出前跑這個）
 ```
 
-四組檢查，**全部直接 import 真正的原始碼**：
+五組檢查，**全部直接 import 真正的原始碼**：
 
 | 檢查 | 測什麼 | 曾經抓到 |
 | --- | --- | --- |
-| `wafer-state.mjs` | `isUnsafePour()` 的安全規則、`formatElapsed()`、`WaferState.develop()` / `etch()`，以及五關全部強制完成後的最終狀態 | 同一瓶藥液多倒一份被誤判成突沸 |
+| `wafer-state.mjs` | `isUnsafePour()` 的安全規則、`formatElapsed()`、`WaferState.develop()` / `etch()`，以及五關全部強制完成後的最終狀態（8 種分支組合，重寫版） | 同一瓶藥液多倒一份被誤判成突沸 |
+| `stage-machine.mjs` | 真正的 5 個 `Stage` 類別 + `StageManager` 生命週期（start → forceComplete → advance）；預設路線的 `devComplete()` 鏈與 `buildResult()`；locked 關卡的跳關規則 | — |
 | `stl.mjs` | `Exporter.buildSTL()` 的封閉性、**定向一致性**、帶號體積 | 外緣側牆繞序反向 |
 | `layout.mjs` | `chamberLayout()` / `alignerLayout()` 在五種筆電尺寸下不重疊、元件不會太小 | 氣閥疊到大按鈕、腔門文字溢出機台 |
 | `pdf.mjs` | `canvasToPdf()` 的 xref 位移、JPEG 完整性、`/Length` | — |
@@ -626,9 +627,15 @@ npm run verify         # typecheck + check + check:browser（送出前跑這個�
   `Certificate` 真正呼叫到的方法（`drawImage` / `getImageData` / `toBlob`）。
   其餘一律拋錯，這樣原始碼哪天用到別的 canvas API 會立刻炸掉提醒，而不是安靜回傳錯的值。
 
-唯一的例外是 `wafer-state.mjs` 裡的 devComplete 鏈：各關的 `devComplete()` 需要完整的
-`StageContext`（DOM、canvas、UIManager），只能在該檔重現。**改動任何一關的
-`devComplete()` 時要記得同步那一段。**
+- `scripts/checks/stage-machine.mjs` —— 用窄的 `makeStubContext()`（關卡在
+  `onEnter` / `devComplete` / `buildResult` 只呼叫 `ui.setPanel`、`desk.setWaferVisible`…
+  這些不需要真 canvas 的方法）import 真正的 5 個 `Stage`，跑完整條 `StageManager`
+  生命週期。
+
+例外只剩下 `wafer-state.mjs` 裡的 8 組合 devComplete 矩陣：`method` / `tone` /
+`etchMethod` 是 private，沒有 gameplay 之外的注入點，所以那三個分支仍是重寫的。
+**改動分支相關的 `devComplete()` 時要記得同步那一段。** 預設路線
+（PVD/正光阻/乾式）已由 `stage-machine.mjs` 跑真正的關卡涵蓋。
 
 ### 檢查本身也驗證過
 

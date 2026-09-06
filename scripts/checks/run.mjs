@@ -5,11 +5,12 @@
  * .ts import，並用最小的 canvas 替身補上 DOM）。所以它們測的是實際會出貨的
  * 程式碼，不是抄過來的副本 —— 副本會隨原始碼改動而悄悄過期。
  *
- * 唯一的例外是 wafer-state.mjs 裡的 devComplete 鏈：各關的 devComplete()
- * 需要完整的 StageContext，只能在該檔重現。改動任何一關的 devComplete()
- * 時要記得同步。
+ * stage-machine.mjs 用窄的假 StageContext 跑真正的 5 個 Stage，涵蓋了預設
+ * 路線的 devComplete() 鏈。wafer-state.mjs 仍保留一份重寫的 8 組合矩陣，
+ * 涵蓋 method / tone / etchMethod 三個 private 分支 —— 改到那些分支的
+ * devComplete() 時要記得同步 wafer-state.mjs。
  */
-const modules = ['wafer-state', 'stl', 'layout', 'pdf'];
+const modules = ['wafer-state', 'stage-machine', 'stl', 'layout', 'pdf'];
 
 let failed = 0;
 for (const name of modules) {

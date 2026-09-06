@@ -98,49 +98,62 @@
 - `README.md`：`cd semiconductorAR` / `semiconductorAR/` → `semiconductor-camp`（對齊 `package.json` name）
 - `docs/IMPLEMENTATION.md`：把 #1 從「仍然存在」移到「已解決」
 
-### 4.3 合併前檢查清單
+### 4.3 第二批改進（同分支，2026-09-06 稍晚）
 
-- [ ] 安裝 Node ≥ 24
-- [ ] `npm install`
-- [ ] `npm run verify`（typecheck + check + check:browser 全綠）
-- [ ] 手動：第二關選 PVD，確認「金屬鍍膜」顯示為灰色斜線「–」而非打勾
-- [ ] 手動：第二關選 CVD，確認四個子步驟行為與外觀完全不變
-- [ ] 手動：完成 PVD 關後看結業證書，晶圓／STL 仍正常（`devComplete` 未受影響）
+| 項目 | 檔案 | 對應 |
+| --- | --- | --- |
+| **GitHub Actions CI** | `.github/workflows/verify.yml` | P1 #1 — push / PR 觸發，Node 24；`check` job 跑 typecheck + check + build，`check-browser` job 裝 Chrome 跑 `check:browser` |
+| **`engines` + `.nvmrc`** | `package.json`、`.nvmrc` | P1 #2 — 明講 Node ≥ 24 |
+| **MIT LICENSE** | `LICENSE` | P2 #8 — Copyright 2026 Bonnie9981 |
+| **社群分享 meta** | `index.html` | P2 #10 — description / OG / Twitter / theme-color |
+| **關卡狀態機測試** | `scripts/checks/stage-machine.mjs`（新）、`run.mjs` | P1 #3／#4 — 用窄的 `makeStubContext()` import 真正的 5 個 Stage，跑完整條 `StageManager` 生命週期，驗預設路線的 `devComplete()` 鏈與 `buildResult()`。原本「零真實關卡覆蓋」→ 現在預設路線跑的是會出貨的程式。分支路線（cvd/negative/wet）因 private 欄位仍由 `wafer-state.mjs` 重寫矩陣涵蓋 |
+
+### 4.4 驗證結果（已在本機跑過）
+
+Node 24.20.0（官方 zip，SHA256 對過）已裝到 `%LOCALAPPDATA%\nodejs` 並加入使用者 PATH。
+
+```
+npm run typecheck      ✓  0 errors
+npm run check          ✓  全部通過（含新增的 stage-machine：7 項）
+npm run check:browser  ✓  8 種視窗尺寸 + 結業證書
+npm run build          ✓  dist/ 產出正常（js 183 kB / gzip 60 kB）
+```
+
+**待你手動確認**（互動行為，自動檢查涵蓋不到）：
+
+- 第二關選 PVD → 「金屬鍍膜」顯示為灰色虛線框的「–」而非打勾
+- 第二關選 CVD → 四個子步驟外觀與行為完全不變
+- 完成 PVD 關後看結業證書，晶圓／STL 仍正常
 
 ---
 
 ## 5. 後續改進 Roadmap（依投報比排序）
 
-### 第一優先：把品質網變成自動的
+### ✅ 已完成（本次）
 
-1. **加 CI**（P1 #1、#2）：`.github/workflows/verify.yml`，push / PR 觸發，
-   Node 24，跑 `typecheck` + `check`。`check:browser` 開一個 `continue-on-error`
-   的 job 或用 setup-chrome。**這是目前最缺的一塊** —— 專案已經有很好的檢查，
-   只差沒人強制執行。
+- **CI**（P1 #1）、**`engines` + `.nvmrc`**（P1 #2）、**MIT LICENSE**（P2 #8）、
+  **`index.html` meta**（P2 #10）、**子步驟略過狀態**（IMPLEMENTATION §7 #1）
+- **關卡狀態機測試起步**（P1 #3／#4）：`stage-machine.mjs` 已涵蓋預設路線。
 
-2. **`engines` + `.nvmrc`**：明講 Node 24。
+### 還沒做：把關卡測試補滿（接續 P1 #3、#4）
 
-### 第二優先：讓關卡狀態機可測（P1 #3、#4）
+1. **`onFrame()` 逐幀狀態機**：`makeStubContext()` 目前只夠跑生命週期，`onFrame`
+   會畫 canvas，要再補一層 2D context 替身（可參考 `dom-shim.mjs` 的做法：
+   只實作被呼叫到的方法，其餘拋錯）。之後就能「餵一串 `HandFrame` → 斷言子步驟推進」。
+2. **分支路線注入 seam**：給關卡加一個測試專用的狀態注入點（例如 `__setChoiceForTest`），
+   讓 `stage-machine.mjs` 也能跑 cvd / negative / wet，然後刪掉 `wafer-state.mjs`
+   的重寫矩陣。
 
-現況：關卡要完整 `StageContext`（DOM + canvas + UIManager）才跑得起來，所以
-`onFrame()` 狀態機無法測，`devComplete` 鏈只能在檢查腳本裡重寫一份。
-
-建議路徑：
-1. 把 `StageContext` 依「關卡真正呼叫到的方法」縮成一個窄介面
-   （目前關卡其實只用 `ui.setPanel/setArHint/...`、`desk.setWaferVisible/...`、`wafer.*`）。
-2. 寫一個 `makeFakeContext()`：`ui` / `desk` 用記錄呼叫的 spy，`wafer` 用真的 `WaferState`。
-3. 對每一關寫「餵一串 `HandFrame` → 斷言子步驟推進與 `wafer` 最終狀態」的測試。
-4. `wafer-state.mjs` 的 `devComplete` 鏈改成 import 真的關卡 + `makeFakeContext()`，
-   刪掉重寫的副本。
-
-### 第三優先：小型體驗與擴充點
+### 小型體驗與擴充點
 
 - **`ChoiceOption.preview`**（P2 #5）：加 `preview?: (ctx, w, h) => void`，
   `UIManager` 的 choice 分支若有 preview 就建一個小 canvas 呼叫它。
-  之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。
+  之後第三、五關的自繪卡片可以收斂回標準 `choice` 面板。**本次刻意沒做** ——
+  要有意義就得同時重構第三、五關約 200 行的自繪卡片邏輯，那需要逐幀互動測試
+  （見上）先到位，否則改壞了自動檢查抓不到。
 - **`prefers-reduced-motion`**：粒子數量 / 爆炸動畫在此媒體查詢下降級。
-- **`index.html` meta**（P2 #10）：補 `description` 與 OG／Twitter 卡。
-- **`MixPanel` 去留**（P2 #6）：找關卡用它，或從主線移除。
+- **`MixPanel` 去留**（P2 #6）：找關卡用它，或從主線移除（需產品決策）。
+- **`chip_wars/` 原型**（P2 #7）：搬到 `docs/` 或 tag 後刪除。
 
 ### 不建議動
 
@@ -154,7 +167,12 @@
 ## 6. 一頁摘要
 
 - **狀態**：健康。文件、分層、自建測試都在水準以上。
-- **最大缺口**：有一整套 `npm run verify` 檢查，卻沒有 CI 去強制跑它。
-- **次大缺口**：關卡互動狀態機無自動測試，`devComplete` 鏈是重寫的。
-- **本次已改**：子步驟「略過」狀態（P1 blessed fix）+ 3 處文件同步。
-- **下一步**：CI → 可測的 `StageContext` → `ChoiceOption.preview`。
+- **本次已改**：
+  1. 子步驟「略過」狀態（IMPLEMENTATION §7 #1）
+  2. CI（`.github/workflows/verify.yml`）+ `engines` + `.nvmrc`
+  3. MIT LICENSE + `index.html` 社群 meta
+  4. `stage-machine.mjs`：真正的關卡類別 + 生命週期測試（預設路線）
+  5. 5 處文件與程式同步
+- **已驗證**：`npm run verify` + `npm run build` 全綠（Node 24.20.0）。
+- **下一步**：`onFrame()` 逐幀測試 → 分支注入 seam → `ChoiceOption.preview` +
+  第三、五關卡片收斂。
