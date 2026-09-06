@@ -9,7 +9,24 @@
 
 **▶ 線上試玩：<https://bonnie9981.github.io/semiconductor-camp-plus/>**（允許攝影機權限即可開始；沒有攝影機也能用滑鼠玩）
 
-![遊戲主畫面：左側製程步驟、中央鏡頭視窗與虛擬實驗檯、右側操作說明](docs/screenshots/app.png)
+![走過 RCA 清洗、薄膜沉積、微影、顯影、蝕刻五道製程，最後產生結業證書的示範](docs/demo.gif)
+
+<sub>主畫面：左側製程步驟、中央鏡頭視窗與虛擬實驗檯、右側操作說明</sub>
+
+![遊戲主畫面](docs/screenshots/app.png)
+
+## 這是什麼
+
+一個在瀏覽器裡跑的**半導體製程教學遊戲**。玩家不是讀投影片，而是**親手做**：
+配 RCA 清洗藥液、把晶圓推進沉積腔、旋轉塗佈光阻並畫出自己的圖案、選正負光阻去顯影、
+再決定乾式還是濕式蝕刻。五關走完會拿到一張**結業證書** —— 上面有你的照片、你親手做出來的
+晶圓圖案、評等，以及一段「觀念回顧」把你這次的每個選擇對應回背後的原理。
+
+- **給誰**：高中／大學的半導體、材料、電子相關課程，或任何想搞懂「晶片怎麼做出來」的人。
+- **怎麼玩**：開網頁 → 允許攝影機 → 張開手掌讓系統看到手 → 捏合拇指與食指抓東西。
+  **沒有攝影機也完全能玩** —— 畫面上的器材直接用滑鼠／觸控按住拖曳，面板按鈕也都能點。
+- **不用安裝、不用登入、不連後端**，純靜態網頁，關掉分頁就結束。
+- 每一關左上有子步驟提示，卡住時看右側「操作說明」或右上角 📖「製程小百科」。
 
 > **接手開發請先讀 [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md)。**
 > 那份文件說明整套架構的設計概念、每個模組的職責，以及怎麼新增關卡。
@@ -100,6 +117,7 @@ npm run dev     # → http://localhost:5173
 | `npm run check` | 自動化檢查：晶圓狀態機、關卡狀態機、蝕刻藥液規則、STL 幾何、版面、證書 PDF |
 | `npm run check:browser` | **開真的 Chrome** 量版面：HUD 卡片有沒有互相壓到、有沒有蓋住 canvas 上的道具、證書整張看不看得到 |
 | `npm run verify` | 以上全部（lint + format:check + typecheck + check + check:browser），送出前跑這個 |
+| `npm run screenshot` | 重新產生 `docs/screenshots/app.png`、`public/og-image.png`、`docs/demo.gif`（需系統 Chrome） |
 
 ---
 
@@ -115,10 +133,12 @@ semiconductor-camp-plus/
 ├── docs/
 │   ├── IMPLEMENTATION.md       # ★ 實作概念與接手指南
 │   ├── ANALYSIS.md             # 程式碼分析與改進 roadmap
-│   └── screenshots/            # README 用截圖（npm run screenshot 產生）
+│   ├── RISKS.md                # 已知風險與遷移觸發條件（MediaPipe 版本等）
+│   ├── demo.gif               # README 用示範動畫（npm run screenshot 產生）
+│   └── screenshots/            # README 用截圖（同上）
 ├── scripts/
 │   ├── copy-mediapipe.mjs      # postinstall：複製 MediaPipe wasm/模型到 public/
-│   ├── screenshot.mjs          # 產生截圖與 OG 分享圖
+│   ├── screenshot.mjs          # 產生截圖、OG 分享圖與 demo GIF
 │   └── checks/                 # 自動化檢查（npm run check），直接跑真正的原始碼
 ├── src/
 │   ├── main.ts                 # 程式入口、關卡註冊、UI 事件綁定、rAF 主迴圈

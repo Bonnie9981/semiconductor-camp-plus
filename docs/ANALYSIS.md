@@ -157,11 +157,26 @@ GitHub Actions：`verify`（`lint` + `check` + `check-browser`）全綠。`deplo
 | **tone / etch 分支測試跑真程式** | `stage-machine.mjs`、`BaseStage.goToSubForTest()` | 透過真實 choice 面板 `onToggle` 驅動 Stage3 正/負光阻、Stage5 乾/濕蝕刻；`wafer-state.mjs` 的重寫矩陣只剩「驗整條鏈最終狀態」的角色。 |
 | 修 Header 寫死的「關卡 1 / 6」→「1 / 5」 | `index.html` | |
 
-### 4.9 驗證
+### 4.9 第六批：執行審查會行動項目
+
+審查會議紀錄的 A2–A6（見 `docs/` 的會議紀錄 artifact）中能自動完成的部分：
+
+| 行動項 | 檔案 | 說明 |
+| --- | --- | --- |
+| **A2 證書「觀念回顧」** | `Certificate.ts`、`main.ts` | 證書多一段，把 PVD/CVD、正/負光阻、乾/濕蝕刻三個選擇對應回原理（不評分）。 |
+| **A3 各關「為什麼」** | 5 個 `Stage*.ts` | 每關 `instructions` 開頭加一條 💡，一句話講這關在製程裡的角色。 |
+| **A4 MediaPipe 風險** | `docs/RISKS.md`（新） | 版本停更風險 + 三個遷移觸發條件 + 遷移注意事項。（無 GitHub token，用 repo 文件代替 issue） |
+| **A5 demo GIF** | `scripts/screenshot.mjs`、`docs/demo.gif`（新）、`README.md` | Playwright 截 15 幀 → `pngjs` 解碼 → `gifenc` 量化編碼（640×380，~250 KB）。走過五關 → 證書。 |
+| **A6 專案介紹** | `README.md` | 新增「這是什麼 / 給誰 / 怎麼玩」段落。repo 描述需你手動貼（無法透過 API 改）。 |
+
+A1（找老師 / 學生實測）需要真人，無法自動化 —— 留給你安排。
+
+### 4.10 驗證
 
 ```
 npm run verify  ✓  lint + format:check + typecheck + check（stage-machine 17 項）+ check:browser
 npm run build   ✓  js 189 kB / gzip 62 kB
+npm run screenshot  ✓  demo.gif 640×380 / 15 幀 / ~250 KB
 ```
 
 瀏覽器實測（Browser pane）：首次自動彈「怎麼玩」+ localStorage 記住不再彈；

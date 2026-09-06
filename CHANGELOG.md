@@ -36,6 +36,14 @@
   看過就記住。
 - **製程小百科**（Header 的 📖）：一頁講完五道製程各在做什麼、為什麼要這樣做。
 - **結業評等**：證書多一列「評等」（S/A/B/C）—— 依失誤次數、圖案覆蓋率、用時計算。
+- **證書「觀念回顧」**：證書上多一段，把你這次的選擇（PVD/CVD、正/負光阻、乾/濕蝕刻）
+  對應回背後的原理，不評分、純複習。
+- **各關「為什麼」**：每一關「操作說明」開頭多一條 💡，一句話講這一關在整條製程裡的角色，
+  與製程小百科呼應。
+- **demo GIF**（`docs/demo.gif`）：README 放一段走過五道製程 → 結業證書的示範動畫；
+  `npm run screenshot` 會一起產生（用 `gifenc` + `pngjs`，dev 相依）。
+- **`docs/RISKS.md`**：專案層級的已知風險與遷移觸發條件（MediaPipe 停更版本、教學有效性）。
+- README 新增「這是什麼 / 給誰 / 怎麼玩」段落。
 - `engines: node >=24`、`.nvmrc`、`CONTRIBUTING.md`、issue / PR 範本、
   MIT `LICENSE`、`index.html` 的 description / OG / Twitter meta。
 - `docs/ANALYSIS.md`：程式碼分析與改進 roadmap。
