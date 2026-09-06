@@ -1,20 +1,18 @@
 /**
  * 關卡狀態機檢查（真實的 Stage 類別）
  * ---------------------------------------------------------------------------
- * wafer-state.mjs 的 ③「devComplete 鏈」是照各關實作**重寫**的一份副本 ——
- * 改了某一關的 devComplete() 而忘了同步腳本，測試會過但行為已經變了。
+ * 這支檢查 import 真正的 5 個 Stage 類別，涵蓋三件事：
  *
- * 這支檢查改成 import 真正的 Stage 類別，用一個窄的假 StageContext
- * （關卡在 onEnter/onExit/onSubEnter/devComplete/buildResult 只會呼叫
- *   ui.setPanel、desk.setWaferVisible/setDeskLabel/setPen*、desk.coverage()…
- *   都不需要真的 canvas），跑完整條 StageManager 生命週期：
+ *   ① 生命週期 —— 用窄的 makeStubContext() 跑 start → forceCompleteCurrent →
+ *      advance 一整輪，驗預設路線（PVD / 正光阻 / 乾式）的 devComplete() 鏈與
+ *      buildResult()。這條路線測的是會出貨的程式，不是副本。
+ *   ② onFrame 冒煙 —— 用 makeFrameStubs() + permissive 的 2D context 替身，
+ *      每一關 onEnter + 8 幀 onFrame，斷言不丟例外、沒輸入時不自己過關。
+ *   ③ 分支 —— 透過關卡「真的那份」choice 面板的 onToggle 回呼選 CVD，
+ *      驗 devComplete() 補上氧化層。
  *
- *   start → forceCompleteCurrent → advance → …（五關）
- *
- * 涵蓋的是「玩家什麼都沒選」的預設路線（PVD / 正光阻 / 乾式蝕刻）——
- * 這條路線現在測的是**會出貨的那份 devComplete()**，不是副本。
- * 其他 7 種分支組合仍由 wafer-state.mjs 的重寫版矩陣涵蓋（method / tone /
- * etchMethod 是 private，沒有 gameplay 之外的注入點）。
+ * 還沒涵蓋：tone / etch 的分支（它們的 choice 面板在手勢子步驟之後才出現，
+ * 要餵有座標的 HandFrame 序列才到得了），仍由 wafer-state.mjs 的重寫矩陣把關。
  */
 import { Report, SRC } from './lib.mjs';
 
@@ -156,9 +154,13 @@ function makeFrameStubs(wafer) {
     geometry,
     isOnWafer: () => false,
   };
+  const panel = { last: null };
   const uiValues = {
     panelInset: () => 0,
     sceneOverlay: () => ({ top: 40, bottom: 700, left: 0, right: 1280, panelRight: 0 }),
+    setPanel: (spec) => {
+      if (spec) panel.last = spec;
+    },
   };
   const trap = (values) =>
     new Proxy(
@@ -177,7 +179,7 @@ function makeFrameStubs(wafer) {
     dt: 1 / 60,
     time: 0,
   };
-  return { stageCtx, stages, frame };
+  return { stageCtx, stages, frame, getLastPanel: () => panel.last };
 }
 
 // ── 跑完整條預設路線 ──
@@ -285,6 +287,41 @@ function makeFrameStubs(wafer) {
       `子步驟停在 ${stage.subIndex}/${stage.subCount}`,
     );
   }
+}
+
+// ── 分支路線：透過關卡「真的那份」choice 面板選 CVD，devComplete() 要補上氧化層 ──
+// （method 是 private，但 buildPanel() 的 onToggle 回呼是公開介面。第一個子步驟就是
+//   製程選擇，面板馬上拿得到，不必先走完前面的手勢步驟。）
+{
+  const wafer = new WaferState();
+  const { stageCtx, stages, frame, getLastPanel } = makeFrameStubs(wafer);
+  const stage = new Stage2Deposition();
+  stages.register(stage).attachContext(stageCtx);
+
+  const errs = [];
+  try {
+    stage.onEnter(stageCtx);
+    stage.onFrame(frame); // 建出製程選擇面板
+    const spec = getLastPanel();
+    if (spec?.kind !== 'choice') {
+      errs.push(`第一個子步驟的面板不是 choice（得到 ${spec?.kind}）`);
+    } else {
+      spec.onToggle('cvd'); // ← 玩家點「化學氣相沉積」
+      stage.devComplete();
+      if (!wafer.hasLayer('oxide')) errs.push('選了 CVD，devComplete() 卻沒有補氧化層');
+      if (!wafer.hasLayer('metal')) errs.push('devComplete() 沒有補金屬層');
+      const result = stage.buildResult();
+      if (result.method !== 'cvd')
+        errs.push(`buildResult().method 應為 cvd，得到 ${result.method}`);
+    }
+  } catch (e) {
+    errs.push(`丟出例外：${e.message}`);
+  }
+  report.add(
+    '薄膜沉積：從真實面板選 CVD → devComplete 補氧化層',
+    errs,
+    wafer.layers.map((l) => l.kind).join('+'),
+  );
 }
 
 export default () => report.print();
